@@ -1586,6 +1586,66 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
 }
 
 /* =====================================================================
+   TERRA AUSTRALIS — lo que dice el dinosaurio y la invitación
+   ===================================================================== */
+/* mientras dura el hechizo la carta y los botones se apartan */
+body.australis #letter,
+body.australis #spellbook {
+  opacity: 0.1;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+#letter, #spellbook { transition: opacity 0.7s ease; }
+
+#dino-say {
+  position: fixed;
+  z-index: 8;
+  margin: 0;
+  max-width: min(60vw, 230px);
+  padding: 8px 14px 9px;
+  border: 1px solid rgba(201, 163, 74, 0.6);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbf4e3, #eedfc0);
+  box-shadow: 0 10px 26px rgba(6, 8, 18, 0.5), inset 0 0 0 2px rgba(251, 244, 227, 0.8);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: clamp(15px, 4.1vw, 17px);
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
+  transform-origin: 30% 100%;
+  transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.2, 1, 0.3, 1.1);
+}
+#dino-say[hidden] { display: none; }
+#dino-say.show { opacity: 1; transform: none; }
+/* el rabito baja hacia la cabeza del dinosaurio */
+#dino-say::after {
+  content: "";
+  position: absolute;
+  left: 26%;
+  bottom: -8px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-top-color: rgba(201, 163, 74, 0.6);
+  border-bottom: 0;
+}
+#dino-say::before {
+  content: "";
+  position: absolute;
+  left: 27%;
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border: 7px solid transparent;
+  border-top-color: #eedfc0;
+  border-bottom: 0;
+  z-index: 1;
+}
+
+/* =====================================================================
    TERRA AUSTRALIS — la invitación
    ===================================================================== */
 #invite {
@@ -1621,5 +1681,5 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
 
 @media (prefers-reduced-motion: reduce) {
   .rune-btn.in:not(.usado) .rune-glyph { animation: none !important; }
-  #invite { transition-duration: 0.25s; }
+  #invite, #dino-say { transition-duration: 0.25s; }
 }

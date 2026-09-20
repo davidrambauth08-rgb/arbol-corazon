@@ -34,7 +34,7 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Expecto Patronum** | fila de hechizos del árbol | un guardián de luz entra, rodea la copa y se va |
 | **Wingardium Leviosa** | en la tarjeta | eleva la tarjeta con la foto y el recuerdo |
 | **Dracarys** | fila de hechizos del árbol | un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
-| **Terra Australis** | fila de hechizos del árbol | se enciende la Cruz del Sur, dos dinosaurios cruzan la noche y llega una invitación a Australia |
+| **Terra Australis** | fila de hechizos del árbol | la carta se aparta, se enciende la Cruz del Sur, un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
@@ -83,7 +83,7 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `music` | `enabled`, `file`, `volume` (0–1), `fadeInSeconds` y textos accesibles de los botones |
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
-| `australia` | `titulo`, `linea` y `firma` de la invitación de Terra Australis |
+| `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
 | `idiomas` | frases de Lingua Amoris (el español no está: se guarda para la línea final) |
 | `puerta` | clave, frase, pistas y mensajes de la entrada |
 | `easterEgg` | Toques necesarios, ventana de tiempo y los dos mensajes |

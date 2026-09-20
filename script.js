@@ -189,6 +189,7 @@ const CONFIG = {
   /* Terra Australis: la constelación del sur, dos dinosaurios cruzando el bosque
      y una invitación. Cambia los textos a tu gusto. */
   australia: {
+    pregunta: "¿Te vienes conmigo?",              // lo que dice el dinosaurio al acercarse
     titulo: "¿Nos vamos a Australia?",
     linea: "Tú, yo, el otro lado del mundo.",
     firma: "Dinosaurios incluidos."
@@ -638,6 +639,7 @@ const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const spellRowEl = document.getElementById('spell-row');
 const inviteEl = document.getElementById('invite');
+const dinoSayEl = document.getElementById('dino-say');
 const seasonLabelEl = document.getElementById('season-label');
 const finiteEl = document.getElementById('finite-label');
 const spellbookEl = document.getElementById('spellbook');
@@ -2590,20 +2592,20 @@ function drawDracarys(now, dt) {
 /* Terra Australis: la Cruz del Sur, dos dinosaurios cruzando la noche y una invitación */
 const australia = { activo: false, born: 0, dur: 10000, dinos: [], cielo: 0, linea: 0, alto: 60, arriba: 0, abajo: 0 };
 
-/* Reparte el hueco libre de la escena: estrellas arriba, dinosaurios en medio,
-   invitación abajo. Así nada tapa a la carta ni a los botones. */
+/* Mientras dura el hechizo la carta se aparta (como en Lingua Amoris), así que
+   los dinosaurios se quedan con la mitad baja de la escena: estrellas arriba,
+   ellos en medio y la invitación debajo. */
 function sitioAustralis() {
-  const carta = letterEl.getBoundingClientRect();
-  const libro = spellbookEl.hidden ? null : spellbookEl.getBoundingClientRect();
-  const arriba = Math.max(carta.bottom + 6, panel.y + panel.h * 0.3);
-  const abajo = Math.max(arriba + 140, (libro ? libro.top : panel.y + panel.h) - 8);
+  const reloj = clockEl.getBoundingClientRect();
+  const arriba = panel.y + panel.h * 0.42;
+  const abajo = Math.max(arriba + 150, reloj.top - 10);
   const hueco = abajo - arriba;
   australia.arriba = arriba;
   australia.abajo = abajo;
-  australia.cielo = arriba + hueco * 0.2;
-  australia.linea = arriba + hueco * 0.5;
-  australia.alto = Math.min(hueco * 0.3, panel.h * 0.1);
-  inviteEl.style.top = arriba + hueco * 0.58 + 'px';
+  australia.cielo = arriba + hueco * 0.14;
+  australia.linea = arriba + hueco * 0.56;
+  australia.alto = Math.min(hueco * 0.3, panel.h * 0.115);
+  inviteEl.style.top = arriba + hueco * 0.34 + 'px';
 }
 
 /* Deja la invitación dentro del hueco, ya sabiendo lo que ocupa */
@@ -2614,28 +2616,60 @@ function encajarInvitacion() {
   inviteEl.style.top = top + 'px';
 }
 
+/* Tiempos del hechizo, en segundos: se acerca, se para a hablar y se va */
+const AUS = { entra: 3.4, espera: 3.2, sale: 3 };
+const AUS_FIN = AUS.entra + AUS.espera + 5.4;   // cuando la carta vuelve a su sitio
+
 function castAustralis() {
   if (australia.activo || FX_ON.australis === false) return;
   australia.activo = true;
   australia.born = performance.now();
+  australia.dur = (AUS.entra + AUS.espera + AUS.sale) * 1000;
+  australia.dijo = false;
   australia.dinos = [
-    { tipo: 'saurio', x: -0.24, v: 0.17, escala: 1, retraso: 0, dy: 0 },
-    { tipo: 'raptor', x: -0.14, v: 0.24, escala: 0.6, retraso: 0.9, dy: 0.22 }   // va delante y más cerca
+    // el grande se acerca de frente y se queda hablando
+    { tipo: 'saurio', desde: -0.3, para: 0.36, hasta: 1.35, lejos: 0.5, retraso: 0, dy: 0, habla: true },
+    // el pequeño llega antes, se planta un poco más allá y se va el primero
+    { tipo: 'raptor', desde: -0.12, para: 0.74, hasta: 1.4, lejos: 0.55, retraso: 0, dy: 0.22, habla: false, chico: 0.52 }
   ];
+  document.body.classList.add('australis');   // la carta se aparta para dejar ver la noche
   sitioAustralis();
   castFxAt(australisBtn, { sparks: 22, r1: 220, dur: 800 });
   gastarHechizo(australisBtn);
   const A = CONFIG.australia || {};
+  dinoSayEl.textContent = A.pregunta || '';
   document.getElementById('invite-title').textContent = A.titulo || '';
   document.getElementById('invite-line').textContent = A.linea || '';
   document.getElementById('invite-sign').textContent = A.firma || '';
-  later(3400, () => {
+
+  // primero pregunta el dinosaurio; la invitación llega cuando ya se va
+  later(AUS.entra * 1000 + 200, () => mostrarBocadillo());
+  later((AUS.entra + AUS.espera - 0.2) * 1000, () => dinoSayEl.classList.remove('show'));
+  later((AUS.entra + AUS.espera + 0.4) * 1000, () => { dinoSayEl.hidden = true; });
+  later((AUS.entra + AUS.espera + 1.4) * 1000, () => {
     inviteEl.hidden = false;
     encajarInvitacion();
     inviteEl.classList.add('show');
   });
-  later(8600, () => inviteEl.classList.remove('show'));
-  later(9400, () => { inviteEl.hidden = true; });
+  later(AUS_FIN * 1000, () => {
+    inviteEl.classList.remove('show');
+    document.body.classList.remove('australis');
+  });
+  later((AUS_FIN + 0.8) * 1000, () => { inviteEl.hidden = true; });
+}
+
+/* El bocadillo sale justo encima de la cabeza del que habla */
+function mostrarBocadillo() {
+  const d = australia.dinos.find(x => x.habla);
+  if (!d || !dinoSayEl.textContent) return;
+  dinoSayEl.hidden = false;
+  const alto = australia.alto;
+  const cabezaX = panel.x + d.para * panel.w + alto * 0.7;   // la cabeza va delante del cuerpo
+  const cabezaY = australia.linea + alto * d.dy - alto;
+  const ancho = dinoSayEl.offsetWidth, hAlto = dinoSayEl.offsetHeight;
+  dinoSayEl.style.left = clamp(cabezaX - ancho * 0.3, panel.x + 8, panel.x + panel.w - ancho - 8) + 'px';
+  dinoSayEl.style.top = Math.max(australia.arriba + 2, cabezaY - hAlto - 10) + 'px';
+  dinoSayEl.classList.add('show');
 }
 
 /* Cruz del Sur: cinco estrellas unidas por un hilo de luz */
@@ -2665,21 +2699,23 @@ function dibujarCruzDelSur(g, x, y, escala, alpha) {
   }
 }
 
-/* Siluetas de dinosaurio caminando. Las patas van a la altura 0 y la
-   cabeza alrededor de -70: la escala lleva ese alto a píxeles. */
-function dibujarDino(g, tipo, x, suelo, alto, paso, alpha) {
+/* Siluetas de dinosaurio. Las patas van a la altura 0 y la cabeza alrededor
+   de -70: la escala lleva ese alto a píxeles. Parado planta las patas y se
+   balancea sobre ellas, como si te estuviera hablando. */
+function dibujarDino(g, tipo, x, suelo, alto, paso, alpha, andando, t) {
   g.save();
   g.translate(x, suelo);
   g.scale(alto / 70, alto / 70);
+  // parado: cabecea despacio sobre las patas
+  if (!andando) g.rotate(Math.sin(t * (tipo === 'raptor' ? 2.5 : 1.7)) * (tipo === 'raptor' ? 0.055 : 0.05));
+
   const tinta = `rgba(9, 7, 20, ${alpha})`;
-  g.fillStyle = tinta;
-  g.strokeStyle = `rgba(206, 226, 255, ${alpha * 0.32})`;   // canto de luna
+  const canto = `rgba(206, 226, 255, ${alpha * 0.32})`;   // canto de luna
   g.lineJoin = 'round';
   g.lineCap = 'round';
 
   /* una pata: cadera, rodilla y pie, trazadas de una pasada */
   const pata = (hx, hy, kx, ky, fx, grosor) => {
-    g.save();
     g.strokeStyle = tinta;
     g.lineWidth = grosor;
     g.beginPath();
@@ -2687,11 +2723,18 @@ function dibujarDino(g, tipo, x, suelo, alto, paso, alpha) {
     g.lineTo(kx, ky);
     g.lineTo(fx, -1);
     g.stroke();
-    g.restore();
+  };
+  const pintar = grosor => {
+    g.fillStyle = tinta;
+    g.fill();
+    g.strokeStyle = canto;
+    g.lineWidth = grosor;
+    g.stroke();
   };
 
   if (tipo === 'saurio') {                 // cuello largo, paso pesado
-    const b1 = Math.sin(paso) * 7, b2 = Math.sin(paso + Math.PI) * 7;
+    const b1 = andando ? Math.sin(paso) * 7 : 1;
+    const b2 = andando ? Math.sin(paso + Math.PI) * 7 : -1;
     pata(-16, -30, -17 + b2 * 0.4, -16, -16 + b2, 11);
     pata(10, -32, 9 + b1 * 0.4, -17, 10 + b1, 11);
     g.beginPath();
@@ -2707,12 +2750,10 @@ function dibujarDino(g, tipo, x, suelo, alto, paso, alpha) {
     g.quadraticCurveTo(-26, -22, -44, -26);
     g.quadraticCurveTo(-56, -28, -64, -30);
     g.closePath();
-    g.fillStyle = tinta;
-    g.fill();
-    g.lineWidth = 1.4;
-    g.stroke();
+    pintar(1.4);
   } else {                                 // pequeño, corre inclinado
-    const b1 = Math.sin(paso * 1.4) * 9, b2 = Math.sin(paso * 1.4 + Math.PI) * 9;
+    const b1 = andando ? Math.sin(paso * 1.4) * 9 : 2;
+    const b2 = andando ? Math.sin(paso * 1.4 + Math.PI) * 9 : -2;
     pata(-8, -30, -14 + b2 * 0.3, -16, -8 + b2, 5);
     pata(2, -31, -4 + b1 * 0.3, -16, 2 + b1, 5);
     g.beginPath();
@@ -2726,36 +2767,53 @@ function dibujarDino(g, tipo, x, suelo, alto, paso, alpha) {
     g.quadraticCurveTo(-8, -26, -22, -32); // vientre
     g.quadraticCurveTo(-38, -40, -50, -50);
     g.closePath();
-    g.fillStyle = tinta;
-    g.fill();
-    g.lineWidth = 1.2;
-    g.stroke();
+    pintar(1.2);
   }
   g.restore();
 }
 
 function drawAustralis(now) {
   if (!australia.activo) return;
-  const k = (now - australia.born) / australia.dur;
-  if (k >= 1) { australia.activo = false; return; }
+  const t = (now - australia.born) / 1000;
+  const total = AUS.entra + AUS.espera + AUS.sale;
+  if (t >= total) { australia.activo = false; return; }
   const g = ctx;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const t = (now - australia.born) / 1000;
-  const alpha = k < 0.1 ? k / 0.1 : k > 0.88 ? (1 - k) / 0.12 : 1;
+  const k = t / total;
+  const alpha = k < 0.08 ? k / 0.08 : k > 0.9 ? (1 - k) / 0.1 : 1;
 
   // la constelación del sur se enciende sobre el hueco de la noche
-  dibujarCruzDelSur(g, panel.x + panel.w * (view.tall ? 0.72 : 0.3), australia.cielo,
+  dibujarCruzDelSur(g, panel.x + panel.w * (view.tall ? 0.78 : 0.3), australia.cielo,
     Math.min(panel.w, panel.h) * 0.06, alpha * 0.95);
 
-  // los dinosaurios cruzan la noche
   for (const d of australia.dinos) {
-    const avance = Math.max(0, t - d.retraso) * d.v;
-    const px = panel.x + (d.x + avance) * panel.w;
-    if (px < panel.x - 140 || px > panel.x + panel.w + 140) continue;
-    const alto = australia.alto * d.escala;
-    const paso = t * (d.tipo === 'raptor' ? 9 : 5);
-    const brinco = Math.abs(Math.sin(paso)) * alto * 0.03;
-    dibujarDino(g, d.tipo, px, australia.linea + australia.alto * d.dy - brinco, alto, paso, alpha);
+    const tl = t - d.retraso;
+    if (tl < 0) continue;
+    let ux, cerca, andando;
+    if (tl < AUS.entra) {                       // se acerca: avanza y crece
+      const e = easeOutCubic(tl / AUS.entra);
+      ux = lerp(d.desde, d.para, e);
+      cerca = lerp(d.lejos, 1, e);
+      andando = true;
+    } else if (tl < AUS.entra + AUS.espera) {   // parado, mirándote
+      ux = d.para;
+      cerca = 1;
+      andando = false;
+    } else {                                    // se va
+      const e = easeInOutCubic((tl - AUS.entra - AUS.espera) / AUS.sale);
+      ux = lerp(d.para, d.hasta, e);
+      cerca = 1;
+      andando = true;
+    }
+    const px = panel.x + ux * panel.w;
+    if (px < panel.x - 160 || px > panel.x + panel.w + 160) continue;
+    const alto = australia.alto * cerca * (d.chico || 1);
+    // el paso sólo corre mientras camina; parado sólo respira
+    d.paso = (d.paso || 0) + (andando ? (d.tipo === 'raptor' ? 0.14 : 0.1) : 0);
+    const brinco = andando ? Math.abs(Math.sin(d.paso)) * alto * 0.035 : 0;
+    const respira = andando ? 0 : Math.sin(t * 2.1) * alto * 0.02;
+    dibujarDino(g, d.tipo, px, australia.linea + australia.alto * d.dy - brinco + respira,
+      alto, d.paso, alpha, andando, t);
   }
 }
 
@@ -3066,6 +3124,9 @@ function resetExtras() {
   australia.activo = false;
   inviteEl.hidden = true;
   inviteEl.classList.remove('show');
+  dinoSayEl.hidden = true;
+  dinoSayEl.classList.remove('show');
+  document.body.classList.remove('australis');
   photoFrame.classList.remove('reveal');
   finaleCard.classList.remove('unlocking', 'accio', 'levita');
   memoryEl.classList.remove('levita');
