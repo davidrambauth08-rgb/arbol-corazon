@@ -1503,3 +1503,7 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
   transform: scale(0.97) !important;
   transition: opacity 0.7s ease, transform 0.7s ease !important;
 }
+
+/* Una placa no recibe toques hasta que termina de aparecer (evita toques fantasma) */
+.plate:not(.in) { pointer-events: none; }
+#closing-ask .plate, .plate.in { pointer-events: auto; }
