@@ -1,0 +1,13 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Material de trabajo local (no se publica)
+comparaciones/
+*.mov
+*.mp4
+
+# Herramientas
+node_modules/
+.vercel/
+.netlify/

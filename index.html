@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15181b">
+  <!-- Privado: pedimos a los buscadores que no lo indexen -->
+  <meta name="robots" content="noindex, nofollow">
+  <!-- Vista previa del enlace (WhatsApp, iMessage…). Los textos de la página están en CONFIG. -->
+  <title>Karen Trujillo</title>
+  <meta property="og:title" content="Karen Trujillo">
+  <meta property="og:description" content="Tengo algo para ti">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C7 21.5 3 17 3 12.2 3 8.2 6.1 5 10 5c2.4 0 4.6 1.2 6 3.1C17.4 6.2 19.6 5 22 5c3.9 0 7 3.2 7 7.2C29 17 25 21.5 16 28z' fill='%23c9a34a'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <!-- Capa de texto sobre el panel (posición calculada en script.js) -->
+  <div id="stage">
+    <div id="letter">
+      <p id="title" class="line"></p>
+      <div id="phrases"></div>
+      <p id="signature" class="line"></p>
+      <div id="secret-lines"></div>
+    </div>
+    <div id="clock">
+      <p id="since"></p>
+      <p id="counter">
+        <span class="unit"><span class="num" data-unit="d">0</span> <span class="lbl" data-label="d"></span></span>
+        <span class="unit"><span class="num" data-unit="h">00</span> <span class="lbl" data-label="h"></span></span>
+        <span class="unit"><span class="num" data-unit="m">00</span> <span class="lbl" data-label="m"></span></span>
+        <span class="unit"><span class="num" data-unit="s">00</span> <span class="lbl" data-label="s"></span></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Pruebas (modo acertijo) -->
+  <div id="quiz" hidden aria-live="polite">
+    <div id="quiz-card"></div>
+  </div>
+
+  <!-- Libro de hechizos: aparece junto al árbol (textos en CONFIG.hechizos) -->
+  <div id="spellbook" hidden>
+    <p id="spell-hint"></p>
+    <button id="spell-sonorus" class="plate" type="button" hidden></button>
+    <button id="secret-btn" class="plate" type="button" hidden></button>
+    <button id="spell-revelio" class="plate" type="button" hidden></button>
+    <button id="spell-tempus" class="plate" type="button" hidden></button>
+    <button id="spell-patronus" class="plate" type="button" hidden></button>
+  </div>
+
+  <!-- Mensaje del easter egg (sin pistas visibles) -->
+  <div id="egg" hidden role="status"></div>
+  <p id="season-label" hidden aria-live="polite"></p>
+  <p id="finite-label" hidden aria-hidden="true"></p>
+
+  <!-- Final: foto, recuerdos y última cosa -->
+  <div id="finale" hidden>
+    <div id="finale-card">
+      <div id="photo-frame">
+        <img id="final-photo" alt="" decoding="async">
+        <div class="photo-placeholder" aria-hidden="true">
+          <span class="ph-heart">✦</span>
+          <span id="photo-placeholder-text"></span>
+        </div>
+      </div>
+      <p id="photo-caption"></p>
+      <p id="memory" hidden aria-live="polite"></p>
+      <button id="memory-btn" class="plate" type="button" hidden></button>
+      <button id="spell-leviosa" class="plate" type="button" hidden></button>
+      <button id="spell-lingua" class="plate" type="button" hidden></button>
+      <div id="closing-ask" hidden>
+        <p id="closing-question"></p>
+        <button id="closing-btn" class="plate primary" type="button"></button>
+      </div>
+      <button id="spell-nox" class="plate quiet" type="button" hidden></button>
+      <div id="seal" hidden aria-hidden="true"><span>✦</span></div>
+    </div>
+  </div>
+
+  <!-- Lluvia de corazones (Canvas) y mensaje de cierre -->
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div id="closing" hidden>
+    <p id="closing-1" class="closing-line" hidden></p>
+    <p id="closing-2" class="closing-line" hidden></p>
+    <button id="restart-btn" class="finale-btn primary" type="button" hidden></button>
+  </div>
+
+  <!-- Controles de música (aparecen tras el primer toque si hay canción) -->
+  <div id="music" hidden>
+    <span class="music-wave" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span id="music-title"></span>
+    <button id="music-toggle" class="music-btn" type="button" aria-label="Pausar música">
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+    </button>
+    <button id="music-mute" class="music-btn" type="button" aria-label="Silenciar">
+      <svg class="i-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="i-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <!-- Puerta encantada: clave y frase (textos en CONFIG.puerta) -->
+  <div id="gate" hidden>
+    <div class="gate-card">
+      <div id="gate-lock" aria-hidden="true"><span class="keyhole"></span></div>
+      <h1 id="gate-title"></h1>
+      <p id="gate-sub"></p>
+      <form id="gate-form" autocomplete="off">
+        <label id="gate-label" for="gate-input"></label>
+        <input id="gate-input" type="text" inputmode="text" autocomplete="off" autocorrect="off"
+               autocapitalize="none" spellcheck="false" enterkeyhint="go">
+        <button id="gate-btn" type="submit"></button>
+      </form>
+      <p id="gate-msg" class="gate-msg"></p>
+      <p id="gate-hint"></p>
+    </div>
+  </div>
+
+  <!-- Intro mágica (textos en CONFIG.introMagic) -->
+  <div id="magic" hidden>
+    <canvas id="magic-canvas" aria-hidden="true"></canvas>
+    <div class="magic-stage">
+      <div id="magic-lines" aria-live="polite"></div>
+      <div id="magic-spell" hidden>
+        <p id="magic-prompt"></p>
+        <button id="spell-correct" class="spell-btn" type="button"></button>
+        <button id="spell-wrong" class="spell-wrong" type="button"></button>
+      </div>
+    </div>
+    <p id="magic-egg" hidden role="status"></p>
+  </div>
+
+  <!-- Pantalla inicial sencilla (si la intro mágica está desactivada) -->
+  <div id="intro">
+    <div class="intro-card">
+      <h1 id="intro-title"></h1>
+      <div id="intro-lines"></div>
+      <button id="start" type="button"></button>
+    </div>
+  </div>
+
+  <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
+  <div id="safe-area" aria-hidden="true"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
