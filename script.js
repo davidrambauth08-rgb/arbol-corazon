@@ -171,18 +171,27 @@ const CONFIG = {
      El nombre es el conjuro y la descripción explica qué hace. */
   hechizos: {
     aviso: "Hay algo más escondido aquí",
-    sonorus: { runa: "♪", nombre: "Sonorus", desc: "invocar nuestra canción" },
+    sonorus: { runa: "♪", nombre: "Sonorus", desc: "invocar nuestra canción", corto: "Sonorus" },
     lumos: { runa: "✦", nombre: "Lumos Máxima", desc: "" },          // desc vacío → usa secreto.boton
     revelio: { runa: "◈", nombre: "Revelio", desc: "revelar un recuerdo guardado" },
     accio: { runa: "❧", nombre: "Accio recuerdo", desc: "" },        // desc vacío → usa memoriesButton
     alohomora: { runa: "⚹", nombre: "Alohomora", desc: "", aviso: "Parece que algo sigue cerrado" },
     nox: { runa: "☾", nombre: "Nox", desc: "apagar la luz y volver al árbol" },
-    tempus: { runa: "⟳", nombre: "Tempus", desc: "ver pasar las estaciones" },
-    patronus: { runa: "✧", nombre: "Expecto Patronum", desc: "llamar a un guardián de luz" },
+    tempus: { runa: "⟳", nombre: "Tempus", desc: "ver pasar las estaciones", corto: "Tempus" },
+    patronus: { runa: "✧", nombre: "Expecto Patronum", desc: "llamar a un guardián de luz", corto: "Patronum" },
     leviosa: { runa: "☁", nombre: "Wingardium Leviosa", desc: "hacer flotar el recuerdo" },
     lingua: { runa: "❋", nombre: "Lingua Amoris", desc: "que lo diga el mundo entero" },
-    dracarys: { runa: "△", nombre: "Dracarys", desc: "prender la noche" },
+    dracarys: { runa: "△", nombre: "Dracarys", desc: "prender la noche", corto: "Dracarys" },
+    australis: { runa: "✥", nombre: "Terra Australis", desc: "una invitación al otro lado del mundo", corto: "Australis" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
+  },
+
+  /* Terra Australis: la constelación del sur, dos dinosaurios cruzando el bosque
+     y una invitación. Cambia los textos a tu gusto. */
+  australia: {
+    titulo: "¿Nos vamos a Australia?",
+    linea: "Tú, yo, el otro lado del mundo.",
+    firma: "Dinosaurios incluidos."
   },
 
   /* Lingua Amoris: la misma frase en muchos idiomas.
@@ -207,7 +216,8 @@ const CONFIG = {
     selloAlohomora: true,  // sello mágico que se rompe al abrir
     cierreNox: true,       // apagado progresivo de la magia en el cierre
     linguaAmoris: true,    // la frase en muchos idiomas antes del final
-    dracarys: true         // el dragón que cruza el cielo y suelta su llamarada
+    dracarys: true,        // el dragón que cruza el cielo y suelta su llamarada
+    australis: true        // la constelación del sur, los dinosaurios y la invitación
   },
 
   /* Estaciones del árbol: cada toque de Tempus pasa a la siguiente */
@@ -508,6 +518,7 @@ const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeInQuad = t => t * t;
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = t => {
   const c1 = 1.4, c3 = c1 + 1;
@@ -624,6 +635,9 @@ const patronusBtn = document.getElementById('spell-patronus');
 const leviosaBtn = document.getElementById('spell-leviosa');
 const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
+const australisBtn = document.getElementById('spell-australis');
+const spellRowEl = document.getElementById('spell-row');
+const inviteEl = document.getElementById('invite');
 const seasonLabelEl = document.getElementById('season-label');
 const finiteEl = document.getElementById('finite-label');
 const spellbookEl = document.getElementById('spellbook');
@@ -679,7 +693,7 @@ const cancelTasks = tag => { tasks = tasks.filter(task => task.tag !== tag); };
 
 const quiz = { step: -1, wrong: 0, locked: false, done: !CONFIG.modoAcertijo, waitNext: null };
 const secret = { shown: false, started: false, glowAt: Infinity };
-const spells = { hintShown: false, sonorus: false, sonorusPend: false, revelio: false, casting: false, juego: 0, juegoShown: false, firma: '' };
+const spells = { hintShown: false, sonorus: false, sonorusPend: false, revelio: false, casting: false, juegoShown: false, firma: '' };
 
 
 /* ---------------------------------------------------------------------
@@ -2002,6 +2016,16 @@ function loadPhoto() {
 }
 
 /* Rellena una placa de hechizo con su runa, nombre y descripción */
+/* Botón compacto de la fila: sólo la runa y el nombre corto.
+   El nombre completo y la descripción quedan en el aria-label. */
+function fillRune(btn, spell) {
+  if (!btn || !spell) return;
+  btn.replaceChildren();
+  btn.append(el('span', 'rune-glyph', spell.runa), el('span', 'rune-name', spell.corto || spell.nombre));
+  btn.setAttribute('aria-label', spell.nombre + (spell.desc ? ': ' + spell.desc : ''));
+  btn.title = spell.nombre;
+}
+
 function fillPlate(btn, spell, fallbackDesc) {
   if (!btn || !spell) return;
   btn.replaceChildren();
@@ -2022,14 +2046,19 @@ function hidePlate(btn) {
   later(420, () => { btn.hidden = true; btn.classList.remove('out'); });
 }
 
-/* Los hechizos de juego se turnan en la placa de abajo y no se van:
-   Expecto Patronum → Dracarys → Tempus (este se queda, se puede repetir). */
-function colaJuego() {
-  const lista = [];
-  if (FX_ON.dracarys !== false) lista.push({ btn: patronusBtn, fin: false });
-  if (FX_ON.dracarys !== false) lista.push({ btn: dracarysBtn, fin: false });
-  if (CONFIG.estaciones && CONFIG.estaciones.activo) lista.push({ btn: tempusBtn, fin: true });
-  return lista;
+/* Todos los hechizos del árbol viven en una fila fija de botones:
+   Sonorus · Expecto Patronum · Dracarys · Terra Australis · Tempus.
+   Arriba queda una sola placa grande para el hechizo del momento
+   (Lumos Máxima o Revelio), así la carta nunca se queda sin sitio. */
+function hechizosFila() {
+  const F = FX_ON;
+  return [
+    { btn: sonorusBtn, activo: () => music.available },
+    { btn: patronusBtn, activo: () => true },
+    { btn: dracarysBtn, activo: () => F.dracarys !== false },
+    { btn: australisBtn, activo: () => F.australis !== false },
+    { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
+  ];
 }
 
 function mostrarJuego(delay = 300) {
@@ -2037,38 +2066,37 @@ function mostrarJuego(delay = 300) {
   actualizarPlacas(delay);
 }
 
-/* Decide qué placas se ven. Nunca más de dos, en este orden de prioridad:
-   Revelio · Lumos Máxima · Sonorus · el hechizo de juego que toque.
-   Así la carta siempre tiene sitio y ningún hechizo se pierde por el camino. */
+/* Muestra la fila de hechizos y la placa grande que toque en cada momento */
 function actualizarPlacas(delay = 300) {
   if (finale.started) return;
-  const lista = colaJuego();
-  const juego = spells.juegoShown ? lista[spells.juego] : null;
-  const candidatos = [];
-  if (spells.revelio && !finale.started) candidatos.push(revelioBtn);
-  if (secret.shown && !secret.started) candidatos.push(secretBtn);
-  if (spells.sonorusPend) candidatos.push(sonorusBtn);
-  if (juego) candidatos.push(juego.btn);
-
-  const visibles = candidatos.slice(0, 2);
-  const firma = visibles.map(b => b.id).join(',');
+  const fila = hechizosFila();
+  const activos = fila.filter(h => h.activo()).map(h => h.btn);
+  const firma = (spells.juegoShown ? activos.map(b => b.id).join(',') : '') +
+    '|' + (spells.revelio ? 'revelio' : secret.shown && !secret.started ? 'lumos' : '');
   if (firma === spells.firma) return;
   spells.firma = firma;
 
-  for (const btn of [revelioBtn, secretBtn, sonorusBtn, patronusBtn, dracarysBtn, tempusBtn]) {
-    const debe = visibles.includes(btn);
-    if (debe && btn.hidden) showPlate(btn, delay);
-    else if (!debe && !btn.hidden) hidePlate(btn);
+  if (spells.juegoShown) {
+    spellRowEl.hidden = false;
+    spellbookEl.hidden = false;
+    for (const h of fila) {
+      const debe = activos.includes(h.btn);
+      h.btn.hidden = !debe;
+      if (debe) later(delay, () => h.btn.classList.add('in'));
+    }
   }
-  if (visibles.length) spellbookEl.hidden = false;
+
+  const principal = spells.revelio ? revelioBtn : (secret.shown && !secret.started ? secretBtn : null);
+  for (const btn of [revelioBtn, secretBtn]) {
+    if (btn === principal && btn.hidden) showPlate(btn, delay);
+    else if (btn !== principal && !btn.hidden) hidePlate(btn);
+  }
 }
 
-function siguienteJuego() {
-  const lista = colaJuego();
-  spells.firma = '';
-  if (spells.juego >= lista.length - 1) { later(900, () => actualizarPlacas(0)); return; }
-  spells.juego++;
-  later(1200, () => actualizarPlacas(0));
+/* Marca un hechizo de un solo uso como gastado, sin mover la fila */
+function gastarHechizo(btn) {
+  btn.classList.add('usado');
+  btn.disabled = true;
 }
 
 function showSpellHint(text) {
@@ -2099,7 +2127,7 @@ function castSonorus() {
   playMagicSound();
   startMusic();
   spells.sonorusPend = false;
-  hidePlate(sonorusBtn);
+  gastarHechizo(sonorusBtn);
   hideSpellHint();
   spells.firma = '';
   later(500, () => actualizarPlacas(0));
@@ -2262,8 +2290,7 @@ function castPatronus() {
   patronus.born = performance.now();
   patronus.trail.length = 0;
   castFxAt(patronusBtn, { sparks: 24, r1: 220, dur: 700 });
-  hidePlate(patronusBtn);
-  siguienteJuego();
+  gastarHechizo(patronusBtn);
 }
 
 function drawPatronus(now) {
@@ -2318,8 +2345,8 @@ function drawPatronus(now) {
   if (!REDUCED && Math.random() < 0.7) fxSpark(x, y, 26, 0.8);
 }
 
-/* Dracarys: un dragón cruza el cielo, suelta su llamarada y deja brasas */
-const dracarys = { activo: false, born: 0, dur: 4600, dir: 1, brasas: [], x: 0, y: 0 };
+/* Dracarys: el dragón entra en picado, rodea la copa y suelta su llamarada */
+const dracarys = { activo: false, born: 0, dur: 6200, dir: 1, brasas: [], onda: -1 };
 
 function castDracarys() {
   if (dracarys.activo || !FX_ON.dracarys) return;
@@ -2327,58 +2354,100 @@ function castDracarys() {
   dracarys.born = performance.now();
   dracarys.dir = Math.random() < 0.5 ? 1 : -1;
   dracarys.brasas.length = 0;
+  dracarys.onda = -1;
   castFxAt(dracarysBtn, { sparks: 26, r1: 210, dur: 700 });
-  hidePlate(dracarysBtn);
-  siguienteJuego();
 }
 
 function brasa(x, y, fuerte) {
-  if (dracarys.brasas.length > (REDUCED ? 45 : 110)) return;
+  if (dracarys.brasas.length > (REDUCED ? 50 : 140)) return;
   const a = Math.random() * TAU;
-  const v = (fuerte ? 90 : 35) * (0.4 + Math.random());
+  const v = (fuerte ? 110 : 40) * (0.4 + Math.random());
   dracarys.brasas.push({
     x, y,
-    vx: Math.cos(a) * v * 0.6 + dracarys.dir * (fuerte ? 90 : 20),
-    vy: Math.sin(a) * v * 0.5 - (fuerte ? 10 : 0),
-    size: 1.6 + Math.random() * 3.4,
-    age: 0, life: 1 + Math.random() * 1.6,
-    tono: Math.random()
+    vx: Math.cos(a) * v * 0.6 + dracarys.dir * (fuerte ? 70 : 12),
+    vy: Math.sin(a) * v * 0.5 - (fuerte ? 16 : 0),
+    size: 1.5 + Math.random() * 3.6,
+    age: 0, life: 1.4 + Math.random() * 2,
+    tono: Math.random(),
+    giro: Math.random() * TAU
   });
 }
 
-/* Silueta sencilla del dragón: cuerpo, cuello, cola y alas que baten */
-function dibujarDragon(g, x, y, escala, dir, aleteo) {
+/* Dragón de perfil: pecho ancho, cuello arqueado y alas grandes de murciélago */
+function dibujarDragon(g, x, y, escala, dir, aleteo, inclina) {
   g.save();
   g.translate(x, y);
+  g.rotate(inclina);
   g.scale(escala * dir, escala);
-  g.fillStyle = 'rgba(12, 10, 22, 0.92)';
-  // cuerpo y cola
-  g.beginPath();
-  g.moveTo(-34, 2);
-  g.quadraticCurveTo(-10, -6, 12, -2);
-  g.quadraticCurveTo(22, 0, 30, -6);   // cuello
-  g.quadraticCurveTo(36, -9, 40, -4);  // cabeza
-  g.quadraticCurveTo(34, 2, 26, 3);
-  g.quadraticCurveTo(10, 8, -12, 8);
-  g.quadraticCurveTo(-26, 9, -46, 16); // cola
-  g.quadraticCurveTo(-34, 7, -34, 2);
-  g.closePath();
-  g.fill();
-  // alas
-  const ala = 1 + aleteo * 0.55;
-  for (const lado of [1, -1]) {
+
+  const oscuro = 'rgba(11, 9, 20, 0.96)';
+  const canto = 'rgba(255, 158, 70, 0.48)';   // canto encendido: se recorta sobre la copa
+  const batir = 0.42 + 0.58 * (0.5 + 0.5 * aleteo);
+
+  /* un ala, anclada en el hombro; escalaY la abre y la cierra */
+  const ala = (alpha, escalaY, dx, dy) => {
     g.save();
-    g.scale(1, ala * lado);
+    g.translate(dx, dy);
+    g.scale(1, escalaY);
     g.beginPath();
-    g.moveTo(-6, 0);
-    g.quadraticCurveTo(-2, -22, 16, -30);
-    g.quadraticCurveTo(4, -14, 8, -4);
-    g.quadraticCurveTo(0, -10, -6, 0);
+    g.moveTo(0, 0);
+    g.bezierCurveTo(-6, -26, 4, -56, 26, -68);   // borde delantero hasta la punta
+    g.quadraticCurveTo(14, -46, 16, -32);        // dedo 1
+    g.quadraticCurveTo(4, -36, 2, -18);          // dedo 2
+    g.quadraticCurveTo(-8, -22, -18, -6);        // dedo 3
+    g.quadraticCurveTo(-10, -1, 0, 0);
     g.closePath();
-    g.fillStyle = 'rgba(16, 13, 28, 0.85)';
+    g.fillStyle = `rgba(14, 11, 26, ${alpha})`;
     g.fill();
+    g.strokeStyle = `rgba(255, 158, 70, ${alpha * 0.4})`;
+    g.lineWidth = 1;
+    g.lineJoin = 'round';
+    g.stroke();
     g.restore();
-  }
+  };
+
+  ala(0.6, batir * 0.72, -2, -13);   // ala del fondo, más cerrada
+
+  // patas recogidas bajo el pecho
+  g.fillStyle = oscuro;
+  g.beginPath();
+  g.moveTo(-2, 4); g.quadraticCurveTo(4, 16, -2, 21); g.quadraticCurveTo(-9, 14, -8, 3); g.closePath();
+  g.moveTo(14, 2); g.quadraticCurveTo(20, 14, 13, 19); g.quadraticCurveTo(7, 12, 7, 1); g.closePath();
+  g.fill();
+
+  // cuerpo: lomo y cola por arriba, garganta y vientre por abajo
+  g.beginPath();
+  g.moveTo(-62, -6);                        // punta de la cola
+  g.quadraticCurveTo(-38, -6, -18, -10);    // lomo de la cola
+  g.quadraticCurveTo(-2, -16, 12, -20);     // espalda
+  g.quadraticCurveTo(26, -30, 42, -40);     // cuello
+  g.quadraticCurveTo(50, -45, 57, -42);     // nuca
+  g.quadraticCurveTo(67, -40, 66, -34);     // morro
+  g.quadraticCurveTo(59, -31, 50, -31);     // mandíbula
+  g.quadraticCurveTo(36, -27, 26, -12);     // garganta
+  g.quadraticCurveTo(20, 4, 6, 9);          // pecho
+  g.quadraticCurveTo(-12, 12, -30, 4);      // vientre
+  g.quadraticCurveTo(-48, -2, -62, -6);
+  g.closePath();
+  g.fillStyle = oscuro;
+  g.fill();
+  g.strokeStyle = canto;
+  g.lineWidth = 1;
+  g.lineJoin = 'round';
+  g.stroke();
+
+  // aleta de la cola, cuernos y púas del lomo
+  g.beginPath();
+  g.moveTo(-50, -5); g.lineTo(-80, -17); g.lineTo(-73, 0); g.closePath();
+  g.moveTo(55, -43); g.lineTo(49, -56); g.lineTo(46, -41); g.closePath();
+  g.moveTo(61, -41); g.lineTo(58, -51); g.lineTo(54, -40); g.closePath();
+  g.moveTo(15, -19); g.lineTo(11, -31); g.lineTo(5, -17); g.closePath();
+  g.moveTo(-5, -13); g.lineTo(-9, -24); g.lineTo(-15, -11); g.closePath();
+  g.moveTo(-25, -8); g.lineTo(-29, -18); g.lineTo(-35, -6); g.closePath();
+  g.fillStyle = oscuro;
+  g.fill();
+
+  ala(0.95, batir, 12, -18);   // ala delantera
   g.restore();
 }
 
@@ -2387,77 +2456,307 @@ function drawDracarys(now, dt) {
   const k = (now - dracarys.born) / dracarys.dur;
   const g = ctx;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const escala = Math.min(2.2, panel.w / 250);
 
   if (k < 1) {
-    // vuelo de lado a lado, por encima de la copa
-    const px = dracarys.dir > 0
-      ? lerp(panel.x - 90, panel.x + panel.w + 90, k)
-      : lerp(panel.x + panel.w + 90, panel.x - 90, k);
-    const py = panel.y + panel.h * 0.21 + Math.sin(k * 7) * panel.h * 0.022;
-    dracarys.x = px; dracarys.y = py;
-    const escala = Math.min(2.4, panel.w / 210);
-    const aleteo = Math.sin(now / 90);
+    // entra en picado, se queda batiendo alas junto a la copa y se marcha
+    const cx = S.ox + treeX() * S.k;
+    const cy = S.oy + CANOPY.cy * S.k;
+    // se coloca al lado del árbol, siempre dentro del panel
+    const sep = Math.min(S.k * 0.4, panel.w * 0.26);
+    // se queda siempre dentro del panel, con sitio para las alas y la cabeza
+    const hx = clamp(cx - dracarys.dir * sep, panel.x + 92 * escala, panel.x + panel.w - 88 * escala);
+    const hy = clamp(cy - S.k * 0.34, panel.y + 100 * escala, panel.y + panel.h * 0.5);
+    const fueraX = dracarys.dir > 0 ? panel.x - 130 * escala : panel.x + panel.w + 130 * escala;
+    const salidaX = dracarys.dir > 0 ? panel.x + panel.w + 150 * escala : panel.x - 150 * escala;
+    let px, py, inclina, batir;
+    if (k < 0.22) {                       // llega en picado desde fuera
+      const e = easeOutCubic(k / 0.22);
+      px = lerp(fueraX, hx, e);
+      py = lerp(panel.y - 70, hy, e * e);
+      inclina = dracarys.dir * 0.5 * (1 - e);
+      batir = 105;
+    } else if (k < 0.66) {                // se sostiene en el aire frente al árbol
+      const e = (k - 0.22) / 0.44;
+      px = hx + Math.sin(e * Math.PI * 2) * 5 * escala;
+      py = hy + Math.sin(e * Math.PI * 3.2) * 7 * escala;
+      inclina = Math.sin(e * Math.PI * 2) * 0.05;
+      batir = 165;                        // aleteo lento de vuelo sostenido
+    } else {                              // gira y se pierde en la noche
+      const e = easeInOutCubic((k - 0.66) / 0.34);
+      px = lerp(hx, salidaX, e * e);
+      py = lerp(hy, panel.y - 90, e);
+      inclina = -dracarys.dir * 0.55 * e;
+      batir = 100;
+    }
+    const aleteo = Math.sin(now / batir);
 
-    // resplandor cálido que lo acompaña
-    const halo = g.createRadialGradient(px, py, 0, px, py, 120 * escala);
-    halo.addColorStop(0, 'rgba(255, 150, 60, 0.26)');
+    // resplandor que lo acompaña
+    const halo = g.createRadialGradient(px, py, 0, px, py, 150 * escala * 0.6);
+    halo.addColorStop(0, 'rgba(255, 150, 60, 0.22)');
     halo.addColorStop(1, 'rgba(255, 120, 40, 0)');
     g.fillStyle = halo;
-    g.fillRect(px - 120 * escala, py - 120 * escala, 240 * escala, 240 * escala);
+    g.fillRect(px - 90 * escala, py - 90 * escala, 180 * escala, 180 * escala);
 
-    dibujarDragon(g, px, py, escala, dracarys.dir, aleteo);
+    dibujarDragon(g, px, py, escala, dracarys.dir, aleteo, inclina);
 
-    // la llamarada, en el tramo central del vuelo
-    const bocaX = px + dracarys.dir * 42 * escala;
-    const bocaY = py - 4 * escala;
-    if (k > 0.3 && k < 0.66) {
-      const fuerza = Math.sin(((k - 0.3) / 0.36) * Math.PI);
-      const largo = 240 * escala * fuerza;
-      const llama = g.createLinearGradient(bocaX, bocaY, bocaX + dracarys.dir * largo, bocaY + largo * 0.5);
-      llama.addColorStop(0, `rgba(255, 246, 214, ${0.85 * fuerza})`);
-      llama.addColorStop(0.35, `rgba(255, 170, 60, ${0.55 * fuerza})`);
-      llama.addColorStop(1, 'rgba(220, 60, 30, 0)');
-      g.fillStyle = llama;
-      g.beginPath();
-      g.moveTo(bocaX, bocaY - 5 * escala);
-      g.quadraticCurveTo(bocaX + dracarys.dir * largo * 0.6, bocaY + largo * 0.1,
-        bocaX + dracarys.dir * largo, bocaY + largo * 0.45);
-      g.quadraticCurveTo(bocaX + dracarys.dir * largo * 0.45, bocaY + largo * 0.4, bocaX, bocaY + 8 * escala);
-      g.closePath();
-      g.fill();
-      const cuantas = REDUCED ? 2 : 5;
-      for (let i = 0; i < cuantas; i++) {
-        brasa(bocaX + dracarys.dir * largo * Math.random(), bocaY + largo * 0.35 * Math.random(), true);
+    // llamarada mientras pasa por delante de la copa
+    if (k > 0.3 && k < 0.62) {
+      if (dracarys.onda < 0) {
+        dracarys.onda = now;
+        fxRing(px, py, { r1: 300, dur: 800 });
       }
-      // la noche se prende un instante
-      g.fillStyle = `rgba(255, 140, 60, ${0.14 * fuerza})`;
+      const fuerza = Math.sin(((k - 0.3) / 0.32) * Math.PI);
+      const bocaX = px + dracarys.dir * 64 * escala;
+      const bocaY = py - 33 * escala;
+      // el chorro apunta siempre al corazón del árbol
+      const ang = Math.atan2(cy - bocaY, cx - bocaX);
+      const largo = Math.hypot(cx - bocaX, cy - bocaY) * (0.55 + 0.75 * fuerza);
+      const apertura = largo * 0.3;
+      const titila = 0.9 + 0.1 * Math.sin(now / 38) + 0.06 * Math.sin(now / 17);
+      g.save();
+      g.translate(bocaX, bocaY);
+      g.rotate(ang);
+      // tres capas: humo rojizo, cuerpo naranja y núcleo claro y corto
+      for (const [alcance, abre, color, alpha] of [
+        [1.06, 1.5, '186, 40, 16', 0.55],
+        [0.88, 1, '255, 126, 36', 0.88],
+        [0.46, 0.5, '255, 246, 214', 0.95]
+      ]) {
+        const L = largo * alcance * titila;
+        const A = apertura * abre * titila;
+        const grad = g.createLinearGradient(0, 0, L, 0);
+        grad.addColorStop(0, `rgba(255, 252, 240, ${alpha * fuerza})`);
+        grad.addColorStop(0.3, `rgba(${color}, ${alpha * fuerza})`);
+        grad.addColorStop(0.75, `rgba(${color}, ${alpha * 0.5 * fuerza})`);
+        grad.addColorStop(1, `rgba(${color}, 0)`);
+        g.fillStyle = grad;
+        // lengua de fuego con el borde ondulado
+        g.beginPath();
+        g.moveTo(0, -3.5 * escala);
+        g.quadraticCurveTo(L * 0.3, -A * 0.3, L * 0.6, -A * 0.85);
+        g.quadraticCurveTo(L * 0.82, -A * 0.45, L, -A * 0.75);
+        g.quadraticCurveTo(L * 1.1, 0, L, A * 0.75);
+        g.quadraticCurveTo(L * 0.82, A * 0.45, L * 0.6, A * 0.85);
+        g.quadraticCurveTo(L * 0.3, A * 0.3, 0, 3.5 * escala);
+        g.closePath();
+        g.fill();
+      }
+      g.restore();
+      const cuantas = REDUCED ? 3 : 7;
+      for (let i = 0; i < cuantas; i++) {
+        const d = Math.random();
+        const desv = (Math.random() - 0.5) * largo * 0.22 * d;
+        brasa(bocaX + Math.cos(ang) * largo * d - Math.sin(ang) * desv,
+          bocaY + Math.sin(ang) * largo * d + Math.cos(ang) * desv, true);
+      }
+      // la noche se prende y la copa recoge el calor
+      g.fillStyle = `rgba(255, 140, 60, ${0.16 * fuerza})`;
       g.fillRect(panel.x, panel.y, panel.w, panel.h);
+      const calor = g.createRadialGradient(cx, cy, 0, cx, cy, S.k * 0.55);
+      calor.addColorStop(0, `rgba(255, 170, 70, ${0.3 * fuerza})`);
+      calor.addColorStop(1, 'rgba(255, 120, 40, 0)');
+      g.fillStyle = calor;
+      g.fillRect(cx - S.k * 0.55, cy - S.k * 0.55, S.k * 1.1, S.k * 1.1);
     }
   }
 
-  // brasas cayendo
+  // brasas: caen girando y se apagan
   for (let i = dracarys.brasas.length - 1; i >= 0; i--) {
     const b = dracarys.brasas[i];
     b.age += dt;
     if (b.age >= b.life) { dracarys.brasas.splice(i, 1); continue; }
     b.vx *= Math.exp(-dt * 1.1);
-    b.vy = b.vy * Math.exp(-dt * 0.9) + 40 * dt;
-    b.x += b.vx * dt;
+    b.vy = b.vy * Math.exp(-dt * 0.9) + 45 * dt;
+    b.giro += dt * 3;
+    b.x += (b.vx + Math.sin(b.giro) * 14) * dt;
     b.y += b.vy * dt;
-    const a = 1 - b.age / b.life;
+    const a = (1 - b.age / b.life) * (0.65 + 0.35 * Math.sin(b.giro * 2));
     const color = b.tono < 0.4 ? '255, 226, 150' : b.tono < 0.8 ? '255, 150, 60' : '220, 70, 35';
-    g.fillStyle = `rgba(${color}, ${a})`;
+    g.fillStyle = `rgba(${color}, ${Math.max(0, a)})`;
     g.beginPath();
-    g.arc(b.x, b.y, b.size * a, 0, TAU);
+    g.arc(b.x, b.y, b.size * (1 - b.age / b.life), 0, TAU);
     g.fill();
     if (dustSprite && b.tono < 0.5) {
-      const sz = b.size * 7;
-      g.globalAlpha = a * 0.5;
+      const sz = b.size * 8;
+      g.globalAlpha = Math.max(0, a) * 0.45;
       g.drawImage(dustSprite, b.x - sz / 2, b.y - sz / 2, sz, sz);
       g.globalAlpha = 1;
     }
   }
   if (k >= 1 && !dracarys.brasas.length) dracarys.activo = false;
+}
+
+/* Terra Australis: la Cruz del Sur, dos dinosaurios cruzando la noche y una invitación */
+const australia = { activo: false, born: 0, dur: 10000, dinos: [], cielo: 0, linea: 0, alto: 60, arriba: 0, abajo: 0 };
+
+/* Reparte el hueco libre de la escena: estrellas arriba, dinosaurios en medio,
+   invitación abajo. Así nada tapa a la carta ni a los botones. */
+function sitioAustralis() {
+  const carta = letterEl.getBoundingClientRect();
+  const libro = spellbookEl.hidden ? null : spellbookEl.getBoundingClientRect();
+  const arriba = Math.max(carta.bottom + 6, panel.y + panel.h * 0.3);
+  const abajo = Math.max(arriba + 140, (libro ? libro.top : panel.y + panel.h) - 8);
+  const hueco = abajo - arriba;
+  australia.arriba = arriba;
+  australia.abajo = abajo;
+  australia.cielo = arriba + hueco * 0.2;
+  australia.linea = arriba + hueco * 0.5;
+  australia.alto = Math.min(hueco * 0.3, panel.h * 0.1);
+  inviteEl.style.top = arriba + hueco * 0.58 + 'px';
+}
+
+/* Deja la invitación dentro del hueco, ya sabiendo lo que ocupa */
+function encajarInvitacion() {
+  const alto = inviteEl.offsetHeight;
+  const tope = australia.abajo - alto - 6;
+  const top = clamp(parseFloat(inviteEl.style.top) || 0, australia.arriba + 4, Math.max(australia.arriba + 4, tope));
+  inviteEl.style.top = top + 'px';
+}
+
+function castAustralis() {
+  if (australia.activo || FX_ON.australis === false) return;
+  australia.activo = true;
+  australia.born = performance.now();
+  australia.dinos = [
+    { tipo: 'saurio', x: -0.24, v: 0.17, escala: 1, retraso: 0, dy: 0 },
+    { tipo: 'raptor', x: -0.14, v: 0.24, escala: 0.6, retraso: 0.9, dy: 0.22 }   // va delante y más cerca
+  ];
+  sitioAustralis();
+  castFxAt(australisBtn, { sparks: 22, r1: 220, dur: 800 });
+  gastarHechizo(australisBtn);
+  const A = CONFIG.australia || {};
+  document.getElementById('invite-title').textContent = A.titulo || '';
+  document.getElementById('invite-line').textContent = A.linea || '';
+  document.getElementById('invite-sign').textContent = A.firma || '';
+  later(3400, () => {
+    inviteEl.hidden = false;
+    encajarInvitacion();
+    inviteEl.classList.add('show');
+  });
+  later(8600, () => inviteEl.classList.remove('show'));
+  later(9400, () => { inviteEl.hidden = true; });
+}
+
+/* Cruz del Sur: cinco estrellas unidas por un hilo de luz */
+function dibujarCruzDelSur(g, x, y, escala, alpha) {
+  const puntos = [[0, -1], [0.12, 0.35], [-0.55, 0.05], [0.62, 0.2], [0.05, 1]];
+  g.strokeStyle = `rgba(214, 236, 255, ${alpha * 0.4})`;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x + puntos[0][0] * escala, y + puntos[0][1] * escala);
+  g.lineTo(x + puntos[4][0] * escala, y + puntos[4][1] * escala);
+  g.moveTo(x + puntos[2][0] * escala, y + puntos[2][1] * escala);
+  g.lineTo(x + puntos[3][0] * escala, y + puntos[3][1] * escala);
+  g.stroke();
+  for (let i = 0; i < puntos.length; i++) {
+    const px = x + puntos[i][0] * escala, py = y + puntos[i][1] * escala;
+    const r = (i === 4 ? 2.4 : i === 1 ? 1.3 : 1.8);
+    const brillo = g.createRadialGradient(px, py, 0, px, py, r * 3.4);
+    brillo.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+    brillo.addColorStop(0.35, `rgba(214, 236, 255, ${alpha * 0.4})`);
+    brillo.addColorStop(1, 'rgba(180, 220, 255, 0)');
+    g.fillStyle = brillo;
+    g.fillRect(px - r * 3.4, py - r * 3.4, r * 6.8, r * 6.8);
+    g.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    g.beginPath();
+    g.arc(px, py, r * 0.5, 0, TAU);
+    g.fill();
+  }
+}
+
+/* Siluetas de dinosaurio caminando. Las patas van a la altura 0 y la
+   cabeza alrededor de -70: la escala lleva ese alto a píxeles. */
+function dibujarDino(g, tipo, x, suelo, alto, paso, alpha) {
+  g.save();
+  g.translate(x, suelo);
+  g.scale(alto / 70, alto / 70);
+  const tinta = `rgba(9, 7, 20, ${alpha})`;
+  g.fillStyle = tinta;
+  g.strokeStyle = `rgba(206, 226, 255, ${alpha * 0.32})`;   // canto de luna
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+
+  /* una pata: cadera, rodilla y pie, trazadas de una pasada */
+  const pata = (hx, hy, kx, ky, fx, grosor) => {
+    g.save();
+    g.strokeStyle = tinta;
+    g.lineWidth = grosor;
+    g.beginPath();
+    g.moveTo(hx, hy);
+    g.lineTo(kx, ky);
+    g.lineTo(fx, -1);
+    g.stroke();
+    g.restore();
+  };
+
+  if (tipo === 'saurio') {                 // cuello largo, paso pesado
+    const b1 = Math.sin(paso) * 7, b2 = Math.sin(paso + Math.PI) * 7;
+    pata(-16, -30, -17 + b2 * 0.4, -16, -16 + b2, 11);
+    pata(10, -32, 9 + b1 * 0.4, -17, 10 + b1, 11);
+    g.beginPath();
+    g.moveTo(-64, -30);                    // punta de la cola
+    g.quadraticCurveTo(-46, -40, -26, -44);
+    g.quadraticCurveTo(-8, -52, 6, -50);   // lomo
+    g.quadraticCurveTo(16, -50, 22, -58);
+    g.quadraticCurveTo(30, -68, 40, -70);  // cuello
+    g.quadraticCurveTo(50, -71, 50, -65);  // cabeza
+    g.quadraticCurveTo(44, -62, 36, -62);
+    g.quadraticCurveTo(26, -58, 18, -44);  // garganta
+    g.quadraticCurveTo(10, -30, -6, -26);  // vientre
+    g.quadraticCurveTo(-26, -22, -44, -26);
+    g.quadraticCurveTo(-56, -28, -64, -30);
+    g.closePath();
+    g.fillStyle = tinta;
+    g.fill();
+    g.lineWidth = 1.4;
+    g.stroke();
+  } else {                                 // pequeño, corre inclinado
+    const b1 = Math.sin(paso * 1.4) * 9, b2 = Math.sin(paso * 1.4 + Math.PI) * 9;
+    pata(-8, -30, -14 + b2 * 0.3, -16, -8 + b2, 5);
+    pata(2, -31, -4 + b1 * 0.3, -16, 2 + b1, 5);
+    g.beginPath();
+    g.moveTo(-50, -50);                    // cola en alto
+    g.quadraticCurveTo(-32, -45, -18, -42);
+    g.quadraticCurveTo(-6, -40, 2, -46);   // lomo
+    g.quadraticCurveTo(10, -52, 20, -54);  // cuello
+    g.quadraticCurveTo(31, -56, 33, -49);  // cabeza
+    g.quadraticCurveTo(26, -47, 18, -46);
+    g.quadraticCurveTo(10, -41, 5, -32);   // pecho
+    g.quadraticCurveTo(-8, -26, -22, -32); // vientre
+    g.quadraticCurveTo(-38, -40, -50, -50);
+    g.closePath();
+    g.fillStyle = tinta;
+    g.fill();
+    g.lineWidth = 1.2;
+    g.stroke();
+  }
+  g.restore();
+}
+
+function drawAustralis(now) {
+  if (!australia.activo) return;
+  const k = (now - australia.born) / australia.dur;
+  if (k >= 1) { australia.activo = false; return; }
+  const g = ctx;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const t = (now - australia.born) / 1000;
+  const alpha = k < 0.1 ? k / 0.1 : k > 0.88 ? (1 - k) / 0.12 : 1;
+
+  // la constelación del sur se enciende sobre el hueco de la noche
+  dibujarCruzDelSur(g, panel.x + panel.w * (view.tall ? 0.72 : 0.3), australia.cielo,
+    Math.min(panel.w, panel.h) * 0.06, alpha * 0.95);
+
+  // los dinosaurios cruzan la noche
+  for (const d of australia.dinos) {
+    const avance = Math.max(0, t - d.retraso) * d.v;
+    const px = panel.x + (d.x + avance) * panel.w;
+    if (px < panel.x - 140 || px > panel.x + panel.w + 140) continue;
+    const alto = australia.alto * d.escala;
+    const paso = t * (d.tipo === 'raptor' ? 9 : 5);
+    const brinco = Math.abs(Math.sin(paso)) * alto * 0.03;
+    dibujarDino(g, d.tipo, px, australia.linea + australia.alto * d.dy - brinco, alto, paso, alpha);
+  }
 }
 
 /* Tempus: el árbol pasa a la siguiente estación */
@@ -2555,16 +2854,17 @@ function buildExtras() {
     document.getElementById('photo-caption').hidden = true;
   }
   const HX = CONFIG.hechizos;
-  fillPlate(sonorusBtn, HX.sonorus);
+  fillRune(sonorusBtn, HX.sonorus);
   fillPlate(secretBtn, HX.lumos, CONFIG.secreto ? CONFIG.secreto.boton : '');
   fillPlate(revelioBtn, HX.revelio);
   fillPlate(memoryBtn, HX.accio, CONFIG.memoriesButton);
   fillPlate(noxBtn, HX.nox);
-  fillPlate(tempusBtn, HX.tempus);
-  fillPlate(patronusBtn, HX.patronus);
+  fillRune(tempusBtn, HX.tempus);
+  fillRune(patronusBtn, HX.patronus);
   fillPlate(leviosaBtn, HX.leviosa);
   fillPlate(linguaBtn, HX.lingua);
-  fillPlate(dracarysBtn, HX.dracarys);
+  fillRune(dracarysBtn, HX.dracarys);
+  fillRune(australisBtn, HX.australis);
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
   const F = CONFIG.finalMessage;
   document.getElementById('closing-question').textContent = HX.alohomora.aviso || "Parece que algo sigue cerrado…";
@@ -2590,6 +2890,7 @@ function bindExtras() {
   leviosaBtn.addEventListener('click', castLeviosa);
   linguaBtn.addEventListener('click', castLingua);
   dracarysBtn.addEventListener('click', castDracarys);
+  australisBtn.addEventListener('click', castAustralis);
   restartBtn.addEventListener('click', () => {
     requestWakeLock();
     if (MAGIC.enabled && MAGIC.showOnReplay) {
@@ -2737,7 +3038,6 @@ function resetExtras() {
   spellbookEl.hidden = true;
   spellHintEl.classList.remove('in');
   spellHintEl.textContent = '';
-  spells.juego = 0;
   spells.juegoShown = false;
   season.name = (CONFIG.estaciones && SEASONS[CONFIG.estaciones.inicial]) ? CONFIG.estaciones.inicial : 'verano';
   season.from = null;
@@ -2757,10 +3057,15 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn]) {
     btn.hidden = true;
-    btn.classList.remove('in', 'out');
+    btn.disabled = false;
+    btn.classList.remove('in', 'out', 'usado');
   }
+  spellRowEl.hidden = true;
+  australia.activo = false;
+  inviteEl.hidden = true;
+  inviteEl.classList.remove('show');
   photoFrame.classList.remove('reveal');
   finaleCard.classList.remove('unlocking', 'accio', 'levita');
   memoryEl.classList.remove('levita');
@@ -3569,6 +3874,7 @@ function frame(now) {
   drawLumosFlash(t);
   drawPatronus(now);
   drawDracarys(now, dt);
+  drawAustralis(now);
   seasonOverlay(now);
   drawSeasonSweep(now);
   drawPanelFrame();

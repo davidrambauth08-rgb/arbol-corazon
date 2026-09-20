@@ -1507,3 +1507,119 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
 /* Una placa no recibe toques hasta que termina de aparecer (evita toques fantasma) */
 .plate:not(.in) { pointer-events: none; }
 #closing-ask .plate, .plate.in { pointer-events: auto; }
+
+/* =====================================================================
+   FILA FIJA DE HECHIZOS — siempre a mano, debajo de la placa grande
+   ===================================================================== */
+#spell-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;          /* los cinco hechizos caben siempre en una línea */
+  gap: 5px;
+  width: 100%;
+  margin-top: 2px;
+}
+#spell-row[hidden] { display: none; }
+
+.rune-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 46px;
+  padding: 5px 3px 6px;
+  border: 1px solid rgba(201, 163, 74, 0.55);
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(36, 29, 66, 0.9), rgba(18, 15, 38, 0.9));
+  color: var(--parchment-light);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 6px 18px rgba(6, 8, 18, 0.45), inset 0 0 12px rgba(245, 211, 107, 0.08);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.45s ease, transform 0.35s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.rune-btn[hidden] { display: none; }
+.rune-btn:not(.in) { pointer-events: none; }
+.rune-btn.in { opacity: 1; transform: none; pointer-events: auto; }
+.rune-btn:active { transform: scale(0.94); }
+.rune-btn:focus-visible { outline: 2px solid var(--warm-gold); outline-offset: 3px; }
+.rune-glyph {
+  font-size: 17px;
+  line-height: 1;
+  color: var(--warm-gold);
+  text-shadow: 0 0 10px rgba(245, 211, 107, 0.55);
+}
+.rune-name {
+  font-family: var(--serif);
+  font-size: clamp(11px, 3.1vw, 12.5px);
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+/* el hechizo que ya se lanzó se apaga, pero no se mueve de sitio */
+.rune-btn.usado {
+  opacity: 0.4;
+  border-color: rgba(201, 163, 74, 0.25);
+  box-shadow: none;
+  cursor: default;
+}
+.rune-btn.usado .rune-glyph { color: rgba(201, 163, 74, 0.6); text-shadow: none; }
+.rune-btn.usado:active { transform: none; }
+
+/* la runa del hechizo disponible respira despacio */
+.rune-btn.in:not(.usado) .rune-glyph { animation: rune-pulse 3.4s ease-in-out infinite; }
+@keyframes rune-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(245, 211, 107, 0.35); }
+  50%      { text-shadow: 0 0 16px rgba(245, 211, 107, 0.85); }
+}
+
+/* la fila necesita un poco más de ancho que una placa suelta */
+#spellbook { width: min(92vw, 344px); }
+@media (max-width: 340px) {
+  .rune-btn { min-height: 42px; }
+  .rune-glyph { font-size: 15px; }
+}
+
+/* =====================================================================
+   TERRA AUSTRALIS — la invitación
+   ===================================================================== */
+#invite {
+  position: fixed;
+  z-index: 8;
+  left: 50%;
+  top: 40%;                       /* el hechizo lo recoloca en el hueco libre */
+  width: min(78vw, 300px);
+  padding: 12px 16px 11px;
+  border: 1px solid rgba(201, 163, 74, 0.6);
+  border-radius: 16px;
+  background: radial-gradient(130% 100% at 50% 0%, #fbf4e3 0%, #f1e3c6 70%, #e8d5ae 100%);
+  box-shadow: 0 18px 44px rgba(6, 8, 18, 0.55), inset 0 0 0 3px rgba(251, 244, 227, 0.8);
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 14px) rotate(-1.2deg) scale(0.94);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+#invite[hidden] { display: none; }
+#invite.show { opacity: 1; transform: translate(-50%, 0) rotate(-1.2deg) scale(1); }
+#invite p { margin: 0; font-family: var(--serif); }
+#invite-title { font-size: clamp(18px, 4.9vw, 22px); font-weight: 700; line-height: 1.2; }
+#invite-line { margin-top: 5px !important; font-size: clamp(14px, 4vw, 16px); color: rgba(74, 52, 38, 0.85); }
+#invite-sign {
+  margin-top: 7px !important;
+  font-size: clamp(13px, 3.6vw, 15px);
+  font-style: italic;
+  letter-spacing: 0.06em;
+  color: #8a6a2e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rune-btn.in:not(.usado) .rune-glyph { animation: none !important; }
+  #invite { transition-duration: 0.25s; }
+}

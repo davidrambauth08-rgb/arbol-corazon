@@ -30,16 +30,19 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | Accio recuerdo | en la tarjeta | trae un recuerdo desde fuera de la pantalla |
 | Alohomora 🔑 | tras el primer recuerdo | abre el cierre con la lluvia de luces |
 | Nox | en la tarjeta | apaga la luz y vuelve al árbol (Revelio se puede repetir) |
-| **Tempus** | junto al árbol, tras Sonorus | hace pasar la estación: primavera → verano → otoño → invierno |
-| **Expecto Patronum** | junto al árbol, tras Sonorus | un guardián de luz entra, rodea la copa y se va |
+| **Tempus** | fila de hechizos del árbol | hace pasar la estación: primavera → verano → otoño → invierno (se puede repetir) |
+| **Expecto Patronum** | fila de hechizos del árbol | un guardián de luz entra, rodea la copa y se va |
 | **Wingardium Leviosa** | en la tarjeta | eleva la tarjeta con la foto y el recuerdo |
-| **Dracarys** | junto al árbol, tras Expecto Patronum | un dragón cruza el cielo, suelta su llamarada y deja brasas cayendo |
+| **Dracarys** | fila de hechizos del árbol | un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
+| **Terra Australis** | fila de hechizos del árbol | se enciende la Cruz del Sur, dos dinosaurios cruzan la noche y llega una invitación a Australia |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
+**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Tempus viven en una fila fija debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
+
 **Estaciones** (`CONFIG.estaciones`): cada toque de Tempus cambia la copa, la luz del bosque y lo que cae. Primavera (rosas y blancos, pétalos), verano (como siempre), otoño (ámbar y cobre, hojas) e invierno (copa más escasa en rojos y hielo, con nieve). `inicial` elige con cuál empieza, `orden` el recorrido, `nombres` los carteles y `activo: false` lo desactiva.
 
-**Efectos mágicos** (`CONFIG.efectos`, todos opcionales): `lumosMaxima` (destello y encendido del bosque al entrar), `luciernagas`, `niebla`, `petalos` (hojas doradas entre los corazones), `snitch` (cruza la escena cada ~30 s), `ondasSonorus` (anillos de energía al invocar la canción), `levitacion` (foto y recuerdos flotando tipo polaroid), `accio` (los objetos llegan desde el fondo con rastro), `selloAlohomora` (sello dorado que se rompe) y `cierreNox` (la magia se apaga poco a poco en el cierre), `dracarys` (el dragón y su llamarada). Pon cualquiera en `false` para desactivarlo.
+**Efectos mágicos** (`CONFIG.efectos`, todos opcionales): `lumosMaxima` (destello y encendido del bosque al entrar), `luciernagas`, `niebla`, `petalos` (hojas doradas entre los corazones), `snitch` (cruza la escena cada ~30 s), `ondasSonorus` (anillos de energía al invocar la canción), `levitacion` (foto y recuerdos flotando tipo polaroid), `accio` (los objetos llegan desde el fondo con rastro), `selloAlohomora` (sello dorado que se rompe) y `cierreNox` (la magia se apaga poco a poco en el cierre), `dracarys` (el dragón y su llamarada) y `australis` (la Cruz del Sur, los dinosaurios y la invitación). Pon cualquiera en `false` para desactivarlo.
 
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
@@ -80,6 +83,7 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `music` | `enabled`, `file`, `volume` (0–1), `fadeInSeconds` y textos accesibles de los botones |
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
+| `australia` | `titulo`, `linea` y `firma` de la invitación de Terra Australis |
 | `idiomas` | frases de Lingua Amoris (el español no está: se guarda para la línea final) |
 | `puerta` | clave, frase, pistas y mensajes de la entrada |
 | `easterEgg` | Toques necesarios, ventana de tiempo y los dos mensajes |

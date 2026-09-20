@@ -47,12 +47,22 @@
   <!-- Libro de hechizos: aparece junto al árbol (textos en CONFIG.hechizos) -->
   <div id="spellbook" hidden>
     <p id="spell-hint"></p>
-    <button id="spell-sonorus" class="plate" type="button" hidden></button>
     <button id="secret-btn" class="plate" type="button" hidden></button>
     <button id="spell-revelio" class="plate" type="button" hidden></button>
-    <button id="spell-tempus" class="plate" type="button" hidden></button>
-    <button id="spell-patronus" class="plate" type="button" hidden></button>
-    <button id="spell-dracarys" class="plate" type="button" hidden></button>
+    <div id="spell-row" hidden>
+      <button id="spell-sonorus" class="rune-btn" type="button" hidden></button>
+      <button id="spell-patronus" class="rune-btn" type="button" hidden></button>
+      <button id="spell-dracarys" class="rune-btn" type="button" hidden></button>
+      <button id="spell-australis" class="rune-btn" type="button" hidden></button>
+      <button id="spell-tempus" class="rune-btn" type="button" hidden></button>
+    </div>
+  </div>
+
+  <!-- Terra Australis: la invitación al otro lado del mundo -->
+  <div id="invite" hidden role="status">
+    <p id="invite-title"></p>
+    <p id="invite-line"></p>
+    <p id="invite-sign"></p>
   </div>
 
   <!-- Mensaje del easter egg (sin pistas visibles) -->
