@@ -679,7 +679,7 @@ const cancelTasks = tag => { tasks = tasks.filter(task => task.tag !== tag); };
 
 const quiz = { step: -1, wrong: 0, locked: false, done: !CONFIG.modoAcertijo, waitNext: null };
 const secret = { shown: false, started: false, glowAt: Infinity };
-const spells = { hintShown: false, sonorus: false, revelio: false, casting: false };
+const spells = { hintShown: false, sonorus: false, sonorusPend: false, revelio: false, casting: false, juego: 0, juegoShown: false, firma: '' };
 
 
 /* ---------------------------------------------------------------------
@@ -2022,6 +2022,55 @@ function hidePlate(btn) {
   later(420, () => { btn.hidden = true; btn.classList.remove('out'); });
 }
 
+/* Los hechizos de juego se turnan en la placa de abajo y no se van:
+   Expecto Patronum → Dracarys → Tempus (este se queda, se puede repetir). */
+function colaJuego() {
+  const lista = [];
+  if (FX_ON.dracarys !== false) lista.push({ btn: patronusBtn, fin: false });
+  if (FX_ON.dracarys !== false) lista.push({ btn: dracarysBtn, fin: false });
+  if (CONFIG.estaciones && CONFIG.estaciones.activo) lista.push({ btn: tempusBtn, fin: true });
+  return lista;
+}
+
+function mostrarJuego(delay = 300) {
+  spells.juegoShown = true;
+  actualizarPlacas(delay);
+}
+
+/* Decide qué placas se ven. Nunca más de dos, en este orden de prioridad:
+   Revelio · Lumos Máxima · Sonorus · el hechizo de juego que toque.
+   Así la carta siempre tiene sitio y ningún hechizo se pierde por el camino. */
+function actualizarPlacas(delay = 300) {
+  if (finale.started) return;
+  const lista = colaJuego();
+  const juego = spells.juegoShown ? lista[spells.juego] : null;
+  const candidatos = [];
+  if (spells.revelio && !finale.started) candidatos.push(revelioBtn);
+  if (secret.shown && !secret.started) candidatos.push(secretBtn);
+  if (spells.sonorusPend) candidatos.push(sonorusBtn);
+  if (juego) candidatos.push(juego.btn);
+
+  const visibles = candidatos.slice(0, 2);
+  const firma = visibles.map(b => b.id).join(',');
+  if (firma === spells.firma) return;
+  spells.firma = firma;
+
+  for (const btn of [revelioBtn, secretBtn, sonorusBtn, patronusBtn, dracarysBtn, tempusBtn]) {
+    const debe = visibles.includes(btn);
+    if (debe && btn.hidden) showPlate(btn, delay);
+    else if (!debe && !btn.hidden) hidePlate(btn);
+  }
+  if (visibles.length) spellbookEl.hidden = false;
+}
+
+function siguienteJuego() {
+  const lista = colaJuego();
+  spells.firma = '';
+  if (spells.juego >= lista.length - 1) { later(900, () => actualizarPlacas(0)); return; }
+  spells.juego++;
+  later(1200, () => actualizarPlacas(0));
+}
+
 function showSpellHint(text) {
   if (spells.hintShown) return;
   spells.hintShown = true;
@@ -2049,12 +2098,11 @@ function castSonorus() {
   }
   playMagicSound();
   startMusic();
+  spells.sonorusPend = false;
   hidePlate(sonorusBtn);
   hideSpellHint();
-  if (!spells.patronusShown) {
-    spells.patronusShown = true;
-    later(700, () => { if (!finale.started && secretBtn.hidden) showPlate(patronusBtn); });
-  }
+  spells.firma = '';
+  later(500, () => actualizarPlacas(0));
 }
 
 /* Lumos Máxima: ilumina el contador (el secreto de siempre) */
@@ -2063,6 +2111,8 @@ function castLumosMaxima() {
   castFxAt(secretBtn, { sparks: 22, r1: 200 });
   hidePlate(secretBtn);
   startSecret();
+  spells.firma = '';
+  later(500, () => actualizarPlacas(0));
 }
 
 /* Revelio: revela la fotografía dentro de un marco encantado */
@@ -2070,6 +2120,8 @@ function castRevelio() {
   if (finale.started) return;
   const [x, y] = castFxAt(revelioBtn, { sparks: 26, r1: 240, dur: 800 });
   fxStreak(x, y, vw / 2, vh * 0.42, 420);
+  spells.revelio = false;
+  spells.firma = '';
   hidePlate(revelioBtn);
   hideSpellHint();
   later(260, startFinale);
@@ -2211,10 +2263,7 @@ function castPatronus() {
   patronus.trail.length = 0;
   castFxAt(patronusBtn, { sparks: 24, r1: 220, dur: 700 });
   hidePlate(patronusBtn);
-  if (FX_ON.dracarys && !spells.dracarysShown) {
-    spells.dracarysShown = true;
-    later(1100, () => { if (!finale.started && secretBtn.hidden) showPlate(dracarysBtn); });
-  }
+  siguienteJuego();
 }
 
 function drawPatronus(now) {
@@ -2280,6 +2329,7 @@ function castDracarys() {
   dracarys.brasas.length = 0;
   castFxAt(dracarysBtn, { sparks: 26, r1: 210, dur: 700 });
   hidePlate(dracarysBtn);
+  siguienteJuego();
 }
 
 function brasa(x, y, fuerte) {
@@ -2487,6 +2537,8 @@ function castNox() {
     finale.started = false;
     spells.revelio = false;   // el bucle vuelve a ofrecer Revelio
     spellbookEl.hidden = false;
+    spells.firma = '';
+    actualizarPlacas(200);
   });
 }
 
@@ -2680,11 +2732,13 @@ function resetExtras() {
   ambient.snitchAt = 12;
   buildFireflies();
   // hechizos
-  spells.hintShown = spells.sonorus = spells.revelio = spells.casting = false;
+  spells.hintShown = spells.sonorus = spells.sonorusPend = spells.revelio = spells.casting = false;
+  spells.firma = '';
   spellbookEl.hidden = true;
   spellHintEl.classList.remove('in');
   spellHintEl.textContent = '';
-  spells.tempusShown = false;
+  spells.juego = 0;
+  spells.juegoShown = false;
   season.name = (CONFIG.estaciones && SEASONS[CONFIG.estaciones.inicial]) ? CONFIG.estaciones.inicial : 'verano';
   season.from = null;
   season.k = 1;
@@ -2695,8 +2749,6 @@ function resetExtras() {
   seasonLabelEl.classList.remove('show');
   finiteEl.hidden = true;
   finiteEl.classList.remove('show');
-  spells.patronusShown = false;
-  spells.dracarysShown = false;
   dracarys.activo = false;
   dracarys.brasas.length = 0;
   patronus.activo = false;
@@ -3530,35 +3582,26 @@ function frame(now) {
   if (live && t > 0.05 && ambient.flashAt < 0) triggerLumosMaxima(t);
   if (live && !finale.started) {
     // Sonorus aparece cuando la copa está completa
-    if (!spells.sonorus && music.available && t > TIMELINE.blossomsEnd + 0.4 && sonorusBtn.hidden) {
+    if (!spells.sonorus && music.available && t > TIMELINE.blossomsEnd + 0.4 && !spells.sonorusPend) {
+      spells.sonorusPend = true;
       showSpellHint(CONFIG.hechizos.aviso);
-      showPlate(sonorusBtn);
+      actualizarPlacas();
     }
-    // Tempus acompaña al árbol en cuanto la copa está completa
-    if (CONFIG.estaciones && CONFIG.estaciones.activo && tempusBtn.hidden && !spells.tempusShown &&
-        t > TIMELINE.blossomsEnd + 0.4 && (spells.sonorus || !music.available)) {
-      spells.tempusShown = true;
-      showPlate(tempusBtn, 300);
-      if (!music.available && !spells.patronusShown) {
-        spells.patronusShown = true;
-        later(900, () => { if (!finale.started) showPlate(patronusBtn); });
-      }
-    }
+    // los hechizos de juego acompañan al árbol en cuanto la copa está completa
+    if (!spells.juegoShown && t > TIMELINE.blossomsEnd + 0.4) mostrarJuego(300);
     // Revelio aparece cuando termina el secreto
-    if (!spells.revelio && secret.started && t > schedule.end && revelioBtn.hidden) {
+    if (!spells.revelio && secret.started && t > schedule.end) {
       spells.revelio = true;
-      showPlate(revelioBtn);
+      actualizarPlacas();
     }
   }
   // el pergamino de la carta aparece justo antes de escribirse
   const showLetter = live && t > TIMELINE.title - 0.6;
   if (showLetter && spells.hintShown && spellHintEl.textContent) hideSpellHint();
   if (showLetter !== letterEl.classList.contains('show')) letterEl.classList.toggle('show', showLetter);
-  if (live && CONFIG.secreto && !secret.started && t > schedule.textEnd + 0.8 && secretBtn.hidden) {
+  if (live && CONFIG.secreto && !secret.started && t > schedule.textEnd + 0.8 && !secret.shown) {
     secret.shown = true;
-    if (!patronusBtn.hidden) hidePlate(patronusBtn);
-    if (!dracarysBtn.hidden) hidePlate(dracarysBtn);
-    showPlate(secretBtn, 300);
+    actualizarPlacas();
   }
 
   updateMusicFade(now);
