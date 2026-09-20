@@ -181,6 +181,7 @@ const CONFIG = {
     patronus: { runa: "✧", nombre: "Expecto Patronum", desc: "llamar a un guardián de luz" },
     leviosa: { runa: "☁", nombre: "Wingardium Leviosa", desc: "hacer flotar el recuerdo" },
     lingua: { runa: "❋", nombre: "Lingua Amoris", desc: "que lo diga el mundo entero" },
+    dracarys: { runa: "△", nombre: "Dracarys", desc: "prender la noche" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -205,7 +206,8 @@ const CONFIG = {
     accio: true,           // objetos que llegan desde el fondo con rastro
     selloAlohomora: true,  // sello mágico que se rompe al abrir
     cierreNox: true,       // apagado progresivo de la magia en el cierre
-    linguaAmoris: true     // la frase en muchos idiomas antes del final
+    linguaAmoris: true,    // la frase en muchos idiomas antes del final
+    dracarys: true         // el dragón que cruza el cielo y suelta su llamarada
   },
 
   /* Estaciones del árbol: cada toque de Tempus pasa a la siguiente */
@@ -621,6 +623,7 @@ const tempusBtn = document.getElementById('spell-tempus');
 const patronusBtn = document.getElementById('spell-patronus');
 const leviosaBtn = document.getElementById('spell-leviosa');
 const linguaBtn = document.getElementById('spell-lingua');
+const dracarysBtn = document.getElementById('spell-dracarys');
 const seasonLabelEl = document.getElementById('season-label');
 const finiteEl = document.getElementById('finite-label');
 const spellbookEl = document.getElementById('spellbook');
@@ -2208,6 +2211,10 @@ function castPatronus() {
   patronus.trail.length = 0;
   castFxAt(patronusBtn, { sparks: 24, r1: 220, dur: 700 });
   hidePlate(patronusBtn);
+  if (FX_ON.dracarys && !spells.dracarysShown) {
+    spells.dracarysShown = true;
+    later(1100, () => { if (!finale.started && secretBtn.hidden) showPlate(dracarysBtn); });
+  }
 }
 
 function drawPatronus(now) {
@@ -2260,6 +2267,147 @@ function drawPatronus(now) {
   ctx.fillStyle = halo;
   ctx.fillRect(x - 34, y - 34, 68, 68);
   if (!REDUCED && Math.random() < 0.7) fxSpark(x, y, 26, 0.8);
+}
+
+/* Dracarys: un dragón cruza el cielo, suelta su llamarada y deja brasas */
+const dracarys = { activo: false, born: 0, dur: 4600, dir: 1, brasas: [], x: 0, y: 0 };
+
+function castDracarys() {
+  if (dracarys.activo || !FX_ON.dracarys) return;
+  dracarys.activo = true;
+  dracarys.born = performance.now();
+  dracarys.dir = Math.random() < 0.5 ? 1 : -1;
+  dracarys.brasas.length = 0;
+  castFxAt(dracarysBtn, { sparks: 26, r1: 210, dur: 700 });
+  hidePlate(dracarysBtn);
+}
+
+function brasa(x, y, fuerte) {
+  if (dracarys.brasas.length > (REDUCED ? 45 : 110)) return;
+  const a = Math.random() * TAU;
+  const v = (fuerte ? 90 : 35) * (0.4 + Math.random());
+  dracarys.brasas.push({
+    x, y,
+    vx: Math.cos(a) * v * 0.6 + dracarys.dir * (fuerte ? 90 : 20),
+    vy: Math.sin(a) * v * 0.5 - (fuerte ? 10 : 0),
+    size: 1.6 + Math.random() * 3.4,
+    age: 0, life: 1 + Math.random() * 1.6,
+    tono: Math.random()
+  });
+}
+
+/* Silueta sencilla del dragón: cuerpo, cuello, cola y alas que baten */
+function dibujarDragon(g, x, y, escala, dir, aleteo) {
+  g.save();
+  g.translate(x, y);
+  g.scale(escala * dir, escala);
+  g.fillStyle = 'rgba(12, 10, 22, 0.92)';
+  // cuerpo y cola
+  g.beginPath();
+  g.moveTo(-34, 2);
+  g.quadraticCurveTo(-10, -6, 12, -2);
+  g.quadraticCurveTo(22, 0, 30, -6);   // cuello
+  g.quadraticCurveTo(36, -9, 40, -4);  // cabeza
+  g.quadraticCurveTo(34, 2, 26, 3);
+  g.quadraticCurveTo(10, 8, -12, 8);
+  g.quadraticCurveTo(-26, 9, -46, 16); // cola
+  g.quadraticCurveTo(-34, 7, -34, 2);
+  g.closePath();
+  g.fill();
+  // alas
+  const ala = 1 + aleteo * 0.55;
+  for (const lado of [1, -1]) {
+    g.save();
+    g.scale(1, ala * lado);
+    g.beginPath();
+    g.moveTo(-6, 0);
+    g.quadraticCurveTo(-2, -22, 16, -30);
+    g.quadraticCurveTo(4, -14, 8, -4);
+    g.quadraticCurveTo(0, -10, -6, 0);
+    g.closePath();
+    g.fillStyle = 'rgba(16, 13, 28, 0.85)';
+    g.fill();
+    g.restore();
+  }
+  g.restore();
+}
+
+function drawDracarys(now, dt) {
+  if (!dracarys.activo) return;
+  const k = (now - dracarys.born) / dracarys.dur;
+  const g = ctx;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  if (k < 1) {
+    // vuelo de lado a lado, por encima de la copa
+    const px = dracarys.dir > 0
+      ? lerp(panel.x - 90, panel.x + panel.w + 90, k)
+      : lerp(panel.x + panel.w + 90, panel.x - 90, k);
+    const py = panel.y + panel.h * 0.21 + Math.sin(k * 7) * panel.h * 0.022;
+    dracarys.x = px; dracarys.y = py;
+    const escala = Math.min(2.4, panel.w / 210);
+    const aleteo = Math.sin(now / 90);
+
+    // resplandor cálido que lo acompaña
+    const halo = g.createRadialGradient(px, py, 0, px, py, 120 * escala);
+    halo.addColorStop(0, 'rgba(255, 150, 60, 0.26)');
+    halo.addColorStop(1, 'rgba(255, 120, 40, 0)');
+    g.fillStyle = halo;
+    g.fillRect(px - 120 * escala, py - 120 * escala, 240 * escala, 240 * escala);
+
+    dibujarDragon(g, px, py, escala, dracarys.dir, aleteo);
+
+    // la llamarada, en el tramo central del vuelo
+    const bocaX = px + dracarys.dir * 42 * escala;
+    const bocaY = py - 4 * escala;
+    if (k > 0.3 && k < 0.66) {
+      const fuerza = Math.sin(((k - 0.3) / 0.36) * Math.PI);
+      const largo = 240 * escala * fuerza;
+      const llama = g.createLinearGradient(bocaX, bocaY, bocaX + dracarys.dir * largo, bocaY + largo * 0.5);
+      llama.addColorStop(0, `rgba(255, 246, 214, ${0.85 * fuerza})`);
+      llama.addColorStop(0.35, `rgba(255, 170, 60, ${0.55 * fuerza})`);
+      llama.addColorStop(1, 'rgba(220, 60, 30, 0)');
+      g.fillStyle = llama;
+      g.beginPath();
+      g.moveTo(bocaX, bocaY - 5 * escala);
+      g.quadraticCurveTo(bocaX + dracarys.dir * largo * 0.6, bocaY + largo * 0.1,
+        bocaX + dracarys.dir * largo, bocaY + largo * 0.45);
+      g.quadraticCurveTo(bocaX + dracarys.dir * largo * 0.45, bocaY + largo * 0.4, bocaX, bocaY + 8 * escala);
+      g.closePath();
+      g.fill();
+      const cuantas = REDUCED ? 2 : 5;
+      for (let i = 0; i < cuantas; i++) {
+        brasa(bocaX + dracarys.dir * largo * Math.random(), bocaY + largo * 0.35 * Math.random(), true);
+      }
+      // la noche se prende un instante
+      g.fillStyle = `rgba(255, 140, 60, ${0.14 * fuerza})`;
+      g.fillRect(panel.x, panel.y, panel.w, panel.h);
+    }
+  }
+
+  // brasas cayendo
+  for (let i = dracarys.brasas.length - 1; i >= 0; i--) {
+    const b = dracarys.brasas[i];
+    b.age += dt;
+    if (b.age >= b.life) { dracarys.brasas.splice(i, 1); continue; }
+    b.vx *= Math.exp(-dt * 1.1);
+    b.vy = b.vy * Math.exp(-dt * 0.9) + 40 * dt;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    const a = 1 - b.age / b.life;
+    const color = b.tono < 0.4 ? '255, 226, 150' : b.tono < 0.8 ? '255, 150, 60' : '220, 70, 35';
+    g.fillStyle = `rgba(${color}, ${a})`;
+    g.beginPath();
+    g.arc(b.x, b.y, b.size * a, 0, TAU);
+    g.fill();
+    if (dustSprite && b.tono < 0.5) {
+      const sz = b.size * 7;
+      g.globalAlpha = a * 0.5;
+      g.drawImage(dustSprite, b.x - sz / 2, b.y - sz / 2, sz, sz);
+      g.globalAlpha = 1;
+    }
+  }
+  if (k >= 1 && !dracarys.brasas.length) dracarys.activo = false;
 }
 
 /* Tempus: el árbol pasa a la siguiente estación */
@@ -2364,6 +2512,7 @@ function buildExtras() {
   fillPlate(patronusBtn, HX.patronus);
   fillPlate(leviosaBtn, HX.leviosa);
   fillPlate(linguaBtn, HX.lingua);
+  fillPlate(dracarysBtn, HX.dracarys);
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
   const F = CONFIG.finalMessage;
   document.getElementById('closing-question').textContent = HX.alohomora.aviso || "Parece que algo sigue cerrado…";
@@ -2388,6 +2537,7 @@ function bindExtras() {
   patronusBtn.addEventListener('click', castPatronus);
   leviosaBtn.addEventListener('click', castLeviosa);
   linguaBtn.addEventListener('click', castLingua);
+  dracarysBtn.addEventListener('click', castDracarys);
   restartBtn.addEventListener('click', () => {
     requestWakeLock();
     if (MAGIC.enabled && MAGIC.showOnReplay) {
@@ -2546,13 +2696,16 @@ function resetExtras() {
   finiteEl.hidden = true;
   finiteEl.classList.remove('show');
   spells.patronusShown = false;
+  spells.dracarysShown = false;
+  dracarys.activo = false;
+  dracarys.brasas.length = 0;
   patronus.activo = false;
   patronus.trail.length = 0;
   finaleCard.classList.remove('leviosa');
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn]) {
     btn.hidden = true;
     btn.classList.remove('in', 'out');
   }
@@ -3363,6 +3516,7 @@ function frame(now) {
   drawSnitch(t, now, dt);
   drawLumosFlash(t);
   drawPatronus(now);
+  drawDracarys(now, dt);
   seasonOverlay(now);
   drawSeasonSweep(now);
   drawPanelFrame();
@@ -3403,6 +3557,7 @@ function frame(now) {
   if (live && CONFIG.secreto && !secret.started && t > schedule.textEnd + 0.8 && secretBtn.hidden) {
     secret.shown = true;
     if (!patronusBtn.hidden) hidePlate(patronusBtn);
+    if (!dracarysBtn.hidden) hidePlate(dracarysBtn);
     showPlate(secretBtn, 300);
   }
 

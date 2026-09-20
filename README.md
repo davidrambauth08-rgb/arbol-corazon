@@ -33,12 +33,13 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Tempus** | junto al árbol, tras Sonorus | hace pasar la estación: primavera → verano → otoño → invierno |
 | **Expecto Patronum** | junto al árbol, tras Sonorus | un guardián de luz entra, rodea la copa y se va |
 | **Wingardium Leviosa** | en la tarjeta | eleva la tarjeta con la foto y el recuerdo |
+| **Dracarys** | junto al árbol, tras Expecto Patronum | un dragón cruza el cielo, suelta su llamarada y deja brasas cayendo |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
 **Estaciones** (`CONFIG.estaciones`): cada toque de Tempus cambia la copa, la luz del bosque y lo que cae. Primavera (rosas y blancos, pétalos), verano (como siempre), otoño (ámbar y cobre, hojas) e invierno (copa más escasa en rojos y hielo, con nieve). `inicial` elige con cuál empieza, `orden` el recorrido, `nombres` los carteles y `activo: false` lo desactiva.
 
-**Efectos mágicos** (`CONFIG.efectos`, todos opcionales): `lumosMaxima` (destello y encendido del bosque al entrar), `luciernagas`, `niebla`, `petalos` (hojas doradas entre los corazones), `snitch` (cruza la escena cada ~30 s), `ondasSonorus` (anillos de energía al invocar la canción), `levitacion` (foto y recuerdos flotando tipo polaroid), `accio` (los objetos llegan desde el fondo con rastro), `selloAlohomora` (sello dorado que se rompe) y `cierreNox` (la magia se apaga poco a poco en el cierre). Pon cualquiera en `false` para desactivarlo.
+**Efectos mágicos** (`CONFIG.efectos`, todos opcionales): `lumosMaxima` (destello y encendido del bosque al entrar), `luciernagas`, `niebla`, `petalos` (hojas doradas entre los corazones), `snitch` (cruza la escena cada ~30 s), `ondasSonorus` (anillos de energía al invocar la canción), `levitacion` (foto y recuerdos flotando tipo polaroid), `accio` (los objetos llegan desde el fondo con rastro), `selloAlohomora` (sello dorado que se rompe) y `cierreNox` (la magia se apaga poco a poco en el cierre), `dracarys` (el dragón y su llamarada). Pon cualquiera en `false` para desactivarlo.
 
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
