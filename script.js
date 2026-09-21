@@ -183,6 +183,7 @@ const CONFIG = {
     lingua: { runa: "❋", nombre: "Lingua Amoris", desc: "que lo diga el mundo entero" },
     dracarys: { runa: "△", nombre: "Dracarys", desc: "prender la noche", corto: "Dracarys" },
     australis: { runa: "✥", nombre: "Terra Australis", desc: "una invitación al otro lado del mundo", corto: "Australis" },
+    orchideous: { runa: "✼", nombre: "Orchideous", desc: "hacer crecer un jardín de girasoles", corto: "Girasoles" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -218,7 +219,8 @@ const CONFIG = {
     cierreNox: true,       // apagado progresivo de la magia en el cierre
     linguaAmoris: true,    // la frase en muchos idiomas antes del final
     dracarys: true,        // el dragón que cruza el cielo y suelta su llamarada
-    australis: true        // la constelación del sur, los dinosaurios y la invitación
+    australis: true,       // la constelación del sur, los dinosaurios y la invitación
+    orchideous: true       // el jardín de girasoles que crece en la noche
   },
 
   /* Estaciones del árbol: cada toque de Tempus pasa a la siguiente */
@@ -637,6 +639,7 @@ const leviosaBtn = document.getElementById('spell-leviosa');
 const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
+const orchideousBtn = document.getElementById('spell-orchideous');
 const spellRowEl = document.getElementById('spell-row');
 const inviteEl = document.getElementById('invite');
 const dinoSayEl = document.getElementById('dino-say');
@@ -2059,6 +2062,7 @@ function hechizosFila() {
     { btn: patronusBtn, activo: () => true },
     { btn: dracarysBtn, activo: () => F.dracarys !== false },
     { btn: australisBtn, activo: () => F.australis !== false },
+    { btn: orchideousBtn, activo: () => F.orchideous !== false },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -2817,6 +2821,206 @@ function drawAustralis(now) {
   }
 }
 
+/* Orchideous: un jardín de girasoles crece en la noche ------------------- */
+const jardin = { activo: false, born: 0, dur: 12000, flores: [], arriba: 0, abajo: 0, polen: [] };
+
+/* La cabeza del girasol se dibuja una sola vez y luego se estampa: dos coronas
+   de pétalos amarillos y el corazón oscuro con su grano. */
+let girasolSprite = null;
+function hacerGirasol() {
+  const S2 = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = S2;
+  const g = c.getContext('2d');
+  g.translate(S2 / 2, S2 / 2);
+  const R = S2 / 2;
+
+  const corona = (cuantos, largo, ancho, dist, giro, claro, oscuro) => {
+    for (let i = 0; i < cuantos; i++) {
+      const a = giro + (i / cuantos) * TAU;
+      g.save();
+      g.rotate(a);
+      const grad = g.createLinearGradient(dist * R, 0, (dist + largo) * R, 0);
+      grad.addColorStop(0, oscuro);
+      grad.addColorStop(0.45, claro);
+      grad.addColorStop(1, oscuro);
+      g.fillStyle = grad;
+      g.beginPath();
+      g.moveTo(dist * R, 0);
+      g.quadraticCurveTo((dist + largo * 0.5) * R, -ancho * R, (dist + largo) * R, 0);
+      g.quadraticCurveTo((dist + largo * 0.5) * R, ancho * R, dist * R, 0);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+  };
+  // corona de fuera (más larga y más apagada) y corona de dentro
+  corona(16, 0.72, 0.13, 0.26, 0.2, '#F0B429', '#C98A1E');
+  corona(13, 0.6, 0.15, 0.2, 0, '#FFD65C', '#E0A526');
+
+  // corazón del girasol
+  const centro = g.createRadialGradient(-R * 0.06, -R * 0.06, 0, 0, 0, R * 0.27);
+  centro.addColorStop(0, '#6E4A22');
+  centro.addColorStop(0.7, '#4A3018');
+  centro.addColorStop(1, '#2E1D0E');
+  g.fillStyle = centro;
+  g.beginPath();
+  g.arc(0, 0, R * 0.26, 0, TAU);
+  g.fill();
+  // grano: puntitos en espiral
+  g.fillStyle = 'rgba(28, 18, 8, 0.55)';
+  for (let i = 0; i < 90; i++) {
+    const a = i * 2.39996, rad = R * 0.245 * Math.sqrt(i / 90);
+    g.beginPath();
+    g.arc(Math.cos(a) * rad, Math.sin(a) * rad, R * 0.016, 0, TAU);
+    g.fill();
+  }
+  // borde cálido del corazón
+  g.strokeStyle = 'rgba(245, 211, 107, 0.5)';
+  g.lineWidth = R * 0.02;
+  g.beginPath();
+  g.arc(0, 0, R * 0.26, 0, TAU);
+  g.stroke();
+  girasolSprite = c;
+}
+
+/* Reparte el jardín: tres filas de flores, las de delante más grandes y bajas */
+function sembrarJardin() {
+  const reloj = clockEl.getBoundingClientRect();
+  jardin.arriba = panel.y + panel.h * 0.42;
+  jardin.abajo = Math.max(jardin.arriba + 150, reloj.top - 8);
+  const hueco = jardin.abajo - jardin.arriba;
+  jardin.flores.length = 0;
+  jardin.polen.length = 0;
+  const filas = REDUCED ? [[7, 0.6, 0.6], [9, 0.85, 0.82]]
+    : [[8, 0.55, 0.56], [10, 0.76, 0.74], [12, 1, 0.92]];
+  for (let f = 0; f < filas.length; f++) {
+    const [cuantas, esc, hondo] = filas[f];
+    for (let i = 0; i < cuantas; i++) {
+      // repartidas a lo ancho con un empujón al azar, para que no parezcan una valla
+      const u = (i + 0.5) / cuantas + (Math.random() - 0.5) * (0.9 / cuantas);
+      jardin.flores.push({
+        u,
+        base: jardin.arriba + hueco * hondo,
+        alto: hueco * (0.24 + 0.12 * Math.random()) * esc,
+        esc,
+        curva: (Math.random() - 0.5) * 0.32,
+        giro: (Math.random() - 0.5) * 0.55,
+        fase: Math.random() * TAU,
+        retraso: 0.25 + f * 0.25 + Math.random() * 0.7,
+        tono: 0.85 + Math.random() * 0.15
+      });
+    }
+  }
+  for (let i = 0; i < (REDUCED ? 8 : 22); i++) {
+    jardin.polen.push({
+      x: Math.random(), y: 0.3 + Math.random() * 0.7,
+      v: 0.02 + Math.random() * 0.05, fase: Math.random() * TAU, r: 1 + Math.random() * 2.2
+    });
+  }
+}
+
+function castOrchideous() {
+  if (jardin.activo || FX_ON.orchideous === false) return;
+  if (!girasolSprite) hacerGirasol();
+  jardin.activo = true;
+  jardin.born = performance.now();
+  document.body.classList.add('florido');   // la carta se aparta para dejar ver el jardín
+  sembrarJardin();
+  castFxAt(orchideousBtn, { sparks: 24, r1: 230, dur: 800 });
+  gastarHechizo(orchideousBtn);
+  later(jardin.dur - 900, () => document.body.classList.remove('florido'));
+}
+
+/* Un girasol: tallo curvo que crece, dos hojas y la cabeza que se abre */
+function dibujarGirasol(g, fl, crece, t) {
+  const px = panel.x + fl.u * panel.w;
+  const brisa = Math.sin(t * 1.1 + fl.fase) * 0.05 + Math.sin(t * 2.3 + fl.fase) * 0.02;
+  const largo = fl.alto * crece;
+  const puntaX = px + (fl.curva + brisa) * fl.alto;
+  const puntaY = fl.base - largo;
+  const ctrlX = px + (fl.curva * 0.3 + brisa * 0.4) * fl.alto;
+  const ctrlY = fl.base - largo * 0.5;
+
+  // tallo
+  g.strokeStyle = `rgba(46, 96, 64, ${0.95 * fl.tono})`;
+  g.lineWidth = Math.max(1.4, fl.alto * 0.035);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(px, fl.base);
+  g.quadraticCurveTo(ctrlX, ctrlY, puntaX, puntaY);
+  g.stroke();
+
+  // dos hojas, una a cada lado
+  if (crece > 0.45) {
+    const abre = clamp((crece - 0.45) / 0.35);
+    g.fillStyle = `rgba(40, 88, 58, ${0.9 * fl.tono})`;
+    for (const [d, alturaHoja] of [[1, 0.42], [-1, 0.64]]) {
+      const hy = fl.base - largo * alturaHoja;
+      const hx = px + (ctrlX - px) * alturaHoja;
+      const L = fl.alto * 0.3 * abre * d;
+      g.beginPath();
+      g.moveTo(hx, hy);
+      g.quadraticCurveTo(hx + L * 0.6, hy - fl.alto * 0.14, hx + L, hy - fl.alto * 0.04);
+      g.quadraticCurveTo(hx + L * 0.55, hy + fl.alto * 0.07, hx, hy);
+      g.closePath();
+      g.fill();
+    }
+  }
+
+  // cabeza
+  const abrir = clamp((crece - 0.55) / 0.45);
+  if (abrir <= 0) return;
+  const d = fl.alto * 0.52 * (abrir * (1.1 - 0.1 * abrir));   // se abre con un rebote corto
+  g.save();
+  g.translate(puntaX, puntaY);
+  g.rotate(fl.giro + brisa * 1.6);
+  g.globalAlpha = fl.tono;
+  g.drawImage(girasolSprite, -d / 2, -d / 2, d, d);
+  g.globalAlpha = 1;
+  g.restore();
+}
+
+function drawOrchideous(now, dt) {
+  if (!jardin.activo) return;
+  const t = (now - jardin.born) / 1000;
+  const total = jardin.dur / 1000;
+  if (t >= total) { jardin.activo = false; jardin.flores.length = 0; return; }
+  const g = ctx;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const salida = t > total - 1.6 ? clamp((total - t) / 1.6) : 1;
+
+  // un poco de luz cálida sobre el jardín, como si amaneciera ahí abajo
+  const hueco = jardin.abajo - jardin.arriba;
+  const luz = g.createLinearGradient(0, jardin.arriba, 0, jardin.abajo + hueco * 0.1);
+  luz.addColorStop(0, 'rgba(245, 211, 107, 0)');
+  luz.addColorStop(1, `rgba(214, 160, 48, ${0.16 * salida})`);
+  g.fillStyle = luz;
+  g.fillRect(panel.x, jardin.arriba, panel.w, hueco * 1.1);
+
+  g.globalAlpha = salida;
+  for (const fl of jardin.flores) {
+    const crece = clamp((t - fl.retraso) / 1.1);
+    if (crece <= 0) continue;
+    dibujarGirasol(g, fl, easeOutCubic(crece), t);
+  }
+  g.globalAlpha = 1;
+
+  // polen flotando entre las flores
+  if (dustSprite) {
+    for (const p of jardin.polen) {
+      p.y -= p.v * dt;
+      if (p.y < 0.05) { p.y = 1; p.x = Math.random(); }
+      const px = panel.x + (p.x + Math.sin(t * 0.8 + p.fase) * 0.02) * panel.w;
+      const py = jardin.arriba + hueco * p.y;
+      const sz = p.r * 8;
+      g.globalAlpha = 0.5 * salida * clamp(t / 1.5);
+      g.drawImage(dustSprite, px - sz / 2, py - sz / 2, sz, sz);
+    }
+    g.globalAlpha = 1;
+  }
+}
+
 /* Tempus: el árbol pasa a la siguiente estación */
 function castTempus() {
   const E = CONFIG.estaciones;
@@ -2923,6 +3127,7 @@ function buildExtras() {
   fillPlate(linguaBtn, HX.lingua);
   fillRune(dracarysBtn, HX.dracarys);
   fillRune(australisBtn, HX.australis);
+  fillRune(orchideousBtn, HX.orchideous);
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
   const F = CONFIG.finalMessage;
   document.getElementById('closing-question').textContent = HX.alohomora.aviso || "Parece que algo sigue cerrado…";
@@ -2949,6 +3154,7 @@ function bindExtras() {
   linguaBtn.addEventListener('click', castLingua);
   dracarysBtn.addEventListener('click', castDracarys);
   australisBtn.addEventListener('click', castAustralis);
+  orchideousBtn.addEventListener('click', castOrchideous);
   restartBtn.addEventListener('click', () => {
     requestWakeLock();
     if (MAGIC.enabled && MAGIC.showOnReplay) {
@@ -3115,13 +3321,16 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
   }
   spellRowEl.hidden = true;
   australia.activo = false;
+  jardin.activo = false;
+  jardin.flores.length = 0;
+  document.body.classList.remove('florido');
   inviteEl.hidden = true;
   inviteEl.classList.remove('show');
   dinoSayEl.hidden = true;
@@ -3936,6 +4145,7 @@ function frame(now) {
   drawPatronus(now);
   drawDracarys(now, dt);
   drawAustralis(now);
+  drawOrchideous(now, dt);
   seasonOverlay(now);
   drawSeasonSweep(now);
   drawPanelFrame();
