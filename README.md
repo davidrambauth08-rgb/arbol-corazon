@@ -35,7 +35,7 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Wingardium Leviosa** | en la tarjeta | eleva la tarjeta con la foto y el recuerdo |
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la noche pasa al otro hemisferio, la carta se aparta, se enciende la Cruz del Sur, un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
-| **Orchideous** | fila de hechizos del árbol | la noche se vuelve negra, la carta se aparta, crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
+| **Orchideous** | fila de hechizos del árbol | la escena entera se apaga a negro (árbol, bosque, carta y contador incluidos), crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 

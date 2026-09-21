@@ -2958,8 +2958,9 @@ function drawAustralis(now) {
 }
 
 /* Orchideous: un jardín de girasoles crece en la noche ------------------- */
-const jardin = { activo: false, born: 0, dur: 15000, flores: [], arriba: 0, abajo: 0, polen: [], gotas: [], camion: 0 };
-const RIEGO = { entra: 2.6, cruza: 7.4 };   // cuándo pasa la camioneta y cuánto tarda
+const jardin = { activo: false, born: 0, dur: 13000, flores: [], arriba: 0, abajo: 0, polen: [], gotas: [] };
+const RIEGO = { entra: 3.6, cruza: 6.8 };   // cuándo pasa la camioneta y cuánto tarda
+const APAGON = 0.9;                          // lo que tarda la escena en irse a negro
 
 /* La cabeza del girasol se dibuja una sola vez y luego se estampa: dos coronas
    de pétalos amarillos y el corazón oscuro con su grano. */
@@ -3023,15 +3024,15 @@ function hacerGirasol() {
 
 /* Reparte el jardín: tres filas de flores, las de delante más grandes y bajas */
 function sembrarJardin() {
-  const reloj = clockEl.getBoundingClientRect();
-  jardin.arriba = panel.y + panel.h * 0.42;
-  jardin.abajo = Math.max(jardin.arriba + 150, reloj.top - 8);
+  // con la escena apagada el jardín se queda con todo el bajo de la pantalla
+  jardin.arriba = panel.y + panel.h * 0.34;
+  jardin.abajo = panel.y + panel.h - 16;
   const hueco = jardin.abajo - jardin.arriba;
   jardin.flores.length = 0;
   jardin.polen.length = 0;
   jardin.gotas.length = 0;
-  const filas = REDUCED ? [[7, 0.6, 0.6], [9, 0.85, 0.82]]
-    : [[8, 0.55, 0.56], [10, 0.76, 0.74], [12, 1, 0.92]];
+  const filas = REDUCED ? [[9, 0.6, 0.55], [11, 0.85, 0.8]]
+    : [[10, 0.55, 0.42], [12, 0.76, 0.67], [14, 1, 0.92]];
   for (let f = 0; f < filas.length; f++) {
     const [cuantas, esc, hondo] = filas[f];
     for (let i = 0; i < cuantas; i++) {
@@ -3039,13 +3040,13 @@ function sembrarJardin() {
       const u = (i + 0.5) / cuantas + (Math.random() - 0.5) * (0.9 / cuantas);
       jardin.flores.push({
         u, fila: f,
-        base: jardin.arriba + hueco * hondo,
-        alto: hueco * (0.24 + 0.12 * Math.random()) * esc,
+        base: jardin.arriba + hueco * (hondo + (Math.random() - 0.5) * 0.06),
+        alto: panel.h * (0.12 + 0.055 * Math.random()) * esc,
         esc,
         curva: (Math.random() - 0.5) * 0.32,
         giro: (Math.random() - 0.5) * 0.55,
         fase: Math.random() * TAU,
-        retraso: 0.25 + f * 0.25 + Math.random() * 0.7,
+        retraso: APAGON + 0.15 + f * 0.25 + Math.random() * 0.6,
         tono: 0.85 + Math.random() * 0.15
       });
     }
@@ -3120,132 +3121,162 @@ function dibujarGirasol(g, fl, crece, t) {
   g.restore();
 }
 
-/* La camioneta del riego: caja con su cisterna, cabina y faros encendidos */
+/* Camioneta cisterna de perfil: ruedas grandes con guardabarros, cabina con
+   ventanilla encendida y el tanque de agua en la caja. Altura de diseño: 56. */
 function dibujarCamioneta(g, x, suelo, alto, t) {
-  const k = alto / 46;
+  const k = alto / 56;
   g.save();
   g.translate(x, suelo);
   g.scale(k, k);
   g.lineJoin = 'round';
+  const chapa = '#191826';
+  const canto = 'rgba(201, 163, 74, 0.55)';
 
-  const oscuro = '#14131F';
   // sombra en el suelo
-  const sombra = g.createRadialGradient(0, -2, 0, 0, -2, 62);
-  sombra.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+  const sombra = g.createRadialGradient(0, -2, 0, 0, -2, 68);
+  sombra.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
   sombra.addColorStop(1, 'rgba(0, 0, 0, 0)');
   g.fillStyle = sombra;
   g.beginPath();
-  g.ellipse(0, -2, 62, 9, 0, 0, TAU);
+  g.ellipse(0, -2, 68, 10, 0, 0, TAU);
   g.fill();
 
-  // faros: dos conos de luz por delante
-  const faro = g.createLinearGradient(50, -24, 112, -8);
-  faro.addColorStop(0, 'rgba(255, 238, 190, 0.34)');
+  // haz de los faros
+  const faro = g.createLinearGradient(58, -30, 118, -12);
+  faro.addColorStop(0, 'rgba(255, 238, 190, 0.32)');
   faro.addColorStop(1, 'rgba(255, 238, 190, 0)');
   g.fillStyle = faro;
   g.beginPath();
-  g.moveTo(52, -26);
-  g.lineTo(114, -32);
-  g.lineTo(114, 0);
-  g.lineTo(52, -18);
+  g.moveTo(60, -32);
+  g.lineTo(120, -38);
+  g.lineTo(120, -2);
+  g.lineTo(60, -22);
   g.closePath();
   g.fill();
 
-  // caja del remolque
-  g.fillStyle = oscuro;
-  g.beginPath();
-  g.roundRect(-54, -26, 82, 16, 3);
-  g.fill();
+  // ruedas (detrás de la carrocería)
+  const rueda = wx => {
+    g.fillStyle = '#08070E';
+    g.beginPath();
+    g.arc(wx, -13, 13, 0, TAU);
+    g.fill();
+    g.fillStyle = '#2E3244';
+    g.beginPath();
+    g.arc(wx, -13, 6, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(190, 200, 220, 0.5)';
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.arc(wx, -13, 6, 0, TAU);
+    g.stroke();
+    const marca = t * 6;          // una sola marca girando: se ve rodar sin parecer carreta
+    g.strokeStyle = 'rgba(190, 200, 220, 0.5)';
+    g.lineWidth = 1.6;
+    g.beginPath();
+    g.moveTo(wx + Math.cos(marca) * 2, -13 + Math.sin(marca) * 2);
+    g.lineTo(wx + Math.cos(marca) * 5, -13 + Math.sin(marca) * 5);
+    g.stroke();
+  };
+  rueda(-30);
+  rueda(34);
 
-  // cisterna de agua
-  const tanque = g.createLinearGradient(0, -48, 0, -26);
-  tanque.addColorStop(0, '#4C6E86');
-  tanque.addColorStop(0.5, '#2A3F52');
-  tanque.addColorStop(1, '#151E2A');
+  // carrocería: caja atrás, cabina delante y capó
+  g.fillStyle = chapa;
+  g.beginPath();
+  g.moveTo(-52, -18);                 // trasera
+  g.lineTo(-52, -36);                 // costado de la caja
+  g.lineTo(14, -36);
+  g.lineTo(14, -56);                  // arranque de la cabina
+  g.quadraticCurveTo(15, -59, 20, -59);
+  g.lineTo(42, -59);                  // techo
+  g.quadraticCurveTo(47, -59, 49, -54);
+  g.lineTo(55, -40);                  // parabrisas inclinado
+  g.lineTo(60, -38);                  // capó
+  g.quadraticCurveTo(64, -37, 64, -32);
+  g.lineTo(64, -18);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = canto;
+  g.lineWidth = 1.3;
+  g.stroke();
+
+  // guardabarros sobre cada rueda
+  g.fillStyle = chapa;
+  for (const wx of [-30, 34]) {
+    g.beginPath();
+    g.moveTo(wx - 17, -17);
+    g.arc(wx, -17, 17, Math.PI, 0);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = canto;
+    g.lineWidth = 1.1;
+    g.beginPath();
+    g.arc(wx, -17, 17, Math.PI, 0);
+    g.stroke();
+  }
+
+  // tanque de agua en la caja
+  const tanque = g.createLinearGradient(0, -54, 0, -32);
+  tanque.addColorStop(0, '#5C7F97');
+  tanque.addColorStop(0.5, '#33495D');
+  tanque.addColorStop(1, '#16202C');
   g.fillStyle = tanque;
   g.beginPath();
-  g.roundRect(-50, -47, 72, 22, 11);
+  g.roundRect(-48, -54, 58, 21, 10);
   g.fill();
-  g.strokeStyle = 'rgba(201, 163, 74, 0.5)';
-  g.lineWidth = 1.2;
+  g.strokeStyle = 'rgba(180, 208, 228, 0.45)';
+  g.lineWidth = 1.1;
   g.stroke();
-  // aros de la cisterna
-  g.strokeStyle = 'rgba(160, 190, 210, 0.3)';
-  g.lineWidth = 1;
-  for (const rx of [-32, -14, 4]) {
+  for (const rx of [-32, -16, 0]) {   // aros del tanque
     g.beginPath();
-    g.moveTo(rx, -46.5);
-    g.lineTo(rx, -25.5);
+    g.moveTo(rx, -53.5);
+    g.lineTo(rx, -33.5);
     g.stroke();
   }
-
-  // cabina
-  g.fillStyle = oscuro;
+  g.fillStyle = 'rgba(180, 208, 228, 0.5)';   // boca de llenado
   g.beginPath();
-  g.moveTo(26, -10);
-  g.lineTo(26, -44);
-  g.quadraticCurveTo(28, -47, 34, -47);
-  g.lineTo(46, -47);
-  g.quadraticCurveTo(52, -47, 55, -40);
-  g.lineTo(60, -28);
-  g.quadraticCurveTo(62, -25, 62, -20);
-  g.lineTo(62, -10);
-  g.closePath();
-  g.fill();
-  // parabrisas encendido por dentro
-  g.fillStyle = 'rgba(245, 211, 107, 0.4)';
-  g.beginPath();
-  g.moveTo(38, -43);
-  g.lineTo(48, -43);
-  g.quadraticCurveTo(51, -42, 53, -37);
-  g.lineTo(56, -30);
-  g.lineTo(38, -30);
-  g.closePath();
-  g.fill();
-  // faro delantero
-  g.fillStyle = 'rgba(255, 244, 206, 0.95)';
-  g.beginPath();
-  g.roundRect(56, -25, 6, 5, 2);
+  g.roundRect(-24, -58, 10, 5, 2);
   g.fill();
 
-  // canto dorado del chasis
-  g.strokeStyle = 'rgba(201, 163, 74, 0.55)';
-  g.lineWidth = 1.2;
+  // ventanilla encendida y parabrisas
+  g.fillStyle = 'rgba(245, 211, 107, 0.45)';
   g.beginPath();
-  g.moveTo(-54, -10);
-  g.lineTo(62, -10);
+  g.roundRect(18, -55, 20, 15, 2);
+  g.fill();
+  g.beginPath();
+  g.moveTo(41, -55);
+  g.lineTo(46, -55);
+  g.lineTo(53, -41);
+  g.lineTo(41, -41);
+  g.closePath();
+  g.fill();
+
+  // faro y parachoques
+  g.fillStyle = 'rgba(255, 246, 214, 0.95)';
+  g.beginPath();
+  g.roundRect(59, -30, 6, 6, 2);
+  g.fill();
+  g.fillStyle = '#2A2A3A';
+  g.beginPath();
+  g.roundRect(60, -22, 8, 5, 2);
+  g.fill();
+
+  // barra de riego colgando detrás
+  g.strokeStyle = 'rgba(170, 198, 220, 0.75)';
+  g.lineWidth = 2.4;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(-52, -28);
+  g.lineTo(-62, -28);
+  g.lineTo(-62, -20);
   g.stroke();
-
-  // ruedas girando
-  const giro = t * 7;
-  for (const wx of [-36, 40]) {
-    g.fillStyle = '#0B0A12';
+  g.lineWidth = 1.6;
+  for (const ny of [-26, -22]) {
     g.beginPath();
-    g.arc(wx, -9, 10, 0, TAU);
-    g.fill();
-    g.strokeStyle = 'rgba(190, 200, 220, 0.45)';
-    g.lineWidth = 1.3;
-    g.beginPath();
-    g.arc(wx, -9, 6, 0, TAU);
-    g.stroke();
-    g.beginPath();
-    for (let i = 0; i < 3; i++) {
-      const a = giro + i * (TAU / 3);
-      g.moveTo(wx, -9);
-      g.lineTo(wx + Math.cos(a) * 6, -9 + Math.sin(a) * 6);
-    }
-    g.strokeStyle = 'rgba(190, 200, 220, 0.3)';
+    g.moveTo(-62, ny);
+    g.lineTo(-67, ny - 1);
     g.stroke();
   }
-
-  // barra de riego en la parte de atrás
-  g.strokeStyle = 'rgba(160, 190, 210, 0.6)';
-  g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(-54, -22);
-  g.lineTo(-66, -22);
-  g.lineTo(-66, -14);
-  g.stroke();
   g.restore();
 }
 
@@ -3256,7 +3287,7 @@ function regar(x, y, alto) {
   for (let i = 0; i < cuantas; i++) {
     // el abanico sale hacia arriba y hacia atrás (la camioneta va hacia la derecha)
     const a = Math.PI * (0.58 + Math.random() * 0.5);
-    const v = alto * (2.8 + Math.random() * 2.4);
+    const v = alto * (3.4 + Math.random() * 2.6);
     jardin.gotas.push({
       x: x + (Math.random() - 0.5) * alto * 0.1,
       y: y + (Math.random() - 0.5) * alto * 0.12,
@@ -3293,6 +3324,11 @@ function drawOrchideous(now, dt) {
   const salida = t > total - 1.6 ? clamp((total - t) / 1.6) : 1;
   const hueco = jardin.abajo - jardin.arriba;
 
+  // la escena entera se apaga: ni árbol, ni bosque, ni nada. Sólo el jardín.
+  const apagon = clamp(Math.min(t / APAGON, (total - t) / 1.6));
+  g.fillStyle = `rgba(0, 0, 0, ${apagon})`;
+  g.fillRect(0, 0, vw, vh);
+
   // en la noche cerrada, un suelo apenas insinuado bajo las flores
   const suelo = g.createLinearGradient(0, jardin.arriba + hueco * 0.5, 0, panel.y + panel.h);
   suelo.addColorStop(0, 'rgba(20, 30, 22, 0)');
@@ -3316,14 +3352,14 @@ function drawOrchideous(now, dt) {
   const tc = t - RIEGO.entra;
   if (tc > 0 && tc < RIEGO.cruza) {
     const e = tc / RIEGO.cruza;
-    const alto = Math.min(hueco * 0.19, panel.w * 0.2);
-    const k = alto / 46;
+    const alto = Math.min(panel.h * 0.13, panel.w * 0.24);
+    const k = alto / 56;
     const cx = panel.x + lerp(-0.28, 1.3, e) * panel.w;
     const base = jardin.abajo - 2;
     dibujarCamioneta(g, cx, base, alto, tc);
     if (e > 0.02 && e < 0.95) {
-      dibujarChorro(g, cx - 66 * k, base - 20 * k, alto, salida);
-      regar(cx - 66 * k, base - 20 * k, alto);
+      dibujarChorro(g, cx - 66 * k, base - 24 * k, alto, salida);
+      regar(cx - 66 * k, base - 24 * k, alto);
     }
   }
   g.globalAlpha = 1;

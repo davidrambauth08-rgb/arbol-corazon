@@ -1591,14 +1591,21 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
    ===================================================================== */
 /* mientras dura el hechizo la carta y los botones se apartan */
 body.australis #letter,
-body.australis #spellbook,
-body.florido #letter,
-body.florido #spellbook {
+body.australis #spellbook {
   opacity: 0.1;
   pointer-events: none;
   transition: opacity 0.8s ease;
 }
-#letter, #spellbook { transition: opacity 0.7s ease; }
+/* Orchideous se queda con la pantalla entera: no queda nada más a la vista */
+body.florido #letter,
+body.florido #spellbook,
+body.florido #clock,
+body.florido #music {
+  opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
+  pointer-events: none;
+  transition: opacity 0.9s ease;
+}
+#letter, #spellbook, #clock, #music { transition: opacity 0.8s ease; }
 
 #dino-say {
   position: fixed;
