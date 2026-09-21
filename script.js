@@ -445,13 +445,13 @@ const rgbStr = (c, a = 1) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`
    ser la misma noche de siempre. Se mezcla sobre la estación, así que nada se
    rompe si además se cambia de estación. */
 const CIELOS = {
-  amanecer: {                                   // Orchideous: sale el sol sobre el jardín
-    cielo: ['#20457F', '#D8814F', '#F8D588'],
-    horizonte: '255, 198, 112',
-    estrellas: 0.06,
-    siluetas: ['52, 44, 64', '28, 22, 34'],
-    niebla: { color: '255, 232, 196', alpha: 0.11 },
-    sol: { x: 0.68, alto: 0.045, radio: 0.055, color: '255, 214, 120' }
+  negro: {                                      // Orchideous: noche cerrada, para que el amarillo cante
+    cielo: ['#000000', '#030305', '#08080D'],
+    horizonte: '26, 26, 38',
+    estrellas: 0.45,
+    siluetas: ['16, 16, 26', '6, 6, 12'],
+    niebla: { color: '150, 160, 190', alpha: 0.035 },
+    sol: null
   },
   brasas: {                                     // Dracarys: la noche se vuelve ceniza y fuego
     cielo: ['#2A0D15', '#6E1C1D', '#C44B22'],
@@ -2719,7 +2719,7 @@ function castAustralis() {
     // el grande se acerca de frente y se queda hablando
     { tipo: 'saurio', desde: -0.3, para: 0.36, hasta: 1.35, lejos: 0.5, retraso: 0, dy: 0, habla: true },
     // el pequeño llega antes, se planta un poco más allá y se va el primero
-    { tipo: 'raptor', desde: -0.12, para: 0.74, hasta: 1.4, lejos: 0.55, retraso: 0, dy: 0.22, habla: false, chico: 0.52 }
+    { tipo: 'raptor', desde: -0.12, para: 0.74, hasta: 1.4, lejos: 0.55, retraso: 0, dy: 0.22, habla: false, chico: 0.62 }
   ];
   document.body.classList.add('australis');   // la carta se aparta para dejar ver la noche
   ponerCielo('austral', australia.dur + 1200);
@@ -2789,75 +2789,125 @@ function dibujarCruzDelSur(g, x, y, escala, alpha) {
   }
 }
 
-/* Siluetas de dinosaurio. Las patas van a la altura 0 y la cabeza alrededor
-   de -70: la escala lleva ese alto a píxeles. Parado planta las patas y se
-   balancea sobre ellas, como si te estuviera hablando. */
+/* Siluetas de dinosaurio. Las patas apoyan en la altura 0 y la cabeza queda
+   alrededor de -85: la escala lleva ese alto a píxeles. Parado planta las patas
+   y se balancea sobre ellas, como si te estuviera hablando. */
 function dibujarDino(g, tipo, x, suelo, alto, paso, alpha, andando, t) {
   g.save();
   g.translate(x, suelo);
-  g.scale(alto / 70, alto / 70);
-  // parado: cabecea despacio sobre las patas
-  if (!andando) g.rotate(Math.sin(t * (tipo === 'raptor' ? 2.5 : 1.7)) * (tipo === 'raptor' ? 0.055 : 0.05));
+  g.scale(alto / 85, alto / 85);
+  if (!andando) g.rotate(Math.sin(t * (tipo === 'raptor' ? 2.5 : 1.7)) * (tipo === 'raptor' ? 0.05 : 0.045));
 
-  const tinta = `rgba(9, 7, 20, ${alpha})`;
-  const canto = `rgba(206, 226, 255, ${alpha * 0.32})`;   // canto de luna
-  g.lineJoin = 'round';
-  g.lineCap = 'round';
+  // el cuerpo recoge algo de luna por arriba y se funde con la noche por abajo
+  const piel = g.createLinearGradient(0, -alto, 0, 0);
+  piel.addColorStop(0, `rgba(58, 62, 86, ${alpha})`);
+  piel.addColorStop(0.55, `rgba(24, 24, 42, ${alpha})`);
+  piel.addColorStop(1, `rgba(8, 7, 16, ${alpha})`);
+  const fondo = `rgba(10, 10, 20, ${alpha * 0.75})`;   // las patas del otro lado
+  const canto = `rgba(198, 222, 250, ${alpha * 0.4})`;
 
-  /* una pata: cadera, rodilla y pie, trazadas de una pasada */
-  const pata = (hx, hy, kx, ky, fx, grosor) => {
-    g.strokeStyle = tinta;
+  // sombra en el suelo: sin ella parecen flotar
+  const anchoSombra = tipo === 'saurio' ? 52 : 30;
+  const sombra = g.createRadialGradient(tipo === 'saurio' ? -8 : -2, 0, 0, tipo === 'saurio' ? -8 : -2, 0, anchoSombra);
+  sombra.addColorStop(0, `rgba(0, 0, 0, ${alpha * 0.45})`);
+  sombra.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  g.fillStyle = sombra;
+  g.beginPath();
+  g.ellipse(tipo === 'saurio' ? -8 : -2, 0, anchoSombra, anchoSombra * 0.17, 0, 0, TAU);
+  g.fill();
+
+  /* una pata: cadera, rodilla, tobillo y pie */
+  const pata = (color, grosor, hx, hy, kx, ky, ax, ay, fx) => {
+    g.strokeStyle = color;
     g.lineWidth = grosor;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
     g.beginPath();
     g.moveTo(hx, hy);
     g.lineTo(kx, ky);
-    g.lineTo(fx, -1);
+    g.lineTo(ax, ay);
+    g.lineTo(fx, -1.5);
+    g.stroke();
+    g.lineWidth = grosor * 0.62;         // pie apoyado
+    g.beginPath();
+    g.moveTo(fx - grosor * 0.25, -1.2);
+    g.lineTo(fx + grosor * 0.62, -1.2);
     g.stroke();
   };
-  const pintar = grosor => {
-    g.fillStyle = tinta;
+  const pintar = () => {
+    g.fillStyle = piel;
     g.fill();
     g.strokeStyle = canto;
-    g.lineWidth = grosor;
+    g.lineWidth = 1.2;
+    g.lineJoin = 'round';
     g.stroke();
   };
-
-  if (tipo === 'saurio') {                 // cuello largo, paso pesado
-    const b1 = andando ? Math.sin(paso) * 7 : 1;
-    const b2 = andando ? Math.sin(paso + Math.PI) * 7 : -1;
-    pata(-16, -30, -17 + b2 * 0.4, -16, -16 + b2, 11);
-    pata(10, -32, 9 + b1 * 0.4, -17, 10 + b1, 11);
+  const ojo = (ex, ey, r) => {
+    g.fillStyle = `rgba(226, 240, 255, ${alpha * 0.85})`;
     g.beginPath();
-    g.moveTo(-64, -30);                    // punta de la cola
-    g.quadraticCurveTo(-46, -40, -26, -44);
-    g.quadraticCurveTo(-8, -52, 6, -50);   // lomo
-    g.quadraticCurveTo(16, -50, 22, -58);
-    g.quadraticCurveTo(30, -68, 40, -70);  // cuello
-    g.quadraticCurveTo(50, -71, 50, -65);  // cabeza
-    g.quadraticCurveTo(44, -62, 36, -62);
-    g.quadraticCurveTo(26, -58, 18, -44);  // garganta
-    g.quadraticCurveTo(10, -30, -6, -26);  // vientre
-    g.quadraticCurveTo(-26, -22, -44, -26);
-    g.quadraticCurveTo(-56, -28, -64, -30);
+    g.arc(ex, ey, r, 0, TAU);
+    g.fill();
+  };
+
+  if (tipo === 'saurio') {               // cuello largo, paso pesado
+    const b1 = andando ? Math.sin(paso) * 8 : 1.5;
+    const b2 = andando ? Math.sin(paso + Math.PI) * 8 : -1.5;
+    // patas del otro lado, más apagadas
+    pata(fondo, 7.5, -26, -34, -28, -22, -27, -11, -26 + b1 * 0.7);
+    pata(fondo, 7.5, 4, -38, 2, -24, 4, -12, 5 + b2 * 0.7);
+
+    // cuerpo, cola y cuello de una pieza
+    g.beginPath();
+    g.moveTo(-74, -30);                     // punta de la cola
+    g.quadraticCurveTo(-56, -40, -38, -46); // cola subiendo al lomo
+    g.quadraticCurveTo(-20, -54, -2, -57);  // lomo
+    g.quadraticCurveTo(12, -59, 20, -60);   // cruz
+    g.quadraticCurveTo(34, -64, 41, -76);   // cuello
+    g.quadraticCurveTo(46, -87, 53, -88);   // nuca
+    g.quadraticCurveTo(62, -89, 63, -82);   // cabeza
+    g.quadraticCurveTo(68, -80, 62, -77);   // morro
+    g.quadraticCurveTo(55, -76, 50, -78);   // mandíbula
+    g.quadraticCurveTo(43, -73, 36, -59);   // garganta
+    g.quadraticCurveTo(28, -44, 14, -38);   // pecho
+    g.quadraticCurveTo(-4, -32, -22, -31);  // vientre
+    g.quadraticCurveTo(-46, -30, -74, -30);
     g.closePath();
-    pintar(1.4);
-  } else {                                 // pequeño, corre inclinado
+    pintar();
+    ojo(57, -83, 1.8);
+
+    // patas de este lado, por delante del cuerpo
+    pata(piel, 8.5, -22, -35, -24, -22, -23, -11, -22 + b2);
+    pata(piel, 8.5, 8, -39, 6, -25, 8, -12, 9 + b1);
+  } else {                               // raptor: pecho hondo, cola tiesa
     const b1 = andando ? Math.sin(paso * 1.4) * 9 : 2;
     const b2 = andando ? Math.sin(paso * 1.4 + Math.PI) * 9 : -2;
-    pata(-8, -30, -14 + b2 * 0.3, -16, -8 + b2, 5);
-    pata(2, -31, -4 + b1 * 0.3, -16, 2 + b1, 5);
+    pata(fondo, 4.5, -4, -34, -14, -22, -2, -10, -3 + b1 * 0.7);
+
     g.beginPath();
-    g.moveTo(-50, -50);                    // cola en alto
-    g.quadraticCurveTo(-32, -45, -18, -42);
-    g.quadraticCurveTo(-6, -40, 2, -46);   // lomo
-    g.quadraticCurveTo(10, -52, 20, -54);  // cuello
-    g.quadraticCurveTo(31, -56, 33, -49);  // cabeza
-    g.quadraticCurveTo(26, -47, 18, -46);
-    g.quadraticCurveTo(10, -41, 5, -32);   // pecho
-    g.quadraticCurveTo(-8, -26, -22, -32); // vientre
-    g.quadraticCurveTo(-38, -40, -50, -50);
+    g.moveTo(-60, -54);                     // punta de la cola
+    g.quadraticCurveTo(-42, -51, -26, -49);
+    g.quadraticCurveTo(-12, -48, -2, -53);  // cadera y lomo
+    g.quadraticCurveTo(8, -58, 16, -63);    // cuello
+    g.quadraticCurveTo(24, -69, 33, -66);   // nuca
+    g.quadraticCurveTo(43, -64, 45, -58);   // morro
+    g.quadraticCurveTo(39, -56, 32, -56);   // mandíbula
+    g.quadraticCurveTo(24, -53, 17, -46);   // garganta
+    g.quadraticCurveTo(9, -37, -2, -33);    // pecho
+    g.quadraticCurveTo(-18, -29, -32, -39); // vientre
+    g.quadraticCurveTo(-46, -47, -60, -54);
     g.closePath();
-    pintar(1.2);
+    pintar();
+    ojo(37, -62, 1.5);
+
+    // bracito y pata de este lado
+    g.strokeStyle = piel;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(6, -42);
+    g.lineTo(14, -36);
+    g.lineTo(20, -38);
+    g.stroke();
+    pata(piel, 5, -1, -35, -11, -22, 2, -10, 3 + b2);
   }
   g.restore();
 }
@@ -2908,7 +2958,8 @@ function drawAustralis(now) {
 }
 
 /* Orchideous: un jardín de girasoles crece en la noche ------------------- */
-const jardin = { activo: false, born: 0, dur: 12000, flores: [], arriba: 0, abajo: 0, polen: [] };
+const jardin = { activo: false, born: 0, dur: 15000, flores: [], arriba: 0, abajo: 0, polen: [], gotas: [], camion: 0 };
+const RIEGO = { entra: 2.6, cruza: 7.4 };   // cuándo pasa la camioneta y cuánto tarda
 
 /* La cabeza del girasol se dibuja una sola vez y luego se estampa: dos coronas
    de pétalos amarillos y el corazón oscuro con su grano. */
@@ -2978,6 +3029,7 @@ function sembrarJardin() {
   const hueco = jardin.abajo - jardin.arriba;
   jardin.flores.length = 0;
   jardin.polen.length = 0;
+  jardin.gotas.length = 0;
   const filas = REDUCED ? [[7, 0.6, 0.6], [9, 0.85, 0.82]]
     : [[8, 0.55, 0.56], [10, 0.76, 0.74], [12, 1, 0.92]];
   for (let f = 0; f < filas.length; f++) {
@@ -2986,7 +3038,7 @@ function sembrarJardin() {
       // repartidas a lo ancho con un empujón al azar, para que no parezcan una valla
       const u = (i + 0.5) / cuantas + (Math.random() - 0.5) * (0.9 / cuantas);
       jardin.flores.push({
-        u,
+        u, fila: f,
         base: jardin.arriba + hueco * hondo,
         alto: hueco * (0.24 + 0.12 * Math.random()) * esc,
         esc,
@@ -3012,7 +3064,7 @@ function castOrchideous() {
   jardin.activo = true;
   jardin.born = performance.now();
   document.body.classList.add('florido');   // la carta se aparta para dejar ver el jardín
-  ponerCielo('amanecer', jardin.dur);
+  ponerCielo('negro', jardin.dur);
   sembrarJardin();
   castFxAt(orchideousBtn, { sparks: 24, r1: 230, dur: 800 });
   gastarHechizo(orchideousBtn);
@@ -3068,31 +3120,233 @@ function dibujarGirasol(g, fl, crece, t) {
   g.restore();
 }
 
+/* La camioneta del riego: caja con su cisterna, cabina y faros encendidos */
+function dibujarCamioneta(g, x, suelo, alto, t) {
+  const k = alto / 46;
+  g.save();
+  g.translate(x, suelo);
+  g.scale(k, k);
+  g.lineJoin = 'round';
+
+  const oscuro = '#14131F';
+  // sombra en el suelo
+  const sombra = g.createRadialGradient(0, -2, 0, 0, -2, 62);
+  sombra.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+  sombra.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  g.fillStyle = sombra;
+  g.beginPath();
+  g.ellipse(0, -2, 62, 9, 0, 0, TAU);
+  g.fill();
+
+  // faros: dos conos de luz por delante
+  const faro = g.createLinearGradient(50, -24, 112, -8);
+  faro.addColorStop(0, 'rgba(255, 238, 190, 0.34)');
+  faro.addColorStop(1, 'rgba(255, 238, 190, 0)');
+  g.fillStyle = faro;
+  g.beginPath();
+  g.moveTo(52, -26);
+  g.lineTo(114, -32);
+  g.lineTo(114, 0);
+  g.lineTo(52, -18);
+  g.closePath();
+  g.fill();
+
+  // caja del remolque
+  g.fillStyle = oscuro;
+  g.beginPath();
+  g.roundRect(-54, -26, 82, 16, 3);
+  g.fill();
+
+  // cisterna de agua
+  const tanque = g.createLinearGradient(0, -48, 0, -26);
+  tanque.addColorStop(0, '#4C6E86');
+  tanque.addColorStop(0.5, '#2A3F52');
+  tanque.addColorStop(1, '#151E2A');
+  g.fillStyle = tanque;
+  g.beginPath();
+  g.roundRect(-50, -47, 72, 22, 11);
+  g.fill();
+  g.strokeStyle = 'rgba(201, 163, 74, 0.5)';
+  g.lineWidth = 1.2;
+  g.stroke();
+  // aros de la cisterna
+  g.strokeStyle = 'rgba(160, 190, 210, 0.3)';
+  g.lineWidth = 1;
+  for (const rx of [-32, -14, 4]) {
+    g.beginPath();
+    g.moveTo(rx, -46.5);
+    g.lineTo(rx, -25.5);
+    g.stroke();
+  }
+
+  // cabina
+  g.fillStyle = oscuro;
+  g.beginPath();
+  g.moveTo(26, -10);
+  g.lineTo(26, -44);
+  g.quadraticCurveTo(28, -47, 34, -47);
+  g.lineTo(46, -47);
+  g.quadraticCurveTo(52, -47, 55, -40);
+  g.lineTo(60, -28);
+  g.quadraticCurveTo(62, -25, 62, -20);
+  g.lineTo(62, -10);
+  g.closePath();
+  g.fill();
+  // parabrisas encendido por dentro
+  g.fillStyle = 'rgba(245, 211, 107, 0.4)';
+  g.beginPath();
+  g.moveTo(38, -43);
+  g.lineTo(48, -43);
+  g.quadraticCurveTo(51, -42, 53, -37);
+  g.lineTo(56, -30);
+  g.lineTo(38, -30);
+  g.closePath();
+  g.fill();
+  // faro delantero
+  g.fillStyle = 'rgba(255, 244, 206, 0.95)';
+  g.beginPath();
+  g.roundRect(56, -25, 6, 5, 2);
+  g.fill();
+
+  // canto dorado del chasis
+  g.strokeStyle = 'rgba(201, 163, 74, 0.55)';
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.moveTo(-54, -10);
+  g.lineTo(62, -10);
+  g.stroke();
+
+  // ruedas girando
+  const giro = t * 7;
+  for (const wx of [-36, 40]) {
+    g.fillStyle = '#0B0A12';
+    g.beginPath();
+    g.arc(wx, -9, 10, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(190, 200, 220, 0.45)';
+    g.lineWidth = 1.3;
+    g.beginPath();
+    g.arc(wx, -9, 6, 0, TAU);
+    g.stroke();
+    g.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a = giro + i * (TAU / 3);
+      g.moveTo(wx, -9);
+      g.lineTo(wx + Math.cos(a) * 6, -9 + Math.sin(a) * 6);
+    }
+    g.strokeStyle = 'rgba(190, 200, 220, 0.3)';
+    g.stroke();
+  }
+
+  // barra de riego en la parte de atrás
+  g.strokeStyle = 'rgba(160, 190, 210, 0.6)';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(-54, -22);
+  g.lineTo(-66, -22);
+  g.lineTo(-66, -14);
+  g.stroke();
+  g.restore();
+}
+
+/* El abanico de agua que sale de la barra */
+function regar(x, y, alto) {
+  if (jardin.gotas.length > (REDUCED ? 50 : 150)) return;
+  const cuantas = REDUCED ? 2 : 4;
+  for (let i = 0; i < cuantas; i++) {
+    // el abanico sale hacia arriba y hacia atrás (la camioneta va hacia la derecha)
+    const a = Math.PI * (0.58 + Math.random() * 0.5);
+    const v = alto * (2.8 + Math.random() * 2.4);
+    jardin.gotas.push({
+      x: x + (Math.random() - 0.5) * alto * 0.1,
+      y: y + (Math.random() - 0.5) * alto * 0.12,
+      vx: Math.cos(a) * v, vy: -Math.abs(Math.sin(a)) * v,
+      age: 0, life: 0.9 + Math.random() * 0.7,
+      r: alto * (0.016 + Math.random() * 0.022)
+    });
+  }
+}
+
+/* El abanico de agua pulverizada que sale de la barra */
+function dibujarChorro(g, x, y, alto, alpha) {
+  const L = alto * 2.3;
+  const grad = g.createLinearGradient(x, y, x - L, y - L * 0.55);
+  grad.addColorStop(0, `rgba(214, 240, 252, ${0.34 * alpha})`);
+  grad.addColorStop(0.45, `rgba(180, 222, 242, ${0.16 * alpha})`);
+  grad.addColorStop(1, 'rgba(160, 210, 235, 0)');
+  g.fillStyle = grad;
+  g.beginPath();
+  g.moveTo(x + alto * 0.06, y + alto * 0.05);
+  g.quadraticCurveTo(x - L * 0.55, y - L * 0.5, x - L, y - L * 0.52);
+  g.quadraticCurveTo(x - L * 0.6, y - L * 0.14, x - alto * 0.05, y - alto * 0.12);
+  g.closePath();
+  g.fill();
+}
+
 function drawOrchideous(now, dt) {
   if (!jardin.activo) return;
   const t = (now - jardin.born) / 1000;
   const total = jardin.dur / 1000;
-  if (t >= total) { jardin.activo = false; jardin.flores.length = 0; return; }
+  if (t >= total) { jardin.activo = false; jardin.flores.length = 0; jardin.gotas.length = 0; return; }
   const g = ctx;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   const salida = t > total - 1.6 ? clamp((total - t) / 1.6) : 1;
-
-  // un poco de luz cálida sobre el jardín, como si amaneciera ahí abajo
   const hueco = jardin.abajo - jardin.arriba;
-  const luz = g.createLinearGradient(0, jardin.arriba - hueco * 0.25, 0, panel.y + panel.h);
-  luz.addColorStop(0, 'rgba(245, 211, 107, 0)');
-  luz.addColorStop(0.45, `rgba(226, 166, 66, ${0.14 * salida})`);
-  luz.addColorStop(1, `rgba(196, 130, 44, ${0.3 * salida})`);
-  g.fillStyle = luz;
-  g.fillRect(panel.x, jardin.arriba - hueco * 0.25, panel.w, panel.y + panel.h - jardin.arriba + hueco * 0.25);
+
+  // en la noche cerrada, un suelo apenas insinuado bajo las flores
+  const suelo = g.createLinearGradient(0, jardin.arriba + hueco * 0.5, 0, panel.y + panel.h);
+  suelo.addColorStop(0, 'rgba(20, 30, 22, 0)');
+  suelo.addColorStop(1, `rgba(26, 40, 28, ${0.55 * salida})`);
+  g.fillStyle = suelo;
+  g.fillRect(panel.x, jardin.arriba + hueco * 0.5, panel.w, panel.y + panel.h - jardin.arriba - hueco * 0.5);
 
   g.globalAlpha = salida;
-  for (const fl of jardin.flores) {
-    const crece = clamp((t - fl.retraso) / 1.1);
-    if (crece <= 0) continue;
-    dibujarGirasol(g, fl, easeOutCubic(crece), t);
+  const pinta = fila => {
+    for (const fl of jardin.flores) {
+      if (fl.fila !== fila) continue;
+      const crece = clamp((t - fl.retraso) / 1.1);
+      if (crece > 0) dibujarGirasol(g, fl, easeOutCubic(crece), t);
+    }
+  };
+  pinta(0);
+  pinta(1);
+  pinta(2);
+
+  // la camioneta cruza el jardín por delante, regando hacia atrás
+  const tc = t - RIEGO.entra;
+  if (tc > 0 && tc < RIEGO.cruza) {
+    const e = tc / RIEGO.cruza;
+    const alto = Math.min(hueco * 0.19, panel.w * 0.2);
+    const k = alto / 46;
+    const cx = panel.x + lerp(-0.28, 1.3, e) * panel.w;
+    const base = jardin.abajo - 2;
+    dibujarCamioneta(g, cx, base, alto, tc);
+    if (e > 0.02 && e < 0.95) {
+      dibujarChorro(g, cx - 66 * k, base - 20 * k, alto, salida);
+      regar(cx - 66 * k, base - 20 * k, alto);
+    }
   }
   g.globalAlpha = 1;
+
+  // gotas de agua: suben, caen y se apagan sobre las flores
+  for (let i = jardin.gotas.length - 1; i >= 0; i--) {
+    const d = jardin.gotas[i];
+    d.age += dt;
+    if (d.age >= d.life || d.y > jardin.abajo + hueco * 0.04) { jardin.gotas.splice(i, 1); continue; }
+    d.vy += hueco * 1.15 * dt;
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    const a = (1 - d.age / d.life) * 0.7 * salida;
+    const vel = Math.hypot(d.vx, d.vy) || 1;
+    const largo = clamp(vel * 0.018, d.r, d.r * 5);
+    g.strokeStyle = `rgba(200, 234, 250, ${a})`;
+    g.lineWidth = Math.max(1, d.r);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(d.x, d.y);
+    g.lineTo(d.x - (d.vx / vel) * largo, d.y - (d.vy / vel) * largo);
+    g.stroke();
+  }
 
   // polen flotando entre las flores
   if (dustSprite) {
@@ -3418,6 +3672,7 @@ function resetExtras() {
   australia.activo = false;
   jardin.activo = false;
   jardin.flores.length = 0;
+  jardin.gotas.length = 0;
   quitarCielo();
   document.body.classList.remove('florido');
   inviteEl.hidden = true;

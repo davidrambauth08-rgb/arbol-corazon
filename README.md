@@ -35,13 +35,13 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Wingardium Leviosa** | en la tarjeta | eleva la tarjeta con la foto y el recuerdo |
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la noche pasa al otro hemisferio, la carta se aparta, se enciende la Cruz del Sur, un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
-| **Orchideous** | fila de hechizos del árbol | amanece sobre el bosque, la carta se aparta y crece un jardín de girasoles, con polen dorado flotando |
+| **Orchideous** | fila de hechizos del árbol | la noche se vuelve negra, la carta se aparta, crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
 **La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Tempus viven en una fila fija debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
 
-**Cada hechizo trae su cielo** (`CIELOS` en script.js): Dracarys enciende un cielo de brasas, Terra Australis lo lleva al hemisferio sur (azul profundo y muchas más estrellas) y Orchideous hace amanecer, con el sol asomando por detrás del bosque. El cielo del hechizo se mezcla sobre el de la estación y vuelve solo al acabar, así que se puede combinar con Tempus sin romper nada.
+**Cada hechizo trae su cielo** (`CIELOS` en script.js): Dracarys enciende un cielo de brasas, Terra Australis lo lleva al hemisferio sur (azul profundo y muchas más estrellas) y Orchideous apaga el cielo hasta el negro, para que el amarillo de los girasoles cante. El cielo del hechizo se mezcla sobre el de la estación y vuelve solo al acabar, así que se puede combinar con Tempus sin romper nada.
 
 **Estaciones** (`CONFIG.estaciones`): cada toque de Tempus cambia la copa, la luz del bosque y lo que cae. Primavera (rosas y blancos, pétalos), verano (como siempre), otoño (ámbar y cobre, hojas) e invierno (copa más escasa en rojos y hielo, con nieve). `inicial` elige con cuál empieza, `orden` el recorrido, `nombres` los carteles y `activo: false` lo desactiva.
 
