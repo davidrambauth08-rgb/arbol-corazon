@@ -441,6 +441,66 @@ function parseRGB(str) {
 const mixRGB = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
 const rgbStr = (c, a = 1) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
 
+/* Cada hechizo de escena trae su propio cielo: mientras dura, el fondo deja de
+   ser la misma noche de siempre. Se mezcla sobre la estación, así que nada se
+   rompe si además se cambia de estación. */
+const CIELOS = {
+  amanecer: {                                   // Orchideous: sale el sol sobre el jardín
+    cielo: ['#20457F', '#D8814F', '#F8D588'],
+    horizonte: '255, 198, 112',
+    estrellas: 0.06,
+    siluetas: ['52, 44, 64', '28, 22, 34'],
+    niebla: { color: '255, 232, 196', alpha: 0.11 },
+    sol: { x: 0.68, alto: 0.045, radio: 0.055, color: '255, 214, 120' }
+  },
+  brasas: {                                     // Dracarys: la noche se vuelve ceniza y fuego
+    cielo: ['#2A0D15', '#6E1C1D', '#C44B22'],
+    horizonte: '255, 124, 52',
+    estrellas: 0.22,
+    siluetas: ['44, 16, 18', '22, 8, 10'],
+    niebla: { color: '255, 174, 122', alpha: 0.08 },
+    sol: null
+  },
+  austral: {                                    // Terra Australis: el cielo del otro hemisferio
+    cielo: ['#03101F', '#092536', '#11475D'],
+    horizonte: '62, 166, 184',
+    estrellas: 1.9,
+    siluetas: ['10, 22, 32', '5, 12, 18'],
+    niebla: { color: '184, 232, 242', alpha: 0.05 },
+    sol: null
+  }
+};
+for (const n in CIELOS) {
+  const C = CIELOS[n];
+  C.cieloRGB = C.cielo.map(parseRGB);
+  C.horizonteRGB = parseRGB(C.horizonte);
+  C.siluetasRGB = C.siluetas.map(parseRGB);
+  C.nieblaRGB = parseRGB(C.niebla.color);
+}
+
+/* Cielo del hechizo en curso: entra en 1,2 s y se va en 1,6 s */
+const cielo = { mood: null, t0: 0, dur: 0, k: 0 };
+function ponerCielo(nombre, dur) {
+  if (!CIELOS[nombre]) return;
+  cielo.mood = CIELOS[nombre];
+  cielo.t0 = performance.now();
+  cielo.dur = dur;
+}
+function quitarCielo() { cielo.mood = null; cielo.k = 0; }
+function pasoCielo(now) {
+  if (!cielo.mood) { cielo.k = 0; return; }
+  const t = now - cielo.t0;
+  if (t > cielo.dur) { quitarCielo(); return; }
+  cielo.k = clamp(Math.min(t / 1200, (cielo.dur - t) / 1600));
+}
+/* Mezcla el valor de la estación con el del cielo del hechizo */
+function cMix(base, pick) {
+  if (!cielo.mood || cielo.k <= 0) return base;
+  const otro = pick(cielo.mood);
+  if (otro == null) return base;
+  return typeof base === 'number' ? lerp(base, otro, cielo.k) : mixRGB(base, otro, cielo.k);
+}
+
 /* Deja cada estación con sus colores ya interpretados */
 for (const name in SEASONS) {
   const S2 = SEASONS[name];
@@ -1333,7 +1393,10 @@ function drawSeasonBackground(now) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.globalAlpha = 1;
 
-  const c0 = sMix(x => x.cieloRGB[0]), c1 = sMix(x => x.cieloRGB[1]), c2 = sMix(x => x.cieloRGB[2]);
+  pasoCielo(now);
+  const c0 = cMix(sMix(x => x.cieloRGB[0]), m => m.cieloRGB[0]);
+  const c1 = cMix(sMix(x => x.cieloRGB[1]), m => m.cieloRGB[1]);
+  const c2 = cMix(sMix(x => x.cieloRGB[2]), m => m.cieloRGB[2]);
   const sky = g.createLinearGradient(0, 0, 0, vh);
   sky.addColorStop(0, rgbStr(c0));
   sky.addColorStop(0.5, rgbStr(c1));
@@ -1341,7 +1404,7 @@ function drawSeasonBackground(now) {
   g.fillStyle = sky;
   g.fillRect(0, 0, vw, vh);
 
-  const hz = sMix(x => x.horizonteRGB);
+  const hz = cMix(sMix(x => x.horizonteRGB), m => m.horizonteRGB);
   const glow = g.createRadialGradient(vw / 2, horizonY, 0, vw / 2, horizonY, Math.max(vw, vh) * 0.75);
   glow.addColorStop(0, rgbStr(hz, 0.42));
   glow.addColorStop(0.45, rgbStr(hz, 0.16));
@@ -1349,13 +1412,34 @@ function drawSeasonBackground(now) {
   g.fillStyle = glow;
   g.fillRect(0, 0, vw, vh);
 
+  // el sol del amanecer asoma por detrás del bosque
+  const sol = cielo.mood && cielo.mood.sol;
+  if (sol && cielo.k > 0) {
+    const sx = vw * sol.x, sy = horizonY - vh * sol.alto * cielo.k, r = vh * sol.radio;
+    const halo = g.createRadialGradient(sx, sy, 0, sx, sy, r * 6);
+    halo.addColorStop(0, `rgba(${sol.color}, ${0.5 * cielo.k})`);
+    halo.addColorStop(0.25, `rgba(${sol.color}, ${0.16 * cielo.k})`);
+    halo.addColorStop(1, `rgba(${sol.color}, 0)`);
+    g.fillStyle = halo;
+    g.fillRect(sx - r * 6, sy - r * 6, r * 12, r * 12);
+    const disco = g.createRadialGradient(sx, sy, 0, sx, sy, r);
+    disco.addColorStop(0, `rgba(255, 249, 226, ${0.95 * cielo.k})`);
+    disco.addColorStop(0.7, `rgba(255, 228, 156, ${0.9 * cielo.k})`);
+    disco.addColorStop(1, `rgba(255, 196, 104, ${0.8 * cielo.k})`);
+    g.fillStyle = disco;
+    g.beginPath();
+    g.arc(sx, sy, r, 0, TAU);
+    g.fill();
+  }
+
   if (bgCanvas) {
-    g.globalAlpha = clamp(sMix(x => x.estrellas), 0, 1.4);
+    g.globalAlpha = clamp(cMix(sMix(x => x.estrellas), m => m.estrellas), 0, 2);
     g.drawImage(bgCanvas, 0, 0, vw, vh);
     g.globalAlpha = 1;
   }
 
-  const sil0 = sMix(x => x.siluetasRGB[0]), sil1 = sMix(x => x.siluetasRGB[1]);
+  const sil0 = cMix(sMix(x => x.siluetasRGB[0]), m => m.siluetasRGB[0]);
+  const sil1 = cMix(sMix(x => x.siluetasRGB[1]), m => m.siluetasRGB[1]);
   if (silhouettes.length) {
     g.fillStyle = rgbStr(sil0, silhouettes[0].alpha);
     g.fill(silhouettes[0].path);
@@ -1365,8 +1449,8 @@ function drawSeasonBackground(now) {
 
   // niebla que se desplaza muy despacio sobre el suelo del bosque
   if (FX_ON.niebla) {
-    const mistC = sMix(x => x.nieblaRGB);
-    const mistA = sMix(x => x.niebla.alpha) * ambient.nox;
+    const mistC = cMix(sMix(x => x.nieblaRGB), m => m.nieblaRGB);
+    const mistA = cMix(sMix(x => x.niebla.alpha), m => m.niebla.alpha) * ambient.nox;
     const time = now / 1000;
     for (let i = 0; i < 2; i++) {
       const y = horizonY - vh * (0.02 + i * 0.05);
@@ -2361,6 +2445,7 @@ function castDracarys() {
   dracarys.dir = Math.random() < 0.5 ? 1 : -1;
   dracarys.brasas.length = 0;
   dracarys.onda = -1;
+  ponerCielo('brasas', dracarys.dur);
   castFxAt(dracarysBtn, { sparks: 26, r1: 210, dur: 700 });
 }
 
@@ -2637,6 +2722,7 @@ function castAustralis() {
     { tipo: 'raptor', desde: -0.12, para: 0.74, hasta: 1.4, lejos: 0.55, retraso: 0, dy: 0.22, habla: false, chico: 0.52 }
   ];
   document.body.classList.add('australis');   // la carta se aparta para dejar ver la noche
+  ponerCielo('austral', australia.dur + 1200);
   sitioAustralis();
   castFxAt(australisBtn, { sparks: 22, r1: 220, dur: 800 });
   gastarHechizo(australisBtn);
@@ -2926,6 +3012,7 @@ function castOrchideous() {
   jardin.activo = true;
   jardin.born = performance.now();
   document.body.classList.add('florido');   // la carta se aparta para dejar ver el jardín
+  ponerCielo('amanecer', jardin.dur);
   sembrarJardin();
   castFxAt(orchideousBtn, { sparks: 24, r1: 230, dur: 800 });
   gastarHechizo(orchideousBtn);
@@ -2992,11 +3079,12 @@ function drawOrchideous(now, dt) {
 
   // un poco de luz cálida sobre el jardín, como si amaneciera ahí abajo
   const hueco = jardin.abajo - jardin.arriba;
-  const luz = g.createLinearGradient(0, jardin.arriba, 0, jardin.abajo + hueco * 0.1);
+  const luz = g.createLinearGradient(0, jardin.arriba - hueco * 0.25, 0, panel.y + panel.h);
   luz.addColorStop(0, 'rgba(245, 211, 107, 0)');
-  luz.addColorStop(1, `rgba(214, 160, 48, ${0.16 * salida})`);
+  luz.addColorStop(0.45, `rgba(226, 166, 66, ${0.14 * salida})`);
+  luz.addColorStop(1, `rgba(196, 130, 44, ${0.3 * salida})`);
   g.fillStyle = luz;
-  g.fillRect(panel.x, jardin.arriba, panel.w, hueco * 1.1);
+  g.fillRect(panel.x, jardin.arriba - hueco * 0.25, panel.w, panel.y + panel.h - jardin.arriba + hueco * 0.25);
 
   g.globalAlpha = salida;
   for (const fl of jardin.flores) {
@@ -3330,6 +3418,7 @@ function resetExtras() {
   australia.activo = false;
   jardin.activo = false;
   jardin.flores.length = 0;
+  quitarCielo();
   document.body.classList.remove('florido');
   inviteEl.hidden = true;
   inviteEl.classList.remove('show');
