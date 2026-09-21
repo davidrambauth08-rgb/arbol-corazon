@@ -2679,22 +2679,148 @@ function drawDracarys(now, dt) {
 }
 
 /* Terra Australis: la Cruz del Sur, dos dinosaurios cruzando la noche y una invitación */
-const australia = { activo: false, born: 0, dur: 10000, dinos: [], cielo: 0, linea: 0, alto: 60, arriba: 0, abajo: 0 };
+const australia = { activo: false, born: 0, dur: 10000, dinos: [], cielo: 0, linea: 0, alto: 60, arriba: 0, abajo: 0, horizonte: 0, nubes: [] };
+const AUS_APAGON = 0.9;   // lo que tarda la escena de siempre en dar paso a la austral
 
 /* Mientras dura el hechizo la carta se aparta (como en Lingua Amoris), así que
    los dinosaurios se quedan con la mitad baja de la escena: estrellas arriba,
    ellos en medio y la invitación debajo. */
 function sitioAustralis() {
-  const reloj = clockEl.getBoundingClientRect();
-  const arriba = panel.y + panel.h * 0.42;
-  const abajo = Math.max(arriba + 150, reloj.top - 10);
+  // el hechizo se queda con la pantalla: reparte cielo, horizonte y suelo
+  const arriba = panel.y + panel.h * 0.12;
+  const abajo = panel.y + panel.h - 16;
   const hueco = abajo - arriba;
   australia.arriba = arriba;
   australia.abajo = abajo;
-  australia.cielo = arriba + hueco * 0.14;
-  australia.linea = arriba + hueco * 0.56;
-  australia.alto = Math.min(hueco * 0.3, panel.h * 0.115);
-  inviteEl.style.top = arriba + hueco * 0.34 + 'px';
+  australia.cielo = arriba + hueco * 0.1;           // la Cruz del Sur, arriba del todo
+  australia.horizonte = arriba + hueco * 0.52;      // donde el cielo toca la tierra
+  australia.linea = arriba + hueco * 0.8;           // por donde caminan
+  australia.alto = Math.min(hueco * 0.26, panel.h * 0.17);
+  inviteEl.style.top = arriba + hueco * 0.2 + 'px';
+  australia.nubes = [
+    { x: 0.16, y: 0.58, w: 0.32, v: 0.006, a: 0.34 },
+    { x: 0.6, y: 0.74, w: 0.4, v: 0.004, a: 0.3 },
+    { x: 0.42, y: 0.42, w: 0.24, v: 0.009, a: 0.2 }
+  ];
+}
+
+/* Una nube blanda: tres bultos superpuestos */
+function dibujarNube(g, x, y, w, alpha) {
+  g.fillStyle = `rgba(255, 226, 208, ${alpha})`;
+  const r = w * 0.3;
+  g.beginPath();
+  g.ellipse(x - w * 0.25, y, r * 0.8, r * 0.46, 0, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.ellipse(x, y - r * 0.2, r, r * 0.6, 0, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.ellipse(x + w * 0.28, y + r * 0.05, r * 0.7, r * 0.42, 0, 0, TAU);
+  g.fill();
+}
+
+/* Una palmera de silueta, con el tronco curvado */
+function dibujarPalmera(g, x, suelo, alto, lado, color) {
+  g.save();
+  g.translate(x, suelo);
+  g.scale(lado, 1);
+  g.strokeStyle = color;
+  g.lineWidth = alto * 0.045;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(0, 0);
+  g.quadraticCurveTo(alto * 0.12, -alto * 0.55, alto * 0.05, -alto);
+  g.stroke();
+  g.fillStyle = color;
+  const cx = alto * 0.05, cy = -alto;
+  const copa = [[-0.52, 0.04], [-0.42, -0.26], [-0.1, -0.4], [0.28, -0.3], [0.46, -0.02], [0.3, 0.16]];
+  for (const [dx, dy] of copa) {
+    const L = alto * 0.62;                       // largo de la hoja
+    const tx = cx + dx * L * 1.6, ty = cy + dy * L * 1.6;
+    const mx = cx + dx * L * 0.8, my = cy + dy * L * 0.8;
+    const ancho = alto * 0.13;
+    g.beginPath();
+    g.moveTo(cx, cy);
+    g.quadraticCurveTo(mx - ancho * 0.2, my - ancho, tx, ty);   // borde de arriba
+    g.quadraticCurveTo(mx + ancho * 0.2, my + ancho, cx, cy);   // borde de abajo
+    g.closePath();
+    g.fill();
+  }
+  g.beginPath();                      // cocos
+  g.arc(alto * 0.02, -alto * 0.96, alto * 0.035, 0, TAU);
+  g.arc(alto * 0.1, -alto * 0.93, alto * 0.03, 0, TAU);
+  g.fill();
+  g.restore();
+}
+
+/* El otro lado del mundo: atardecer, nubes, un volcán y palmeras */
+function dibujarEscenaAustral(g, k, t) {
+  if (k <= 0) return;
+  const hz = australia.horizonte;
+  g.save();
+  g.globalAlpha = k;
+
+  const cielo = g.createLinearGradient(0, 0, 0, hz);
+  cielo.addColorStop(0, '#1E2A62');
+  cielo.addColorStop(0.34, '#59478C');
+  cielo.addColorStop(0.66, '#C0697C');
+  cielo.addColorStop(0.87, '#EE9A6B');
+  cielo.addColorStop(1, '#F9D296');
+  g.fillStyle = cielo;
+  g.fillRect(0, 0, vw, hz + 1);
+
+  // el sol se va por el horizonte
+  const sx = vw * 0.74, sy = hz - vh * 0.012, r = vh * 0.045;
+  const halo = g.createRadialGradient(sx, sy, 0, sx, sy, r * 7);
+  halo.addColorStop(0, 'rgba(255, 220, 150, 0.5)');
+  halo.addColorStop(0.3, 'rgba(255, 180, 110, 0.16)');
+  halo.addColorStop(1, 'rgba(255, 160, 100, 0)');
+  g.fillStyle = halo;
+  g.fillRect(sx - r * 7, sy - r * 7, r * 14, r * 14);
+  g.fillStyle = 'rgba(255, 244, 214, 0.95)';
+  g.beginPath();
+  g.arc(sx, sy, r, 0, TAU);
+  g.fill();
+
+  const anchoNube = Math.min(vw, vh * 1.35);   // en horizontal no deben comerse el cielo
+  for (const n of australia.nubes) {
+    const nx = (((n.x + n.v * t) % 1.3) - 0.15) * vw;
+    dibujarNube(g, nx, hz * n.y, anchoNube * n.w, n.a);
+  }
+
+  // volcán al fondo, con su penacho
+  const vx = vw * 0.18, valto = vh * 0.07;
+  g.fillStyle = 'rgba(70, 52, 86, 0.9)';
+  g.beginPath();
+  g.moveTo(vx - valto * 1.45, hz + 1);
+  g.quadraticCurveTo(vx - valto * 0.78, hz - valto * 0.34, vx - valto * 0.26, hz - valto);
+  g.lineTo(vx + valto * 0.26, hz - valto);
+  g.quadraticCurveTo(vx + valto * 0.82, hz - valto * 0.34, vx + valto * 1.5, hz + 1);
+  g.closePath();
+  g.fill();
+  g.fillStyle = 'rgba(255, 166, 110, 0.5)';
+  g.beginPath();
+  g.ellipse(vx, hz - valto, valto * 0.2, valto * 0.06, 0, 0, TAU);
+  g.fill();
+  dibujarNube(g, vx + Math.sin(t * 0.3) * vw * 0.01, hz - valto * 1.7, vw * 0.1, 0.3);
+
+  // tierra
+  const tierra = g.createLinearGradient(0, hz, 0, vh);
+  tierra.addColorStop(0, '#77935C');
+  tierra.addColorStop(0.35, '#55764A');
+  tierra.addColorStop(1, '#2E4433');
+  g.fillStyle = tierra;
+  g.fillRect(0, hz, vw, vh - hz);
+  const rasante = g.createLinearGradient(0, hz, 0, hz + (vh - hz) * 0.3);
+  rasante.addColorStop(0, 'rgba(255, 214, 150, 0.28)');
+  rasante.addColorStop(1, 'rgba(255, 214, 150, 0)');
+  g.fillStyle = rasante;                        // la luz del sol rasando la hierba
+  g.fillRect(0, hz, vw, (vh - hz) * 0.3);
+
+  // palmeras: dos al fondo y una grande delante
+  dibujarPalmera(g, vw * 0.1, hz + (vh - hz) * 0.14, vh * 0.15, 1, 'rgba(46, 70, 54, 0.85)');
+  dibujarPalmera(g, vw * 0.88, hz + (vh - hz) * 0.1, vh * 0.12, -1, 'rgba(46, 70, 54, 0.85)');
+  g.restore();
 }
 
 /* Deja la invitación dentro del hueco, ya sabiendo lo que ocupa */
@@ -2713,7 +2839,7 @@ function castAustralis() {
   if (australia.activo || FX_ON.australis === false) return;
   australia.activo = true;
   australia.born = performance.now();
-  australia.dur = (AUS.entra + AUS.espera + AUS.sale) * 1000;
+  australia.dur = (AUS_FIN + 0.6) * 1000;   // la escena aguanta hasta que se va la invitación
   australia.dijo = false;
   australia.dinos = [
     // el grande se acerca de frente y se queda hablando
@@ -2721,8 +2847,7 @@ function castAustralis() {
     // el pequeño llega antes, se planta un poco más allá y se va el primero
     { tipo: 'raptor', desde: -0.12, para: 0.74, hasta: 1.4, lejos: 0.55, retraso: 0, dy: 0.22, habla: false, chico: 0.62 }
   ];
-  document.body.classList.add('australis');   // la carta se aparta para dejar ver la noche
-  ponerCielo('austral', australia.dur + 1200);
+  document.body.classList.add('australis');   // la escena de siempre da paso al otro hemisferio
   sitioAustralis();
   castFxAt(australisBtn, { sparks: 22, r1: 220, dur: 800 });
   gastarHechizo(australisBtn);
@@ -2789,143 +2914,180 @@ function dibujarCruzDelSur(g, x, y, escala, alpha) {
   }
 }
 
-/* Siluetas de dinosaurio. Las patas apoyan en la altura 0 y la cabeza queda
-   alrededor de -85: la escala lleva ese alto a píxeles. Parado planta las patas
-   y se balancea sobre ellas, como si te estuviera hablando. */
+/* Dinosaurios de dibujo: cuerpo redondo, panza clara, crestas, ojos grandes
+   y mofletes. Las patas apoyan en la altura 0 y la cabeza queda cerca de -85. */
 function dibujarDino(g, tipo, x, suelo, alto, paso, alpha, andando, t) {
   g.save();
   g.translate(x, suelo);
   g.scale(alto / 85, alto / 85);
-  if (!andando) g.rotate(Math.sin(t * (tipo === 'raptor' ? 2.5 : 1.7)) * (tipo === 'raptor' ? 0.05 : 0.045));
+  if (!andando) g.rotate(Math.sin(t * (tipo === 'raptor' ? 2.4 : 1.6)) * (tipo === 'raptor' ? 0.045 : 0.035));
+  g.globalAlpha = alpha;
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
 
-  // el cuerpo recoge algo de luna por arriba y se funde con la noche por abajo
-  const piel = g.createLinearGradient(0, -alto, 0, 0);
-  piel.addColorStop(0, `rgba(58, 62, 86, ${alpha})`);
-  piel.addColorStop(0.55, `rgba(24, 24, 42, ${alpha})`);
-  piel.addColorStop(1, `rgba(8, 7, 16, ${alpha})`);
-  const fondo = `rgba(10, 10, 20, ${alpha * 0.75})`;   // las patas del otro lado
-  const canto = `rgba(198, 222, 250, ${alpha * 0.4})`;
+  const P = tipo === 'saurio'
+    ? { piel: '#79C9DC', hondo: '#57AAC0', panza: '#E8F7FA', cresta: '#3F93AC', linea: '#2E6F85' }
+    : { piel: '#96CE8A', hondo: '#77B26F', panza: '#F1F8DF', cresta: '#E8A24A', linea: '#4E7F4A' };
 
-  // sombra en el suelo: sin ella parecen flotar
-  const anchoSombra = tipo === 'saurio' ? 52 : 30;
-  const sombra = g.createRadialGradient(tipo === 'saurio' ? -8 : -2, 0, 0, tipo === 'saurio' ? -8 : -2, 0, anchoSombra);
-  sombra.addColorStop(0, `rgba(0, 0, 0, ${alpha * 0.45})`);
-  sombra.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  g.fillStyle = sombra;
-  g.beginPath();
-  g.ellipse(tipo === 'saurio' ? -8 : -2, 0, anchoSombra, anchoSombra * 0.17, 0, 0, TAU);
-  g.fill();
-
-  /* una pata: cadera, rodilla, tobillo y pie */
-  const pata = (color, grosor, hx, hy, kx, ky, ax, ay, fx) => {
-    g.strokeStyle = color;
-    g.lineWidth = grosor;
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
-    g.beginPath();
-    g.moveTo(hx, hy);
-    g.lineTo(kx, ky);
-    g.lineTo(ax, ay);
-    g.lineTo(fx, -1.5);
-    g.stroke();
-    g.lineWidth = grosor * 0.62;         // pie apoyado
-    g.beginPath();
-    g.moveTo(fx - grosor * 0.25, -1.2);
-    g.lineTo(fx + grosor * 0.62, -1.2);
-    g.stroke();
-  };
-  const pintar = () => {
-    g.fillStyle = piel;
-    g.fill();
-    g.strokeStyle = canto;
-    g.lineWidth = 1.2;
-    g.lineJoin = 'round';
-    g.stroke();
-  };
+  const circulo = (cx, cy, r) => { g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill(); };
   const ojo = (ex, ey, r) => {
-    g.fillStyle = `rgba(226, 240, 255, ${alpha * 0.85})`;
+    g.fillStyle = '#FFFFFF'; circulo(ex, ey, r);
+    g.fillStyle = '#2C2536'; circulo(ex + r * 0.16, ey + r * 0.08, r * 0.56);
+    g.fillStyle = '#FFFFFF'; circulo(ex + r * 0.46, ey - r * 0.42, r * 0.26);
+  };
+  const moflete = (cx, cy, rx) => {
+    g.fillStyle = 'rgba(240, 118, 138, 0.55)';
+    g.beginPath(); g.ellipse(cx, cy, rx, rx * 0.68, 0, 0, TAU); g.fill();
+  };
+  const sonrisa = (cx, cy, r) => {
+    g.strokeStyle = P.linea; g.lineWidth = 1.6;
+    g.beginPath(); g.arc(cx, cy, r, Math.PI * 0.12, Math.PI * 0.88); g.stroke();
+  };
+  /* crestas: triangulitos redondeados a lo largo del lomo */
+  const cresta = puntos => {
+    g.fillStyle = P.cresta;
+    for (let i = 0; i < puntos.length; i++) {
+      const [px, py, tam] = puntos[i];
+      g.beginPath();
+      g.moveTo(px - tam, py + tam * 0.35);
+      g.quadraticCurveTo(px, py - tam * 1.5, px + tam, py + tam * 0.35);
+      g.closePath();
+      g.fill();
+    }
+  };
+  /* pata gordita con sus deditos */
+  const pata = (color, px, py, ancho, largo, desliz) => {
+    g.fillStyle = color;
     g.beginPath();
-    g.arc(ex, ey, r, 0, TAU);
+    g.roundRect(px + desliz - ancho / 2, py, ancho, largo, [ancho * 0.35, ancho * 0.35, ancho * 0.45, ancho * 0.45]);
     g.fill();
+    g.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    g.lineWidth = 1.1;
+    for (let i = 0; i < 2; i++) {
+      g.beginPath();
+      g.moveTo(px + desliz - ancho * 0.18 + i * ancho * 0.36, py + largo - ancho * 0.3);
+      g.lineTo(px + desliz - ancho * 0.18 + i * ancho * 0.36, py + largo - 1);
+      g.stroke();
+    }
   };
 
-  if (tipo === 'saurio') {               // cuello largo, paso pesado
-    const b1 = andando ? Math.sin(paso) * 8 : 1.5;
-    const b2 = andando ? Math.sin(paso + Math.PI) * 8 : -1.5;
-    // patas del otro lado, más apagadas
-    pata(fondo, 7.5, -26, -34, -28, -22, -27, -11, -26 + b1 * 0.7);
-    pata(fondo, 7.5, 4, -38, 2, -24, 4, -12, 5 + b2 * 0.7);
+  // sombra en el suelo
+  const anchoSombra = tipo === 'saurio' ? 48 : 30;
+  const som = g.createRadialGradient(-4, 0, 0, -4, 0, anchoSombra);
+  som.addColorStop(0, 'rgba(40, 30, 60, 0.32)');
+  som.addColorStop(1, 'rgba(40, 30, 60, 0)');
+  g.fillStyle = som;
+  g.beginPath(); g.ellipse(-4, 0, anchoSombra, anchoSombra * 0.2, 0, 0, TAU); g.fill();
 
-    // cuerpo, cola y cuello de una pieza
+  if (tipo === 'saurio') {                 // cuello largo, tipo braquiosaurio bebé
+    const b1 = andando ? Math.sin(paso) * 5 : 0;
+    const b2 = andando ? Math.sin(paso + Math.PI) * 5 : 0;
+    pata(P.hondo, -22, -26, 15, 26, b1 * 0.6);     // patas del fondo
+    pata(P.hondo, 8, -26, 15, 26, b2 * 0.6);
+
+    // cola
+    g.fillStyle = P.piel;
     g.beginPath();
-    g.moveTo(-74, -30);                     // punta de la cola
-    g.quadraticCurveTo(-56, -40, -38, -46); // cola subiendo al lomo
-    g.quadraticCurveTo(-20, -54, -2, -57);  // lomo
-    g.quadraticCurveTo(12, -59, 20, -60);   // cruz
-    g.quadraticCurveTo(34, -64, 41, -76);   // cuello
-    g.quadraticCurveTo(46, -87, 53, -88);   // nuca
-    g.quadraticCurveTo(62, -89, 63, -82);   // cabeza
-    g.quadraticCurveTo(68, -80, 62, -77);   // morro
-    g.quadraticCurveTo(55, -76, 50, -78);   // mandíbula
-    g.quadraticCurveTo(43, -73, 36, -59);   // garganta
-    g.quadraticCurveTo(28, -44, 14, -38);   // pecho
-    g.quadraticCurveTo(-4, -32, -22, -31);  // vientre
-    g.quadraticCurveTo(-46, -30, -74, -30);
+    g.moveTo(-26, -50);
+    g.quadraticCurveTo(-56, -52, -74, -34);
+    g.quadraticCurveTo(-58, -30, -40, -30);
     g.closePath();
-    pintar();
-    ojo(57, -83, 1.8);
+    g.fill();
 
-    // patas de este lado, por delante del cuerpo
-    pata(piel, 8.5, -22, -35, -24, -22, -23, -11, -22 + b2);
-    pata(piel, 8.5, 8, -39, 6, -25, 8, -12, 9 + b1);
-  } else {                               // raptor: pecho hondo, cola tiesa
-    const b1 = andando ? Math.sin(paso * 1.4) * 9 : 2;
-    const b2 = andando ? Math.sin(paso * 1.4 + Math.PI) * 9 : -2;
-    pata(fondo, 4.5, -4, -34, -14, -22, -2, -10, -3 + b1 * 0.7);
-
+    // cuello y cabeza
+    g.fillStyle = P.piel;
     g.beginPath();
-    g.moveTo(-60, -54);                     // punta de la cola
-    g.quadraticCurveTo(-42, -51, -26, -49);
-    g.quadraticCurveTo(-12, -48, -2, -53);  // cadera y lomo
-    g.quadraticCurveTo(8, -58, 16, -63);    // cuello
-    g.quadraticCurveTo(24, -69, 33, -66);   // nuca
-    g.quadraticCurveTo(43, -64, 45, -58);   // morro
-    g.quadraticCurveTo(39, -56, 32, -56);   // mandíbula
-    g.quadraticCurveTo(24, -53, 17, -46);   // garganta
-    g.quadraticCurveTo(9, -37, -2, -33);    // pecho
-    g.quadraticCurveTo(-18, -29, -32, -39); // vientre
-    g.quadraticCurveTo(-46, -47, -60, -54);
+    g.moveTo(6, -44);
+    g.quadraticCurveTo(22, -58, 34, -74);      // borde de atrás del cuello
+    g.quadraticCurveTo(40, -86, 52, -84);
+    g.quadraticCurveTo(62, -83, 61, -73);      // cabeza
+    g.quadraticCurveTo(60, -66, 50, -65);
+    g.quadraticCurveTo(40, -64, 32, -56);      // delantera del cuello
+    g.quadraticCurveTo(26, -48, 22, -38);
     g.closePath();
-    pintar();
-    ojo(37, -62, 1.5);
+    g.fill();
 
-    // bracito y pata de este lado
-    g.strokeStyle = piel;
-    g.lineWidth = 3;
+    // cuerpo
+    g.fillStyle = P.piel;
+    g.beginPath(); g.ellipse(-8, -42, 33, 24, -0.06, 0, TAU); g.fill();
+    g.fillStyle = P.panza;
+    g.beginPath(); g.ellipse(-4, -33, 21, 13, -0.04, 0, TAU); g.fill();
+
+    // hocico, ojo, moflete y sonrisa
+    g.fillStyle = P.piel;
+    g.beginPath(); g.ellipse(60, -72, 7, 6, 0, 0, TAU); g.fill();
+    g.fillStyle = P.linea;
+    circulo(63, -74, 1.1);
+    ojo(53, -78, 5.2);
+    moflete(46, -71, 4.4);
+    sonrisa(57, -70, 4);
+
+    cresta([[-54, -43, 3], [-38, -51, 3.8], [-20, -59, 4.4], [-2, -62, 4.4], [16, -57, 4], [28, -47, 3.4]]);
+
+    pata(P.piel, -18, -24, 17, 24, b2);            // patas de delante
+    pata(P.piel, 12, -24, 17, 24, b1);
+  } else {                                 // pequeñín regordete con crestas
+    const b1 = andando ? Math.sin(paso * 1.3) * 5 : 0;
+    const b2 = andando ? Math.sin(paso * 1.3 + Math.PI) * 5 : 0;
+    pata(P.hondo, -6, -22, 14, 22, b1 * 0.6);
+
+    // cola
+    g.fillStyle = P.piel;
     g.beginPath();
-    g.moveTo(6, -42);
-    g.lineTo(14, -36);
-    g.lineTo(20, -38);
-    g.stroke();
-    pata(piel, 5, -1, -35, -11, -22, 2, -10, 3 + b2);
+    g.moveTo(-16, -48);
+    g.quadraticCurveTo(-42, -50, -58, -34);
+    g.quadraticCurveTo(-40, -28, -24, -30);
+    g.closePath();
+    g.fill();
+
+    // cuerpo y cabeza de una pieza
+    g.fillStyle = P.piel;
+    g.beginPath(); g.ellipse(-2, -40, 27, 22, -0.05, 0, TAU); g.fill();
+    g.beginPath(); g.ellipse(26, -58, 19, 17, 0.05, 0, TAU); g.fill();
+    g.fillStyle = P.panza;
+    g.beginPath(); g.ellipse(3, -32, 16, 11, -0.04, 0, TAU); g.fill();
+
+    // hocico, ojo, moflete y sonrisa
+    g.fillStyle = P.piel;
+    g.beginPath(); g.ellipse(42, -56, 9, 7, 0.1, 0, TAU); g.fill();
+    g.fillStyle = P.linea;
+    circulo(45, -58, 1.1);
+    ojo(31, -62, 5.4);
+    moflete(24, -52, 4.6);
+    sonrisa(38, -53, 4.2);
+
+    cresta([[-40, -42, 2.8], [-24, -49, 3.4], [-8, -55, 4], [8, -58, 4], [21, -70, 3.6]]);
+
+    // bracito
+    g.fillStyle = P.hondo;
+    g.beginPath();
+    g.roundRect(20, -44, 12, 7, 3.5);
+    g.fill();
+
+    pata(P.piel, -2, -20, 16, 20, b2);
   }
+  g.globalAlpha = 1;
   g.restore();
 }
 
 function drawAustralis(now) {
   if (!australia.activo) return;
   const t = (now - australia.born) / 1000;
-  const total = AUS.entra + AUS.espera + AUS.sale;
-  if (t >= total) { australia.activo = false; return; }
+  const paseo = AUS.entra + AUS.espera + AUS.sale;   // lo que dura el paseo de los dinosaurios
+  const total = australia.dur / 1000;                // lo que dura la escena entera
   const g = ctx;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const k = t / total;
-  const alpha = k < 0.08 ? k / 0.08 : k > 0.9 ? (1 - k) / 0.1 : 1;
+  if (t >= total) { australia.activo = false; return; }
+  const alpha = clamp(Math.min(t / AUS_APAGON, (total - t) / 1.4));
 
-  // la constelación del sur se enciende sobre el hueco de la noche
-  dibujarCruzDelSur(g, panel.x + panel.w * (view.tall ? 0.78 : 0.3), australia.cielo,
-    Math.min(panel.w, panel.h) * 0.06, alpha * 0.95);
+  // el otro lado del mundo se pone delante de todo
+  dibujarEscenaAustral(g, alpha, t);
 
+  // la Cruz del Sur, lo primero que se enciende al caer la tarde
+  dibujarCruzDelSur(g, panel.x + panel.w * 0.2, australia.cielo,
+    Math.min(panel.w, panel.h) * 0.055, alpha * 0.9);
+
+  if (t >= paseo) return;
   for (const d of australia.dinos) {
     const tl = t - d.retraso;
     if (tl < 0) continue;

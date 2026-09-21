@@ -1590,13 +1590,12 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
    TERRA AUSTRALIS — lo que dice el dinosaurio y la invitación
    ===================================================================== */
 /* mientras dura el hechizo la carta y los botones se apartan */
+/* Terra Australis y Orchideous se quedan con la pantalla entera:
+   no queda nada más a la vista mientras dura el hechizo */
 body.australis #letter,
-body.australis #spellbook {
-  opacity: 0.1;
-  pointer-events: none;
-  transition: opacity 0.8s ease;
-}
-/* Orchideous se queda con la pantalla entera: no queda nada más a la vista */
+body.australis #spellbook,
+body.australis #clock,
+body.australis #music,
 body.florido #letter,
 body.florido #spellbook,
 body.florido #clock,
