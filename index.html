@@ -55,6 +55,7 @@
       <button id="spell-dracarys" class="rune-btn" type="button" hidden></button>
       <button id="spell-australis" class="rune-btn" type="button" hidden></button>
       <button id="spell-orchideous" class="rune-btn" type="button" hidden></button>
+      <button id="spell-merodeador" class="rune-btn" type="button" hidden></button>
       <button id="spell-tempus" class="rune-btn" type="button" hidden></button>
     </div>
   </div>
@@ -65,6 +66,34 @@
     <p id="invite-title"></p>
     <p id="invite-line"></p>
     <p id="invite-sign"></p>
+  </div>
+
+  <!-- El Mapa del Merodeador: el pergamino que se despliega (textos en CONFIG.merodeador) -->
+  <div id="marauder" hidden>
+    <div id="marauder-wrap">
+      <div id="marauder-map">
+        <p id="marauder-oath" aria-hidden="true"></p>
+        <div id="marauder-ink">
+          <p id="marauder-head"></p>
+          <p id="marauder-sub"></p>
+          <p id="marauder-title"></p>
+          <div id="marauder-lines"></div>
+          <p id="marauder-sign"></p>
+        </div>
+        <div id="marauder-dots" aria-hidden="true"></div>
+        <button id="marauder-next" type="button" hidden></button>
+        <div id="marauder-steps" aria-hidden="true"></div>
+      </div>
+      <span class="maraud-flap f-left" aria-hidden="true"></span>
+      <span class="maraud-flap f-right" aria-hidden="true"></span>
+      <span class="maraud-flap f-top" aria-hidden="true"></span>
+      <span class="maraud-flap f-bottom" aria-hidden="true"></span>
+    </div>
+    <div id="marauder-ask" hidden>
+      <p id="marauder-ask-line"></p>
+      <button id="marauder-ask-btn" class="plate primary" type="button"></button>
+    </div>
+    <button id="marauder-close" class="plate quiet" type="button" hidden></button>
   </div>
 
   <!-- Mensaje del easter egg (sin pistas visibles) -->

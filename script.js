@@ -184,6 +184,7 @@ const CONFIG = {
     dracarys: { runa: "△", nombre: "Dracarys", desc: "prender la noche", corto: "Dracarys" },
     australis: { runa: "✥", nombre: "Terra Australis", desc: "una invitación al otro lado del mundo", corto: "Australis" },
     orchideous: { runa: "✼", nombre: "Orchideous", desc: "hacer crecer un jardín de girasoles", corto: "Girasoles" },
+    merodeador: { runa: "⚜", nombre: "Juro solemnemente", desc: "desplegar el mapa del merodeador", corto: "Mapa" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -194,6 +195,63 @@ const CONFIG = {
     titulo: "¿Nos vamos a Australia?",
     linea: "Tú, yo, el otro lado del mundo.",
     firma: "Dinosaurios incluidos."
+  },
+
+  /* El Mapa del Merodeador: el pergamino se despliega, se escribe solo el
+     juramento y después aparece la carta. Cambia "frases" por tu texto:
+     cada elemento de la lista es un párrafo. "cierre" es el botón que lo dobla. */
+  merodeador: {
+    activo: true,
+    encabezado: "Los señores Lunático, Colagusano, Canuto y Cornamenta",
+    subtitulo: "proveedores de material para magos traviesos, se enorgullecen de presentar",
+    titulo: "El Mapa del Merodeador",
+    juramento: "Juro solemnemente que mis intenciones no son buenas",
+    frases: [
+      "Mi amor,",
+      "Si existiera un hechizo capaz de regresar el tiempo, probablemente lo usaría para volver a esos momentos en los que pude hacer las cosas mejor, decir las palabras correctas y evitar aquello que pudo lastimarte. Pero ni siquiera en el mundo de la magia existe un Tempus capaz de borrar lo que ya pasó. Lo único que puedo hacer es mirarte con sinceridad, reconocer mis errores y pedirte perdón.",
+      "No quiero esconderme detrás de excusas ni intentar convertir mis equivocaciones en algo que no fueron. Sé que algunas de mis acciones pudieron hacerte sentir mal, confundirte o hacerte dudar de cosas que para mí son muy importantes. Y si alguna vez hice que tu corazón se sintiera menos seguro conmigo, créeme que es algo que lamento profundamente.",
+      "A veces siento que mi cabeza se convierte en un castillo lleno de pasillos que cambian de lugar, como Hogwarts. Intento encontrar la salida correcta y termino tomando caminos equivocados. Pero incluso cuando todo parece confundirse, hay algo que nunca cambia de lugar: lo que siento por ti.",
+      "Tú eres una de esas personas que llegaron a mi vida como llegan las cosas verdaderamente mágicas: sin pedir permiso, transformándolo todo.",
+      "Y no hablo de magia porque crea que el amor sea perfecto. Al contrario. El amor también tiene tormentas, silencios, discusiones y momentos en los que parece que alguien apagó todas las luces del castillo. Pero también creo que cuando dos personas realmente se quieren, siempre puede existir un pequeño Lumos capaz de volver a iluminar el camino.",
+      "Quiero ser mejor contigo.",
+      "No porque tenga miedo de perderte, sino porque te quiero lo suficiente como para entender que mereces sentirte querida, respetada, tranquila y segura a mi lado.",
+      "Si alguna vez fui causa de tus lágrimas, quisiera poder convertirlas en estrellas. Si alguna vez te hice sentir sola, quisiera poder enviarte mil lechuzas para recordarte que incluso estando lejos sigo pensando en ti. Y si alguna vez dudaste de cuánto significas para mí, quisiera que pudieras entrar por un instante en mis pensamientos para que vieras la cantidad de recuerdos, sueños y futuros en los que apareces.",
+      "No necesito una Amortentia para saber lo que siento por ti.",
+      "No necesito el Espejo de Oesed para saber qué deseo.",
+      "Y tampoco necesito un mapa mágico para saber dónde quiero encontrar mi hogar.",
+      "Muchas veces, cuando imagino el futuro, estás tú.",
+      "Quiero seguir descubriendo lugares contigo. Quiero reír contigo hasta que nos duela el estómago. Quiero escucharte hablar de cosas importantes y también de absolutamente nada. Quiero aprender tus manías, recordarte las cosas cuando se te olviden, acompañarte cuando tengas miedo y celebrar contigo cuando la vida te sonría.",
+      "Quiero que construyamos algo que no dependa de hechizos.",
+      "Algo nuestro.",
+      "Real.",
+      "Sé que pedir perdón no arregla automáticamente las cosas. Las palabras son importantes, pero los actos son los que demuestran si realmente aprendimos. Por eso no quiero prometerte perfección. Quiero prometerte intención, esfuerzo, sinceridad y la voluntad de corregir aquello que tenga que corregir.",
+      "Porque tú no eres una historia que quiero leer una sola vez.",
+      "Eres ese libro al que quiero regresar una y otra vez, encontrando siempre algo nuevo entre sus páginas.",
+      "Y quizá yo no pueda ofrecerte un castillo, una escoba voladora ni un viaje en el Expreso de Hogwarts, pero puedo ofrecerte algo mucho más sencillo y verdadero: mi corazón sin trucos, sin pociones y sin encantamientos.",
+      "Perdóname por mis errores.",
+      "Perdóname por las veces en que no supe mostrarte correctamente lo mucho que significas para mí.",
+      "Y si todavía queda un espacio para nosotros, quiero seguir escribiendo esta historia contigo.",
+      "Porque entre millones de personas, entre tantos caminos y tantas casualidades, encontrarte a ti ha sido una de las cosas más mágicas que me ha pasado.",
+      "Y si alguna vez llega la oscuridad, quiero que recuerdes algo:",
+      "Mientras pueda seguir pronunciando tu nombre dentro de mi corazón, siempre habrá un Lumos encendido para ti.",
+      "Te quiero.",
+      "Y aunque todavía tenga mucho que aprender sobre el amor, hay algo que tengo completamente claro:"
+    ],
+    firma: "Si mi vida fuera Hogwarts, tú serías ese lugar al que siempre querría volver.",
+    cierre: "Travesura realizada",
+    cierreDesc: "doblar el mapa",
+
+    // La carta no se suelta de golpe: se lee a trozos, y ella marca el ritmo
+    seguir: "sigue leyendo",
+
+    /* Nada más abrirse la puerta el pergamino aparece cerrado y pregunta.
+       Con entrada: false el mapa deja de ser lo primero y sólo vive en la fila. */
+    entrada: true,
+    pregunta: {
+      linea: "El pergamino no se abre para cualquiera. ¿Juras solemnemente que tus intenciones no son buenas?",
+      boton: "Lo juro solemnemente",
+      desc: "y el mapa se abrirá"
+    }
   },
 
   /* Lingua Amoris: la misma frase en muchos idiomas.
@@ -220,7 +278,8 @@ const CONFIG = {
     linguaAmoris: true,    // la frase en muchos idiomas antes del final
     dracarys: true,        // el dragón que cruza el cielo y suelta su llamarada
     australis: true,       // la constelación del sur, los dinosaurios y la invitación
-    orchideous: true       // el jardín de girasoles que crece en la noche
+    orchideous: true,      // el jardín de girasoles que crece en la noche
+    merodeador: true       // el pergamino del merodeador que se despliega
   },
 
   /* Estaciones del árbol: cada toque de Tempus pasa a la siguiente */
@@ -700,6 +759,19 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const merodeadorBtn = document.getElementById('spell-merodeador');
+const marauderEl = document.getElementById('marauder');
+const marauderOathEl = document.getElementById('marauder-oath');
+const marauderLinesEl = document.getElementById('marauder-lines');
+const marauderStepsEl = document.getElementById('marauder-steps');
+const marauderCloseBtn = document.getElementById('marauder-close');
+const marauderSignEl = document.getElementById('marauder-sign');
+const marauderNextBtn = document.getElementById('marauder-next');
+const marauderDotsEl = document.getElementById('marauder-dots');
+const marauderAskEl = document.getElementById('marauder-ask');
+const marauderAskBtn = document.getElementById('marauder-ask-btn');
+const marauderMapEl = document.getElementById('marauder-map');
+const marauderInkEl = document.getElementById('marauder-ink');
 const spellRowEl = document.getElementById('spell-row');
 const inviteEl = document.getElementById('invite');
 const dinoSayEl = document.getElementById('dino-say');
@@ -1182,6 +1254,7 @@ function resize() {
     left: panel.x + 'px', top: panel.y + 'px', width: panel.w + 'px', height: panel.h + 'px'
   });
   stageEl.classList.toggle('tall', view.tall);
+  repartirDeNuevo();
   horizonY = view.tall
     ? view.oyEnd + GROUND_Y * view.k
     : panel.y + GROUND_Y * panel.h;
@@ -2147,6 +2220,7 @@ function hechizosFila() {
     { btn: dracarysBtn, activo: () => F.dracarys !== false },
     { btn: australisBtn, activo: () => F.australis !== false },
     { btn: orchideousBtn, activo: () => F.orchideous !== false },
+    { btn: merodeadorBtn, activo: () => F.merodeador !== false && !!(CONFIG.merodeador && CONFIG.merodeador.activo) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -3119,6 +3193,329 @@ function drawAustralis(now) {
   }
 }
 
+/* El Mapa del Merodeador: el pergamino se despliega y aparece la carta ----
+   Las cuatro solapas de pergamino y la tinta viven en CSS; aquí sólo se
+   encadenan los tiempos: abrir arriba y abajo, abrir los lados, escribir el
+   juramento y, cuando se apaga, dejar la carta a la vista. */
+const merodeador = { abierto: false, paso: 0.28, trozos: [], trozo: 0, entrada: false, pasando: false };
+const MERO = {
+  solapas1: 260,      // se abren las solapas de arriba y abajo
+  solapas2: 940,      // se abren las de los lados
+  juramento: 1760,    // empieza a escribirse el juramento
+  palabra: 130,       // lo que tarda cada palabra del juramento
+  lectura: 900,       // lo que se deja leer antes de que la tinta cambie
+  cola: 800           // margen antes de ofrecer "Travesura realizada"
+};
+
+/* Deja el pergamino escrito: encabezado, juramento palabra a palabra,
+   los párrafos de CONFIG.merodeador.frases y los dos rastros de pisadas. */
+/* Si la pantalla cambia (giro del móvil) la carta se reparte otra vez,
+   dejando a la vista el párrafo por el que iba */
+function repartirDeNuevo() {
+  if (!merodeador.abierto || !merodeador.trozos.length) return;
+  const actual = (merodeador.trozos[merodeador.trozo] || [])[0];
+  merodeador.trozos = partirCarta();
+  marauderEl.classList.toggle('una-pagina', merodeador.trozos.length < 2);
+  sembrarPuntos();
+  const n = Math.max(0, merodeador.trozos.findIndex(t => t.includes(actual)));
+  pintarTrozo(n, false);
+}
+
+function llenarMerodeador() {
+  const M = CONFIG.merodeador;
+  if (!M || !marauderEl) return;
+  const poner = (node, texto, i) => {
+    if (!node) return;
+    node.textContent = texto || '';
+    node.hidden = !texto;
+    node.style.setProperty('--i', i);
+  };
+  poner(document.getElementById('marauder-head'), M.encabezado, 0);
+  poner(document.getElementById('marauder-sub'), M.subtitulo, 1);
+  poner(document.getElementById('marauder-title'), M.titulo, 2);
+
+  // el juramento: cada palabra entra sola, como si la escribieran a mano
+  marauderOathEl.replaceChildren();
+  const palabras = String(M.juramento || '').split(/\s+/).filter(Boolean);
+  palabras.forEach((w, i) => {
+    const span = el('span', 'word', w);
+    span.style.setProperty('--i', i);
+    marauderOathEl.append(span, document.createTextNode(' '));
+  });
+
+  // la pregunta que hay que responder antes de que se abra
+  const P = M.pregunta || {};
+  document.getElementById('marauder-ask-line').textContent = P.linea || '';
+  fillPlate(marauderAskBtn, { runa: "⚜", nombre: P.boton || "Lo juro solemnemente", desc: P.desc || '' });
+
+  marauderNextBtn.replaceChildren(
+    document.createTextNode(M.seguir || 'sigue leyendo'),
+    el('span', 'flecha', '❯')
+  );
+  marauderSignEl.textContent = M.firma || '';
+  sembrarPisadas();
+}
+
+/* Parte la carta con el tamaño de pantalla de ahora y la deja en el primer trozo */
+function prepararCarta() {
+  merodeador.trozos = partirCarta();
+  const masLargo = merodeador.trozos.reduce((n, t) => Math.max(n, t.length), 0);
+  merodeador.paso = Math.min(0.28, 2.6 / Math.max(1, masLargo));
+  marauderEl.style.setProperty('--paso', merodeador.paso.toFixed(3) + 's');
+  marauderEl.classList.toggle('una-pagina', merodeador.trozos.length < 2);
+  sembrarPuntos();
+  pintarTrozo(0, false);
+}
+
+/* Reparte la carta en trozos midiendo de verdad cuánto cabe en el pergamino:
+   contar letras no sirve, porque seis párrafos cortos ocupan mucho más que dos
+   largos con las mismas letras. Hay que hacerlo con el mapa ya montado. */
+function partirCarta() {
+  const M = CONFIG.merodeador || {};
+  const lista = Array.isArray(M.frases) ? M.frases : [];
+  if (!lista.length) return [[]];
+
+  // el pergamino tiene que estar medido con su tamaño real
+  const estaba = marauderEl.hidden;
+  if (estaba) marauderEl.hidden = false;
+  marauderEl.classList.remove('una-pagina');
+  const firmaAntes = marauderSignEl.hidden, seguirAntes = marauderNextBtn.hidden;
+  marauderSignEl.hidden = true;
+  marauderNextBtn.hidden = false;                 // reserva su sitio al medir
+  if (!marauderDotsEl.children.length) marauderDotsEl.append(el('i'));
+
+  const membreteAntes = marauderEl.classList.contains('sin-membrete');
+  const cabe = () => marauderInkEl.scrollHeight <= marauderInkEl.clientHeight + 1;
+  const pintar = textos => marauderLinesEl.replaceChildren(...textos.map(t => el('p', 'mline', t)));
+  // el primer trozo comparte sitio con el membrete; los demás tienen la hoja entera
+  const membrete = primero => marauderEl.classList.toggle('sin-membrete', !primero);
+
+  const trozos = [];
+  let actual = [];
+  membrete(true);
+  for (const texto of lista) {
+    pintar(actual.concat(texto));
+    if (actual.length && !cabe()) {
+      trozos.push(actual);
+      actual = [];
+      membrete(false);
+      pintar([texto]);
+    }
+    actual.push(texto);
+  }
+  if (actual.length) trozos.push(actual);
+  membrete(trozos.length < 2);
+
+  // la firma sólo sale al final: si no cabe con el último trozo, se parte otra vez
+  if (M.firma) {
+    marauderSignEl.hidden = false;
+    for (let vueltas = 0; vueltas < 40; vueltas++) {
+      const ultimo = trozos[trozos.length - 1];
+      pintar(ultimo);
+      if (cabe() || ultimo.length < 2) break;
+      trozos.push([ultimo.pop()]);
+    }
+  }
+
+  marauderLinesEl.replaceChildren();
+  marauderSignEl.hidden = firmaAntes;
+  marauderNextBtn.hidden = seguirAntes;
+  marauderEl.classList.toggle('sin-membrete', membreteAntes);
+  if (estaba) marauderEl.hidden = true;
+  return trozos.length ? trozos : [[]];
+}
+
+/* Un punto por trozo, para saber cuánta carta queda */
+function sembrarPuntos() {
+  marauderDotsEl.replaceChildren();
+  if (merodeador.trozos.length < 2) return;
+  for (let i = 0; i < merodeador.trozos.length; i++) marauderDotsEl.append(el('i'));
+}
+
+/* Escribe el trozo que toca. Con "cambia" la tinta nueva entra desvaída. */
+function pintarTrozo(n, cambia) {
+  const trozo = merodeador.trozos[n] || [];
+  const ultimo = n >= merodeador.trozos.length - 1;
+  merodeador.trozo = n;
+  marauderEl.classList.toggle('sin-membrete', n > 0);
+  marauderLinesEl.replaceChildren();
+  trozo.forEach((texto, i) => {
+    const linea = el('p', 'mline', texto);
+    // en el primer trozo la tinta espera al encabezado; después ya no
+    linea.style.setProperty('--i', i + (cambia ? 0 : 3));
+    if (cambia) linea.classList.add('nueva');
+    marauderLinesEl.append(linea);
+  });
+
+  marauderSignEl.hidden = !(ultimo && CONFIG.merodeador.firma);
+  marauderSignEl.style.setProperty('--i', trozo.length + (cambia ? 0 : 3));
+  marauderSignEl.classList.toggle('nueva', cambia && !marauderSignEl.hidden);
+
+  marauderNextBtn.hidden = ultimo;
+  [...marauderDotsEl.children].forEach((p, i) => {
+    p.classList.toggle('leido', i < n);
+    p.classList.toggle('aqui', i === n);
+  });
+  marauderInkEl.scrollTop = 0;
+
+  if (cambia) {
+    void marauderLinesEl.offsetWidth;          // para que la transición arranque
+    for (const linea of marauderLinesEl.children) linea.classList.remove('nueva');
+    marauderSignEl.classList.remove('nueva');
+  }
+  // al preparar la carta no se ofrece nada: eso lo decide el despliegue
+  if (ultimo && cambia) ofrecerCierre(trozo.length * merodeador.paso * 1000 + 500);
+}
+
+/* Pasa al siguiente trozo: la tinta de antes se borra y llega la nueva */
+function avanzarCarta() {
+  if (!merodeador.abierto || merodeador.pasando) return;
+  if (!marauderEl.classList.contains('ink')) return;   // aún se está abriendo
+  if (merodeador.trozo >= merodeador.trozos.length - 1) return;
+  merodeador.pasando = true;
+  marauderNextBtn.hidden = true;
+  const yendose = [...marauderLinesEl.children, marauderSignEl];
+  // al salir del primer trozo el membrete se va con la tinta, no de golpe
+  if (merodeador.trozo === 0) yendose.push(...marauderInkEl.querySelectorAll('#marauder-head, #marauder-sub, #marauder-title'));
+  for (const nodo of yendose) nodo.classList.add('se-va');
+  later(460, () => {
+    for (const nodo of yendose) nodo.classList.remove('se-va');
+    pintarTrozo(merodeador.trozo + 1, true);
+    merodeador.pasando = false;
+  }, 'mero');
+}
+
+/* Dos rastros que cruzan el bajo del mapa y se encuentran en el centro */
+function sembrarPisadas() {
+  marauderStepsEl.replaceChildren();
+  if (REDUCED) return;
+  const pasos = 8;
+  for (let lado = 0; lado < 2; lado++) {
+    for (let i = 0; i < pasos; i++) {
+      const u = i / (pasos - 1);
+      const x = lado === 0 ? 4 + u * 40 : 96 - u * 40;   // de fuera hacia el centro
+      const paso = el('span', 'step');
+      paso.style.left = x + '%';
+      paso.style.bottom = (i % 2 ? 3 : 13) + 'px';
+      paso.style.transform = `rotate(${lado === 0 ? 88 : -88}deg)`;
+      paso.style.setProperty('--d', (i * 0.26).toFixed(2) + 's');
+      marauderStepsEl.append(paso);
+    }
+  }
+  const corazon = el('span', 'step-heart', '❤');
+  corazon.style.setProperty('--d', (pasos * 0.26).toFixed(2) + 's');
+  marauderStepsEl.append(corazon);
+}
+
+/* El mapa: si viene de la puerta primero pregunta; desde la fila se abre solo */
+function castMerodeador(opts) {
+  const M = CONFIG.merodeador;
+  if (merodeador.abierto || !M || !M.activo || FX_ON.merodeador === false) return false;
+  const entrada = !!(opts && opts.entrada);
+  merodeador.abierto = true;
+  merodeador.entrada = entrada;
+  merodeador.pasando = false;
+  if (!entrada) castFxAt(merodeadorBtn, { sparks: 22, r1: 210, dur: 780 });
+  document.body.classList.add('merodeando');
+  marauderEl.hidden = false;
+  marauderEl.classList.remove('closing', 'ask', 'open1', 'open2', 'oath', 'ink');
+  prepararCarta();
+  marauderCloseBtn.hidden = true;
+  marauderCloseBtn.classList.remove('in');
+  void marauderEl.offsetWidth;                 // para que la transición arranque
+  marauderEl.classList.add('show');
+
+  if (entrada && M.pregunta) {
+    // el pergamino llega cerrado y espera el juramento
+    marauderAskEl.hidden = false;
+    marauderAskBtn.classList.remove('out');
+    later(700, () => {
+      marauderEl.classList.add('ask');
+      marauderAskBtn.classList.add('in');
+    }, 'mero');
+  } else {
+    marauderAskEl.hidden = true;
+    desplegarMapa(MERO.solapas1);
+  }
+  return true;
+}
+
+/* El juramento está hecho: el pergamino se abre */
+function aceptarJuramento() {
+  if (!merodeador.abierto || !marauderEl.classList.contains('ask')) return;
+  castFxAt(marauderAskBtn, { sparks: 26, r1: 240, dur: 820 });
+  marauderEl.classList.remove('ask');
+  marauderAskBtn.classList.remove('in');
+  later(560, () => { marauderAskEl.hidden = true; }, 'mero');
+  desplegarMapa(420);
+}
+
+/* Las solapas se abren, se escribe el juramento y aparece la carta */
+function desplegarMapa(retraso) {
+  const t = retraso || 0;
+  later(t, () => marauderEl.classList.add('open1'), 'mero');
+  later(t + (MERO.solapas2 - MERO.solapas1), () => marauderEl.classList.add('open2'), 'mero');
+  later(t + (MERO.juramento - MERO.solapas1), () => marauderEl.classList.add('oath'), 'mero');
+
+  const palabras = marauderOathEl.querySelectorAll('.word').length;
+  const tinta = t + (MERO.juramento - MERO.solapas1) + 600 + palabras * MERO.palabra + MERO.lectura;
+  later(tinta, () => marauderEl.classList.add('ink'), 'mero');
+  if (merodeador.trozos.length < 2) ofrecerCierre(tinta + 2600);
+}
+
+/* "Travesura realizada" sólo aparece cuando ya no queda carta por leer */
+function ofrecerCierre(retraso) {
+  later(Math.max(0, retraso) + MERO.cola, () => {
+    if (!merodeador.abierto) return;
+    marauderCloseBtn.hidden = false;
+    void marauderCloseBtn.offsetWidth;
+    marauderCloseBtn.classList.add('in');
+  }, 'mero');
+}
+
+/* "Travesura realizada": la tinta se va, las solapas vuelven y el mapa se dobla.
+   Con inmediato = true se cierra de golpe (lo usa el reinicio). */
+function cerrarMerodeador(inmediato) {
+  cancelTasks('mero');
+  marauderCloseBtn.hidden = true;
+  marauderCloseBtn.classList.remove('in');
+  const entrada = merodeador.entrada;
+  if (inmediato === true) {
+    merodeador.abierto = merodeador.entrada = merodeador.pasando = false;
+    marauderEl.hidden = true;
+    marauderAskEl.hidden = true;
+    marauderAskBtn.classList.remove('in');
+    marauderEl.classList.remove('show', 'ask', 'open1', 'open2', 'oath', 'ink', 'closing');
+    document.body.classList.remove('merodeando');
+    return;
+  }
+  if (!merodeador.abierto) return;
+  merodeador.abierto = merodeador.entrada = merodeador.pasando = false;
+  marauderEl.classList.add('closing');
+  marauderEl.classList.remove('ink', 'oath', 'open2', 'open1', 'ask');
+  marauderAskEl.hidden = true;
+  later(760, () => marauderEl.classList.remove('show'), 'mero');
+  later(1650, () => {
+    marauderEl.hidden = true;
+    marauderEl.classList.remove('closing');
+    document.body.classList.remove('merodeando');
+    // si el mapa era la puerta de entrada, ahora sí empieza la experiencia
+    if (entrada) seguirTrasElMapa();
+  }, 'mero');
+}
+
+/* El mapa como primer paso, justo después de la puerta encantada */
+function entradaMerodeador() {
+  const M = CONFIG.merodeador;
+  if (!M || !M.activo || M.entrada === false || FX_ON.merodeador === false) return false;
+  return castMerodeador({ entrada: true });
+}
+
+function seguirTrasElMapa() {
+  if (MAGIC.enabled) startMagicIntro();
+  else introEl.hidden = false;
+}
+
 /* Orchideous: un jardín de girasoles crece en la noche ------------------- */
 const jardin = { activo: false, born: 0, dur: 13000, flores: [], arriba: 0, abajo: 0, polen: [], gotas: [] };
 const RIEGO = { entra: 3.6, cruza: 6.8 };   // cuándo pasa la camioneta y cuánto tarda
@@ -3668,6 +4065,9 @@ function buildExtras() {
   fillRune(dracarysBtn, HX.dracarys);
   fillRune(australisBtn, HX.australis);
   fillRune(orchideousBtn, HX.orchideous);
+  fillRune(merodeadorBtn, HX.merodeador);
+  fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
+  llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
   const F = CONFIG.finalMessage;
   document.getElementById('closing-question').textContent = HX.alohomora.aviso || "Parece que algo sigue cerrado…";
@@ -3695,6 +4095,12 @@ function bindExtras() {
   dracarysBtn.addEventListener('click', castDracarys);
   australisBtn.addEventListener('click', castAustralis);
   orchideousBtn.addEventListener('click', castOrchideous);
+  merodeadorBtn.addEventListener('click', () => castMerodeador());
+  marauderCloseBtn.addEventListener('click', () => cerrarMerodeador());
+  marauderAskBtn.addEventListener('click', aceptarJuramento);
+  marauderNextBtn.addEventListener('click', avanzarCarta);
+  // tocar el pergamino también pasa de trozo (el botón es sólo la señal)
+  marauderMapEl.addEventListener('click', avanzarCarta);
   restartBtn.addEventListener('click', () => {
     requestWakeLock();
     if (MAGIC.enabled && MAGIC.showOnReplay) {
@@ -3861,7 +4267,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -3873,6 +4279,7 @@ function resetExtras() {
   jardin.gotas.length = 0;
   quitarCielo();
   document.body.classList.remove('florido');
+  cerrarMerodeador(true);
   inviteEl.hidden = true;
   inviteEl.classList.remove('show');
   dinoSayEl.hidden = true;
@@ -4177,8 +4584,8 @@ function abrirPuerta() {
   fxRing(r.left + r.width / 2, r.top + r.height / 2, { r1: 320, dur: 900 });
   later(520, () => {
     gateEl.classList.add('hide');
-    if (MAGIC.enabled) startMagicIntro();
-    else { introEl.hidden = false; }
+    // lo primero que se encuentra al pasar la puerta es el mapa
+    if (!entradaMerodeador()) seguirTrasElMapa();
   });
   later(1300, () => { gateEl.hidden = true; });
 }
@@ -4849,9 +5256,9 @@ function init() {
     introEl.hidden = true;
     magicEl.hidden = true;
     buildGate();
-  } else if (MAGIC.enabled) {
+  } else if (MAGIC.enabled || (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;
-    startMagicIntro();
+    if (!entradaMerodeador()) seguirTrasElMapa();
   }
 
   lastNow = performance.now();

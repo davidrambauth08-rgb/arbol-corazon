@@ -19,6 +19,8 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
+**Lo primero al pasar la puerta: el mapa** (`CONFIG.merodeador`). Aparece un pergamino en blanco —como el de verdad— y pregunta: *«¿Juras solemnemente que tus intenciones no son buenas?»*. Al tocar **Lo juro solemnemente** las solapas se abren, se escribe el juramento y empieza la carta. La carta **no se suelta de golpe**: se lee por trozos, con unos puntos que indican cuánto queda y un **sigue leyendo ❯** (o tocando el pergamino) para pasar al siguiente; el membrete de los Merodeadores sólo sale en el primero. Al llegar al final aparece la firma y **Travesura realizada**, que dobla el mapa y da paso a la intro mágica. El reparto en trozos **se mide en pantalla** cada vez que se abre, así que se adapta al móvil, al escritorio y al giro de pantalla. Con `merodeador.entrada: false` el mapa deja de ser lo primero y se queda sólo como hechizo del árbol.
+
 **Hechizos de la experiencia** (textos en `CONFIG.hechizos`)
 
 | Hechizo | Dónde aparece | Qué hace |
@@ -36,22 +38,23 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la escena entera da paso al otro lado del mundo (atardecer, Cruz del Sur, nubes, volcán y palmeras); un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
 | **Orchideous** | fila de hechizos del árbol | la escena entera se apaga a negro (árbol, bosque, carta y contador incluidos), crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
+| **Juro solemnemente** ⚜ | al pasar la puerta y en la fila de hechizos | el pergamino se despliega (primero las solapas de arriba y abajo, después las de los lados), se escribe el juramento palabra a palabra y aparece la carta, que se lee por trozos, con dos rastros de pisadas que se encuentran en un corazón. Desde la puerta pregunta antes de abrirse; desde la fila se abre directo. Se cierra con **Travesura realizada** y se puede repetir |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
-**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Tempus viven en una fila fija debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
+**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Tempus viven en una fila fija debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
 
 **Cada hechizo trae su fondo**: Dracarys enciende un cielo de brasas (`CIELOS` en script.js, que se mezcla sobre el de la estación y vuelve solo al acabar). Orchideous y Terra Australis van más lejos y se quedan con la pantalla entera: el primero la apaga a negro para que sólo brillen los girasoles; el segundo la cambia por un atardecer del hemisferio sur, con la Cruz del Sur, nubes, un volcán y palmeras. Los dinosaurios son de dibujo, con panza clara, crestas, ojos grandes y mofletes.
 
 **Estaciones** (`CONFIG.estaciones`): cada toque de Tempus cambia la copa, la luz del bosque y lo que cae. Primavera (rosas y blancos, pétalos), verano (como siempre), otoño (ámbar y cobre, hojas) e invierno (copa más escasa en rojos y hielo, con nieve). `inicial` elige con cuál empieza, `orden` el recorrido, `nombres` los carteles y `activo: false` lo desactiva.
 
-**Efectos mágicos** (`CONFIG.efectos`, todos opcionales): `lumosMaxima` (destello y encendido del bosque al entrar), `luciernagas`, `niebla`, `petalos` (hojas doradas entre los corazones), `snitch` (cruza la escena cada ~30 s), `ondasSonorus` (anillos de energía al invocar la canción), `levitacion` (foto y recuerdos flotando tipo polaroid), `accio` (los objetos llegan desde el fondo con rastro), `selloAlohomora` (sello dorado que se rompe) y `cierreNox` (la magia se apaga poco a poco en el cierre), `dracarys` (el dragón y su llamarada) , `australis` (la Cruz del Sur, los dinosaurios y la invitación) y `orchideous` (el jardín de girasoles). Pon cualquiera en `false` para desactivarlo.
+**Efectos mágicos** (`CONFIG.efectos`, todos opcionales): `lumosMaxima` (destello y encendido del bosque al entrar), `luciernagas`, `niebla`, `petalos` (hojas doradas entre los corazones), `snitch` (cruza la escena cada ~30 s), `ondasSonorus` (anillos de energía al invocar la canción), `levitacion` (foto y recuerdos flotando tipo polaroid), `accio` (los objetos llegan desde el fondo con rastro), `selloAlohomora` (sello dorado que se rompe) y `cierreNox` (la magia se apaga poco a poco en el cierre), `dracarys` (el dragón y su llamarada) , `australis` (la Cruz del Sur, los dinosaurios y la invitación), `orchideous` (el jardín de girasoles) y `merodeador` (el pergamino que se despliega). Pon cualquiera en `false` para desactivarlo.
 
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
 
-**Intro mágica**
-- Al abrir aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
+**Intro mágica** (después de que el mapa se doble)
+- Aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
 - Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso a las pruebas. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
 - Secreto: tocar 3 veces seguidas la estrella de arriba a la derecha muestra un mensaje.
 - Todo se configura en `CONFIG.introMagic` y `CONFIG.magicSound`. Con `introMagic.enabled: false` se usa la pantalla de inicio sencilla.
@@ -87,6 +90,7 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
+| `merodeador` | la carta del merodeador: `frases` es tu texto (un párrafo por elemento), y además `encabezado`, `subtitulo`, `titulo`, `juramento`, `firma`, `seguir` y `cierre`. `pregunta` es lo que se pide antes de abrirlo (`linea`, `boton`, `desc`) y `entrada: false` lo quita del arranque. Con `activo: false` el hechizo no aparece |
 | `idiomas` | frases de Lingua Amoris (el español no está: se guarda para la línea final) |
 | `puerta` | clave, frase, pistas y mensajes de la entrada |
 | `easterEgg` | Toques necesarios, ventana de tiempo y los dos mensajes |

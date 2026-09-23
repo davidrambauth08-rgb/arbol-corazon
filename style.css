@@ -1514,7 +1514,7 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
 #spell-row {
   display: flex;
   justify-content: center;
-  flex-wrap: nowrap;          /* los cinco hechizos caben siempre en una línea */
+  flex-wrap: nowrap;          /* los hechizos del árbol caben siempre en una línea */
   gap: 5px;
   width: 100%;
   margin-top: 2px;
@@ -1599,7 +1599,11 @@ body.australis #music,
 body.florido #letter,
 body.florido #spellbook,
 body.florido #clock,
-body.florido #music {
+body.florido #music,
+body.merodeando #letter,
+body.merodeando #spellbook,
+body.merodeando #clock,
+body.merodeando #music {
   opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
   pointer-events: none;
   transition: opacity 0.9s ease;
@@ -1691,4 +1695,406 @@ body.florido #music {
 @media (prefers-reduced-motion: reduce) {
   .rune-btn.in:not(.usado) .rune-glyph { animation: none !important; }
   #invite, #dino-say { transition-duration: 0.25s; }
+}
+
+
+/* =====================================================================
+   EL MAPA DEL MERODEADOR — el pergamino que se despliega
+   Cuatro solapas de pergamino tapan la carta y se abren hacia fuera:
+   primero las de arriba y abajo, después las de los lados. Debajo espera
+   la carta entera, así que el texto nunca se deforma al doblarse.
+   ===================================================================== */
+#marauder {
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* si la carta es muy larga para la pantalla se puede deslizar sin perder el principio */
+  justify-content: safe center;
+  overflow-y: auto;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+  background: radial-gradient(120% 90% at 50% 45%, rgba(18, 15, 39, 0.82) 0%, rgba(7, 6, 14, 0.96) 70%);
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+#marauder[hidden] { display: none; }
+#marauder.show { opacity: 1; }
+
+#marauder-wrap {
+  position: relative;
+  flex: none;
+  width: min(92vw, 520px);
+  perspective: 1400px;
+  transform: scale(0.93) rotate(-1deg);
+  opacity: 0;
+  transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.05), opacity 0.6s ease;
+}
+#marauder.show #marauder-wrap { transform: scale(1) rotate(-0.6deg); opacity: 1; }
+
+/* El pergamino: manchas de té, filete dorado y los pliegues marcados */
+#marauder-map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* la hoja mide siempre lo mismo: al pasar de trozo nada salta bajo el dedo */
+  height: min(68vh, 600px);
+  padding: clamp(18px, 5vw, 30px) clamp(16px, 5vw, 32px) clamp(44px, 10vw, 56px);
+  border: 1px solid rgba(160, 120, 50, 0.55);
+  border-radius: 6px;
+  background:
+    radial-gradient(60% 45% at 18% 12%, rgba(176, 134, 74, 0.22) 0%, rgba(176, 134, 74, 0) 60%),
+    radial-gradient(55% 40% at 84% 82%, rgba(150, 110, 60, 0.2) 0%, rgba(150, 110, 60, 0) 62%),
+    linear-gradient(180deg, #f3e6ca 0%, #e8d9b6 52%, #dfcda4 100%);
+  box-shadow: 0 26px 70px rgba(4, 5, 12, 0.7), inset 0 0 40px rgba(122, 88, 42, 0.22);
+  color: var(--ink);
+  font-family: var(--serif);
+  text-align: center;
+}
+/* los dobleces que deja un mapa guardado años en un bolsillo */
+#marauder-map::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(122, 88, 42, 0.22) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(122, 88, 42, 0.18) 50%, transparent calc(50% + 1px));
+  opacity: 0;
+  transition: opacity 1.2s ease 0.4s;
+}
+#marauder.una-pagina #marauder-map { height: auto; min-height: min(44vh, 330px); max-height: min(70vh, 620px); }
+#marauder.open2 #marauder-map::before { opacity: 1; }
+/* el final del texto se funde con el pergamino: avisa de que hay más abajo */
+#marauder-map::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: clamp(40px, 9vw, 52px);
+  height: 26px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(225, 208, 168, 0) 0%, rgba(225, 208, 168, 0.9) 72%, rgba(225, 208, 168, 1) 100%);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+#marauder.ink #marauder-map::after { opacity: 1; }
+
+/* ---------- Las cuatro solapas ---------- */
+.maraud-flap {
+  position: absolute;
+  border: 1px solid rgba(160, 120, 50, 0.55);
+  background: linear-gradient(180deg, #efe1c3 0%, #e2d2ad 100%);
+  box-shadow: 0 14px 34px rgba(4, 5, 12, 0.55), inset 0 0 26px rgba(122, 88, 42, 0.16);
+  backface-visibility: hidden;
+  transition: transform 0.85s cubic-bezier(0.3, 0.85, 0.35, 1), opacity 0.5s ease 0.45s;
+}
+.f-left, .f-right { top: 0; width: 50%; height: 100%; z-index: 2; }
+.f-top, .f-bottom { left: 0; width: 100%; height: 50%; z-index: 3; }
+.f-left   { left: 0;   transform-origin: left center; }
+.f-right  { right: 0;  transform-origin: right center; }
+.f-top    { top: 0;    transform-origin: center top; }
+.f-bottom { bottom: 0; transform-origin: center bottom; }
+/* la sombra del doblez, en el borde por el que se abre cada solapa */
+.f-left::after, .f-right::after, .f-top::after, .f-bottom::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(90, 64, 30, 0) 70%, rgba(90, 64, 30, 0.3) 100%);
+}
+.f-right::after { background: linear-gradient(270deg, rgba(90, 64, 30, 0) 70%, rgba(90, 64, 30, 0.3) 100%); }
+.f-top::after   { background: linear-gradient(180deg, rgba(90, 64, 30, 0) 70%, rgba(90, 64, 30, 0.3) 100%); }
+.f-bottom::after{ background: linear-gradient(0deg,   rgba(90, 64, 30, 0) 70%, rgba(90, 64, 30, 0.3) 100%); }
+
+#marauder.open1 .f-top    { transform: rotateX(108deg); opacity: 0; }
+#marauder.open1 .f-bottom { transform: rotateX(-108deg); opacity: 0; }
+#marauder.open2 .f-left   { transform: rotateY(-112deg); opacity: 0; }
+#marauder.open2 .f-right  { transform: rotateY(112deg); opacity: 0; }
+#marauder.open2 .maraud-flap { pointer-events: none; }
+
+/* ---------- El juramento, escrito sobre el pergamino vacío ---------- */
+#marauder-oath {
+  position: absolute;
+  left: 50%;
+  top: 45%;               /* un poco por encima del doblez, para no cruzarlo */
+  margin: 0;
+  width: calc(100% - 2 * clamp(16px, 5vw, 32px));
+  transform: translate(-50%, -50%);
+  font-size: clamp(17px, 4.6vw, 21px);
+  font-style: italic;
+  line-height: 1.35;
+  color: rgba(74, 52, 38, 0.9);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#marauder.oath #marauder-oath { opacity: 1; }
+#marauder.ink #marauder-oath { opacity: 0; transition-duration: 0.9s; }
+/* cada palabra del juramento entra sola, como si la escribieran */
+#marauder-oath .word {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(3px);
+  transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s ease;
+  transition-delay: calc(var(--i) * 0.13s);
+}
+#marauder.oath #marauder-oath .word { opacity: 1; filter: none; transform: none; }
+
+/* ---------- La carta: la tinta va apareciendo línea a línea ---------- */
+#marauder-ink {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  padding-bottom: 22px;
+}
+#marauder-ink::-webkit-scrollbar { width: 0; height: 0; }
+#marauder-ink p, #marauder-lines .mline {
+  margin: 0;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(5px);
+  transition: opacity 0.75s ease, filter 0.75s ease, transform 0.75s ease;
+  transition-delay: calc(var(--i, 0) * var(--paso, 0.28s));
+}
+#marauder.ink #marauder-ink p,
+#marauder.ink #marauder-lines .mline { opacity: 1; filter: none; transform: none; }
+/* al pasar de trozo: la tinta de antes se borra y la nueva se escribe */
+#marauder.ink #marauder-ink p.nueva {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(5px);
+}
+#marauder.ink #marauder-ink p.se-va {
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(-4px);
+  transition-duration: 0.42s;
+  transition-delay: 0s;
+}
+
+#marauder-head {
+  font-size: clamp(13px, 3.4vw, 15px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  color: rgba(74, 52, 38, 0.92);
+}
+#marauder-sub {
+  margin-top: 4px !important;
+  font-size: clamp(11.5px, 3vw, 13px);
+  font-style: italic;
+  line-height: 1.3;
+  color: rgba(74, 52, 38, 0.7);
+}
+#marauder-title {
+  margin-top: 10px !important;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(122, 88, 42, 0.3);
+  font-size: clamp(21px, 5.8vw, 27px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: #5a3c22;
+}
+/* a partir del segundo trozo el membrete se retira y deja sitio a la carta */
+#marauder.sin-membrete #marauder-head,
+#marauder.sin-membrete #marauder-sub,
+#marauder.sin-membrete #marauder-title { display: none; }
+#marauder.sin-membrete #marauder-lines { margin-top: 0; }
+/* sin membrete la tinta se reparte por el centro de la hoja, no pegada arriba */
+#marauder.sin-membrete #marauder-ink {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  justify-content: safe center;
+}
+
+#marauder-lines {
+  margin-top: clamp(12px, 3.6vw, 18px);
+  text-align: left;        /* una carta larga se lee mucho mejor alineada */
+}
+#marauder-lines .mline {
+  font-size: clamp(15px, 4.1vw, 18px);
+  line-height: 1.38;
+}
+#marauder-lines .mline + .mline { margin-top: 0.5em; }
+#marauder-sign {
+  margin-top: clamp(12px, 3.4vw, 18px) !important;
+  font-size: clamp(14px, 3.7vw, 16px);
+  font-style: italic;
+  color: var(--burgundy);
+}
+
+/* ---------- Las pisadas que cruzan el mapa ---------- */
+#marauder-steps {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(14px, 3.5vw, 20px);
+  height: 30px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+#marauder.ink #marauder-steps { opacity: 1; }
+#marauder-steps .step {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  border-radius: 54% 54% 42% 42%;
+  background: rgba(90, 62, 34, 0.75);
+  opacity: 0;
+  animation: maraud-step 6s linear infinite;
+  animation-delay: var(--d);
+}
+/* el dedo gordo, para que la mancha se lea como una huella */
+#marauder-steps .step::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0.5px;
+  width: 5.5px;
+  height: 5px;
+  border-radius: 50%;
+  background: inherit;
+}
+@keyframes maraud-step {
+  0%   { opacity: 0; }
+  4%   { opacity: 0.72; }
+  38%  { opacity: 0.5; }
+  58%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+/* donde los dos rastros se encuentran */
+#marauder-steps .step-heart {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--burgundy);
+  opacity: 0;
+  animation: maraud-heart 6s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes maraud-heart {
+  0%, 30% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+  42%     { opacity: 0.9; transform: translateX(-50%) scale(1.1); }
+  56%     { opacity: 0.75; transform: translateX(-50%) scale(1); }
+  70%, 100% { opacity: 0; transform: translateX(-50%) scale(0.85); }
+}
+
+/* ---------- Travesura realizada ---------- */
+#marauder-close {
+  flex: none;
+  margin-top: clamp(14px, 3.5vw, 22px);
+}
+
+/* Al cerrarse: la tinta se va, las solapas vuelven y el pergamino se dobla */
+#marauder.closing #marauder-ink p,
+#marauder.closing #marauder-lines .mline,
+#marauder.closing #marauder-steps { opacity: 0; transition-delay: 0s; }
+#marauder.closing .maraud-flap { transform: none; opacity: 1; transition-delay: 0s, 0s; }
+#marauder.closing #marauder-wrap { transform: scale(0.9) rotate(-1.4deg); opacity: 0; transition-delay: 0.55s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .maraud-flap { transition-duration: 0.3s; }
+  #marauder-wrap { transition-duration: 0.3s; }
+  #marauder-steps .step, #marauder-steps .step-heart { animation: none; opacity: 0.55; }
+  #marauder-steps .step-heart { opacity: 0.85; }
+  #marauder-oath .word, #marauder-ink p, #marauder-lines .mline {
+    transition-duration: 0.25s;
+    transition-delay: 0s;
+    filter: none;
+  }
+}
+
+/* ---------- La carta se lee por trozos ---------- */
+/* El juramento se hace antes de abrir: el pergamino pregunta y espera */
+#marauder-ask {
+  flex: none;
+  margin-top: clamp(16px, 4vw, 24px);
+  max-width: min(92vw, 420px);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+#marauder-ask[hidden] { display: none; }
+#marauder.ask #marauder-ask { opacity: 1; transform: none; }
+#marauder-ask-line {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: clamp(17px, 4.6vw, 20px);
+  font-style: italic;
+  line-height: 1.3;
+  color: var(--parchment-light);
+  text-shadow: 0 2px 18px rgba(6, 8, 18, 0.8);
+}
+#marauder-ask-btn { width: auto; justify-content: center; }
+#marauder-ask-btn .plate-text { align-items: center; }
+
+/* "sigue leyendo": vive dentro del pergamino, debajo de la tinta */
+#marauder-next {
+  flex: none;
+  align-self: center;
+  margin-top: 6px;
+  padding: 5px 16px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b4a22;
+  font-family: var(--serif);
+  font-size: clamp(14px, 3.8vw, 16px);
+  font-style: italic;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: manipulation;
+  opacity: 0;
+  transition: opacity 0.5s ease 0.3s, color 0.25s ease;
+}
+#marauder-next[hidden] { display: none; }
+#marauder.ink #marauder-next { opacity: 1; }
+#marauder-next:active { color: var(--burgundy); }
+#marauder-next:focus-visible { outline: 2px solid rgba(160, 120, 50, 0.8); outline-offset: 2px; }
+#marauder-next .flecha { display: inline-block; margin-left: 5px; animation: maraud-next 2.4s ease-in-out infinite; }
+@keyframes maraud-next {
+  0%, 100% { transform: translateX(0); opacity: 0.75; }
+  50%      { transform: translateX(3px); opacity: 1; }
+}
+
+/* Los puntos de cuánto queda de carta */
+#marauder-dots {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.3s;
+}
+#marauder-dots:empty { display: none; }
+#marauder.ink #marauder-dots { opacity: 1; }
+#marauder-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(122, 88, 42, 0.28);
+  transition: background 0.4s ease, transform 0.4s ease;
+}
+#marauder-dots i.leido { background: rgba(122, 88, 42, 0.62); }
+#marauder-dots i.aqui { background: var(--burgundy); transform: scale(1.5); }
+
+@media (prefers-reduced-motion: reduce) {
+  #marauder-next .flecha { animation: none; }
+  #marauder-ask { transition-duration: 0.25s; }
 }
