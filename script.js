@@ -3286,7 +3286,8 @@ function mostrarVuelo() {
   vueloEligeEl.hidden = true;
   vueloDiceEl.textContent = '';
   vueloDiceEl.classList.remove('show');
-  vueloNoBtn.classList.remove('gone');
+  vueloSiBtn.classList.remove('in');
+  vueloNoBtn.classList.remove('gone', 'in');
   vueloNoBtn.hidden = false;
   vueloNoBtn.style.transform = '';
   vueloNoBtn.disabled = false;
@@ -3309,6 +3310,8 @@ function mostrarVuelo() {
     vueloEligeEl.hidden = false;
     void vueloEligeEl.offsetWidth;
     vueloEl.classList.add('elige');
+    vueloSiBtn.classList.add('in');
+    vueloNoBtn.classList.add('in');
   }, 'vuelo');
   return true;
 }
@@ -3348,6 +3351,8 @@ function llegarAlParaiso() {
   cancelTasks('vuelo');
   castFxAt(vueloSiBtn, { sparks: 26, r1: 250, dur: 900 });
   vueloEl.classList.remove('elige');
+  vueloSiBtn.classList.remove('in');
+  vueloNoBtn.classList.remove('in');
   vueloDiceEl.classList.remove('show');
   later(600, () => { vueloEligeEl.hidden = true; }, 'vuelo');
 
