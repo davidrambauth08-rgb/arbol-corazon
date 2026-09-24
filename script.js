@@ -5607,6 +5607,9 @@ function frame(now) {
 
   // en la pantalla de inicio sólo se redibuja si cambia el tamaño
   if (magic.active) updateMagic(now, dt);
+  // el paraíso va en su propio lienzo y ocurre antes de que arranque el árbol,
+  // así que se dibuja aquí: más abajo el bucle se corta cuando t es null
+  dibujarParaiso(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;
 
@@ -5627,7 +5630,6 @@ function frame(now) {
   drawDracarys(now, dt);
   drawAustralis(now);
   drawOrchideous(now, dt);
-  dibujarParaiso(now);
   seasonOverlay(now);
   drawSeasonSweep(now);
   drawPanelFrame();
