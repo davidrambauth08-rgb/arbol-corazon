@@ -3462,33 +3462,93 @@ function franjaNube(g, x, y, rx, ry, color, alfa) {
   g.restore();
 }
 
-/* Dos siluetas sentadas en la arena, hombro con hombro, mirando al mar.
-   Muy sencillas a propósito: a este tamaño cualquier detalle se emborrona. */
+/* Dos siluetas sentadas en la arena, vistas de espaldas, mirando al mar.
+   Lo que hace que se lean como personas y no como manchas: la cabeza
+   pequeña respecto al cuerpo, los hombros marcados, las rodillas dobladas
+   asomando a los lados y el brazo de él sobre el hombro de ella. */
 function dibujarSiluetas(g, x, suelo, alto, color) {
+  const h = alto;
+
+  // la sombra en la arena, para que no parezcan flotando
+  const sombra = g.createRadialGradient(x, suelo, 0, x, suelo, h * 0.85);
+  sombra.addColorStop(0, 'rgba(40, 26, 48, 0.4)');
+  sombra.addColorStop(1, 'rgba(40, 26, 48, 0)');
+  g.fillStyle = sombra;
+  g.save();
+  g.translate(x, suelo);
+  g.scale(1, 0.2);
+  g.beginPath();
+  g.arc(0, 0, h * 0.85, 0, TAU);
+  g.fill();
+  g.restore();
+
   g.fillStyle = color;
-  const figura = (cx, esc, ladea) => {
-    const h = alto * esc;
-    // espalda: una curva que sale de la arena y se inclina hacia el mar
+
+  /* Una persona sentada: rodillas, cuerpo y cabeza. "ladea" inclina la
+     cabeza hacia el otro; "esc" la hace un poco más grande o más pequeña. */
+  const persona = (cx, esc, ladea) => {
+    const a = h * esc;
+
+    // rodillas dobladas, asomando por delante a los lados
+    for (const lado of [-1, 1]) {
+      g.beginPath();
+      g.ellipse(cx + lado * a * 0.26, suelo - a * 0.17, a * 0.15, a * 0.19, lado * 0.25, 0, TAU);
+      g.fill();
+      // la espinilla baja de la rodilla a la arena
+      g.beginPath();
+      g.moveTo(cx + lado * a * 0.16, suelo - a * 0.26);
+      g.quadraticCurveTo(cx + lado * a * 0.46, suelo - a * 0.18, cx + lado * a * 0.5, suelo);
+      g.lineTo(cx + lado * a * 0.14, suelo);
+      g.closePath();
+      g.fill();
+    }
+
+    // el cuerpo: cadera ancha en la arena, cintura, hombros
     g.beginPath();
-    g.moveTo(cx - h * 0.22, suelo);
-    g.quadraticCurveTo(cx - h * 0.2, suelo - h * 0.62, cx + ladea * h * 0.12, suelo - h * 0.66);
-    g.quadraticCurveTo(cx + h * 0.1, suelo - h * 0.4, cx + h * 0.12, suelo);
+    g.moveTo(cx - a * 0.3, suelo);
+    g.quadraticCurveTo(cx - a * 0.28, suelo - a * 0.38, cx - a * 0.2, suelo - a * 0.58);
+    g.quadraticCurveTo(cx - a * 0.18, suelo - a * 0.68, cx - a * 0.09, suelo - a * 0.7);
+    g.lineTo(cx + a * 0.09, suelo - a * 0.7);
+    g.quadraticCurveTo(cx + a * 0.18, suelo - a * 0.68, cx + a * 0.2, suelo - a * 0.58);
+    g.quadraticCurveTo(cx + a * 0.28, suelo - a * 0.38, cx + a * 0.3, suelo);
     g.closePath();
     g.fill();
-    // las piernas, dobladas hacia delante
+
+    // cuello y cabeza, inclinada hacia el otro
+    const cuelloY = suelo - a * 0.72;
+    const cabezaX = cx + ladea * a * 0.1, cabezaY = suelo - a * 0.9;
     g.beginPath();
-    g.moveTo(cx + h * 0.02, suelo - h * 0.3);
-    g.quadraticCurveTo(cx + h * 0.42, suelo - h * 0.3, cx + h * 0.5, suelo - h * 0.04);
-    g.quadraticCurveTo(cx + h * 0.3, suelo, cx + h * 0.05, suelo);
+    g.moveTo(cx - a * 0.06, cuelloY + a * 0.02);
+    g.lineTo(cx + a * 0.06, cuelloY + a * 0.02);
+    g.lineTo(cabezaX + a * 0.05, cabezaY);
+    g.lineTo(cabezaX - a * 0.05, cabezaY);
     g.closePath();
     g.fill();
-    // el cuello y la cabeza
     g.beginPath();
-    g.arc(cx + ladea * h * 0.14, suelo - h * 0.82, h * 0.15, 0, TAU);
+    g.arc(cabezaX, cabezaY, a * 0.115, 0, TAU);
     g.fill();
+    return { a, cabezaX, cabezaY };
   };
-  figura(x - alto * 0.3, 1, 0.35);      // ella, apoyada hacia él
-  figura(x + alto * 0.26, 0.9, -0.2);
+
+  const izq = persona(x - h * 0.26, 0.94, 0.55);     // ella, apoyada en él
+  const der = persona(x + h * 0.26, 1, -0.4);
+
+  // el pelo de ella, suelto hacia el lado
+  g.beginPath();
+  g.moveTo(izq.cabezaX - izq.a * 0.11, izq.cabezaY - izq.a * 0.04);
+  g.quadraticCurveTo(izq.cabezaX - izq.a * 0.24, izq.cabezaY + izq.a * 0.18, izq.cabezaX - izq.a * 0.12, izq.cabezaY + izq.a * 0.3);
+  g.quadraticCurveTo(izq.cabezaX + izq.a * 0.02, izq.cabezaY + izq.a * 0.12, izq.cabezaX + izq.a * 0.1, izq.cabezaY - izq.a * 0.02);
+  g.closePath();
+  g.fill();
+
+  // el brazo de él por encima del hombro de ella
+  g.strokeStyle = color;
+  g.lineWidth = h * 0.085;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(x + h * 0.26 - h * 0.14, suelo - h * 0.66);
+  g.quadraticCurveTo(x - h * 0.06, suelo - h * 0.76, x - h * 0.4, suelo - h * 0.58);
+  g.stroke();
 }
 
 function dibujarParaiso(now) {
@@ -3610,11 +3670,12 @@ function dibujarParaiso(now) {
 
   // --- palmeras a los lados ---
   const verde = `rgba(36, 28, 50, ${0.88 * luz + 0.12})`;
-  dibujarPalmera(g, W * 0.19, orilla + (H - orilla) * 0.68, H * 0.26, 1, verde);
-  dibujarPalmera(g, W * 0.83, orilla + (H - orilla) * 0.5, H * 0.2, -1, verde);
+  dibujarPalmera(g, W * 0.09, orilla + (H - orilla) * 0.58, H * 0.26, 1, verde);
+  dibujarPalmera(g, W * 0.85, orilla + (H - orilla) * 0.46, H * 0.2, -1, verde);
 
   // --- los dos, sentados mirando el mar (a un lado, para no tapar el texto) ---
-  dibujarSiluetas(g, W * 0.35, orilla + (H - orilla) * 0.34, H * 0.15, `rgba(28, 20, 42, ${0.88 * luz + 0.12})`);
+  // abajo y a un lado: así el texto no les cruza la cabeza ni tapan el botón
+  dibujarSiluetas(g, W * 0.27, orilla + (H - orilla) * 0.72, H * 0.15, `rgba(26, 18, 40, ${0.9 * luz + 0.1})`);
 
   // --- aves cruzando ---
   g.strokeStyle = `rgba(48, 34, 66, ${0.35 * luz})`;
