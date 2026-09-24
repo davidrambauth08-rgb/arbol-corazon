@@ -73,9 +73,18 @@
   <div id="vuelo" hidden>
     <div id="vuelo-foto" aria-hidden="true"></div>
     <div id="vuelo-brillos" aria-hidden="true"></div>
+    <canvas id="paraiso" aria-hidden="true"></canvas>
     <div id="vuelo-velo" aria-hidden="true"></div>
     <div id="vuelo-texto">
       <div id="vuelo-lineas" aria-live="polite"></div>
+      <div id="vuelo-elige" hidden>
+        <p id="vuelo-pregunta"></p>
+        <div id="vuelo-opciones">
+          <button id="vuelo-si" class="plate primary" type="button"></button>
+          <button id="vuelo-no" class="plate quiet" type="button"></button>
+        </div>
+      </div>
+      <p id="vuelo-dice" role="status"></p>
       <button id="vuelo-btn" class="plate primary" type="button" hidden></button>
     </div>
   </div>

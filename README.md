@@ -19,7 +19,9 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
-**Lo primero al pasar la puerta: «Quiero volar»** (`CONFIG.vuelo`). La imagen de `assets/volar.jpg` llena la pantalla y la frase se escribe encima letra a letra. La foto no se queda quieta: flota muy despacio (unos 9 px de deriva y un 5 % de zoom en ciclos de 24 s, ida y vuelta) y unas estrellas titilan sobre las que ya trae. El botón **Entonces vamos** da paso a la intro mágica. Si la imagen no está o no carga, en su sitio queda el cielo nocturno de la experiencia. Con `vuelo.activo: false` se salta este paso.
+**Lo primero al pasar la puerta: «Quiero volar»** (`CONFIG.vuelo`). La imagen de `assets/volar.jpg` llena la pantalla y la frase se escribe encima letra a letra. La foto no se queda quieta: flota muy despacio (unos 9 px de deriva y un 5 % de zoom en ciclos de 24 s, ida y vuelta) y unas estrellas titilan sobre las que ya trae. Después la pregunta: **¿Vamos?**, con **Sí** y **No**. El «No» huye del dedo dos veces (como las respuestas de las pruebas) y a la tercera se rinde y desaparece, dejando sólo el «Sí».
+
+**El paraíso** (`CONFIG.paraiso`). Al decir que sí, la foto se apaga y amanece sobre el **lago de Hogwarts**: el sol saliendo, nubes de amanecer, el castillo con sus ventanas encendidas, el Expreso cruzando el viaducto y el lago devolviendo el reflejo con el camino de luz. Está dibujado en su propio canvas, no es una foto. Luego se escriben las líneas de `paraiso.lineas` y el botón **Seguir** da paso a la intro mágica. Si la imagen no está o no carga, en su sitio queda el cielo nocturno de la experiencia. Con `vuelo.activo: false` se salta este paso.
 
 **La carta del merodeador** (`CONFIG.merodeador`) vive ahora en el hechizo **⚜ Mapa** de la fila del árbol. Al lanzarlo, las solapas del pergamino se abren, se escribe el juramento y empieza la carta. La carta **no se suelta de golpe**: se lee por trozos, con unos puntos que indican cuánto queda y un **sigue leyendo ❯** (o tocando el pergamino) para pasar al siguiente; el membrete de los Merodeadores sólo sale en el primero. Al llegar al final aparece la firma y **Travesura realizada**, que dobla el mapa. El reparto en trozos **se mide en pantalla** cada vez que se abre, así que se adapta al móvil, al escritorio y al giro de pantalla. Con `merodeador.entrada: true` el mapa vuelve a ser lo primero tras la puerta y entonces sí pregunta el juramento antes de abrirse.
 
@@ -92,7 +94,8 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
-| `vuelo` | la escena de apertura: `imagen`, `lineas` (la frase, una por renglón), `boton`, `pausa` y `activo` |
+| `vuelo` | la escena de apertura: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |
+| `paraiso` | el amanecer sobre el lago: `lineas` y `boton` |
 | `merodeador` | la carta del merodeador: `frases` es tu texto (un párrafo por elemento), y además `encabezado`, `subtitulo`, `titulo`, `juramento`, `firma`, `seguir` y `cierre`. `pregunta` es lo que se pide antes de abrirlo (`linea`, `boton`, `desc`) y `entrada: false` lo quita del arranque. Con `activo: false` el hechizo no aparece |
 | `idiomas` | frases de Lingua Amoris (el español no está: se guarda para la línea final) |
 | `puerta` | clave, frase, pistas y mensajes de la entrada |

@@ -207,9 +207,28 @@ const CONFIG = {
       "Quiero volar,",
       "y si es contigo, mejor."
     ],
-    boton: "Entonces vamos",
-    botonDesc: "",
-    pausa: 900              // lo que espera la foto antes de que llegue la frase
+    pausa: 900,             // lo que espera la foto antes de que llegue la frase
+
+    // Después de la frase, la pregunta. El "No" huye dos veces y se rinde.
+    pregunta: "¿Vamos?",
+    si: "Sí",
+    no: "No",
+    noDice: [
+      "Ese botón no parece muy convencido.",
+      "Sigue huyendo. Mala señal para el «no».",
+      "Se ha rendido. Sólo queda el otro."
+    ]
+  },
+
+  /* El paraíso: al decir que sí, la nube baja y amanece sobre el lago de
+     Hogwarts. Está dibujado, no es una foto, así que sólo hay textos. */
+  paraiso: {
+    lineas: [
+      "Llegamos.",
+      "Y yo aquí me quedaría."
+    ],
+    boton: "Seguir",
+    botonDesc: ""
   },
 
   /* El Mapa del Merodeador: el pergamino se despliega, se escribe solo el
@@ -778,6 +797,12 @@ const vueloEl = document.getElementById('vuelo');
 const vueloFotoEl = document.getElementById('vuelo-foto');
 const vueloLineasEl = document.getElementById('vuelo-lineas');
 const vueloBrillosEl = document.getElementById('vuelo-brillos');
+const vueloEligeEl = document.getElementById('vuelo-elige');
+const vueloSiBtn = document.getElementById('vuelo-si');
+const vueloNoBtn = document.getElementById('vuelo-no');
+const vueloDiceEl = document.getElementById('vuelo-dice');
+const paraisoCanvas = document.getElementById('paraiso');
+const paraisoCtx = paraisoCanvas.getContext('2d');
 const vueloBtn = document.getElementById('vuelo-btn');
 const merodeadorBtn = document.getElementById('spell-merodeador');
 const marauderEl = document.getElementById('marauder');
@@ -1242,6 +1267,10 @@ function resize() {
   canvas.height = Math.round(vh * dpr);
   fxCanvas.width = canvas.width;
   fxCanvas.height = canvas.height;
+  if (typeof paraisoCanvas !== 'undefined' && paraiso.activo) {
+    paraisoCanvas.width = canvas.width;
+    paraisoCanvas.height = canvas.height;
+  }
   if (typeof magicCanvas !== 'undefined') resizeMagic();
 
   view.tall = vw / vh < 0.9;
@@ -3232,7 +3261,7 @@ const MERO = {
 /* =====================================================================
    "Quiero volar" — lo primero al pasar la puerta
    ===================================================================== */
-const vuelo = { activo: false };
+const vuelo = { activo: false, huidas: 0, esquivo: false, llegando: false };
 
 function mostrarVuelo() {
   const V = CONFIG.vuelo;
@@ -3252,7 +3281,17 @@ function mostrarVuelo() {
   vueloLineasEl.replaceChildren();
   vueloBtn.hidden = true;
   vueloBtn.classList.remove('in');
-  fillPlate(vueloBtn, { runa: "❧", nombre: V.boton || 'Seguir', desc: V.botonDesc || '' });
+  fillPlate(vueloSiBtn, { runa: "❧", nombre: V.si || 'Sí', desc: '' });
+  fillPlate(vueloNoBtn, { runa: "", nombre: V.no || 'No', desc: '' });
+  vueloEligeEl.hidden = true;
+  vueloDiceEl.textContent = '';
+  vueloDiceEl.classList.remove('show');
+  vueloNoBtn.classList.remove('gone');
+  vueloNoBtn.hidden = false;
+  vueloNoBtn.style.transform = '';
+  vueloNoBtn.disabled = false;
+  vuelo.huidas = 0;
+  vuelo.esquivo = false;
   vueloEl.hidden = false;
   vueloEl.classList.remove('out');
   void vueloEl.offsetWidth;                    // para que la transición arranque
@@ -3266,11 +3305,362 @@ function mostrarVuelo() {
     t += 520 + graphemes(texto).length * 42;
   }
   later(t + 500, () => {
+    document.getElementById('vuelo-pregunta').textContent = V.pregunta || '¿Vamos?';
+    vueloEligeEl.hidden = false;
+    void vueloEligeEl.offsetWidth;
+    vueloEl.classList.add('elige');
+  }, 'vuelo');
+  return true;
+}
+
+/* El "No" se aparta del dedo y, a la tercera, se rinde */
+function huyeElNo() {
+  const V = CONFIG.vuelo || {};
+  const dichos = [].concat(V.noDice || []);
+  const caja = document.getElementById('vuelo-opciones');
+  if (vuelo.huidas >= 2) {
+    vueloNoBtn.classList.add('gone');
+    vueloNoBtn.disabled = true;
+    // cuando termina de irse deja de ocupar sitio, y el "Sí" se queda en medio
+    later(520, () => { vueloNoBtn.hidden = true; }, 'vuelo');
+    decirVuelo(dichos[Math.min(2, dichos.length - 1)] || '');
+    return false;
+  }
+  const ancho = Math.max(0, caja.clientWidth - vueloNoBtn.offsetWidth);
+  const dx = (vuelo.huidas === 0 ? 1 : -1) * Math.min(ancho / 2, vueloNoBtn.offsetWidth * 0.9);
+  const dy = (Math.random() - 0.5) * vueloNoBtn.offsetHeight * 1.1;
+  vueloNoBtn.style.transform = `translate(${dx}px, ${dy}px) rotate(${(Math.random() - 0.5) * 10}deg)`;
+  decirVuelo(dichos[vuelo.huidas] || '');
+  vuelo.huidas++;
+  return true;
+}
+
+function decirVuelo(texto) {
+  if (!texto) return;
+  vueloDiceEl.textContent = texto;
+  vueloDiceEl.classList.add('show');
+}
+
+/* Dice que sí: la nube baja y amanece sobre el lago */
+function llegarAlParaiso() {
+  if (!vuelo.activo || vuelo.llegando) return;
+  vuelo.llegando = true;
+  cancelTasks('vuelo');
+  castFxAt(vueloSiBtn, { sparks: 26, r1: 250, dur: 900 });
+  vueloEl.classList.remove('elige');
+  vueloDiceEl.classList.remove('show');
+  later(600, () => { vueloEligeEl.hidden = true; }, 'vuelo');
+
+  // la frase de la nube se borra mientras aparece el amanecer
+  for (const linea of vueloLineasEl.children) linea.classList.add('out');
+  later(700, () => {
+    vueloLineasEl.replaceChildren();
+    abrirParaiso();
+    vueloEl.classList.add('llego');
+  }, 'vuelo');
+
+  const P = CONFIG.paraiso || {};
+  const lineas = Array.isArray(P.lineas) ? P.lineas : [];
+  let t = 3000;
+  for (const texto of lineas) {
+    later(t, () => escribirLineaVuelo(texto), 'vuelo');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 600, () => {
+    fillPlate(vueloBtn, { runa: "❧", nombre: P.boton || 'Seguir', desc: P.botonDesc || '' });
     vueloBtn.hidden = false;
     void vueloBtn.offsetWidth;
     vueloBtn.classList.add('in');
   }, 'vuelo');
-  return true;
+}
+
+/* =====================================================================
+   EL PARAÍSO — el lago de Hogwarts al amanecer
+   Está dibujado entero en su propio canvas: cielo que se enciende, el sol
+   subiendo, el castillo con sus ventanas, el viaducto con el tren cruzando
+   y el lago devolviendo el reflejo.
+   ===================================================================== */
+const paraiso = { activo: false, born: 0, nubes: [], aves: [] };
+
+/* Las torres del castillo: [centro, ancho, alto] en fracción del bloque */
+const TORRES = [
+  [0.06, 0.13, 0.52], [0.20, 0.17, 0.74], [0.35, 0.12, 0.44],
+  [0.50, 0.20, 1.00], [0.66, 0.13, 0.62], [0.79, 0.16, 0.80], [0.93, 0.11, 0.40]
+];
+
+function sembrarParaiso() {
+  paraiso.nubes.length = 0;
+  for (let i = 0; i < 6; i++) {
+    // franjas largas y muy difuminadas, como las del amanecer de verdad
+    paraiso.nubes.push({
+      x: Math.random(),
+      y: 0.16 + Math.random() * 0.42,
+      rx: 0.13 + Math.random() * 0.14,
+      ry: 0.1 + Math.random() * 0.09,
+      v: 0.003 + Math.random() * 0.005,
+      a: 0.16 + Math.random() * 0.18
+    });
+  }
+  paraiso.aves.length = 0;
+  for (let i = 0; i < 3; i++) {
+    paraiso.aves.push({
+      x: Math.random(), y: 0.52 + Math.random() * 0.18,
+      v: 0.014 + Math.random() * 0.016, esc: 0.45 + Math.random() * 0.4,
+      fase: Math.random() * TAU
+    });
+  }
+}
+
+/* Una franja de nube: una lente muy aplastada que se apaga hacia los bordes */
+function franjaNube(g, x, y, rx, ry, color, alfa) {
+  g.save();
+  g.translate(x, y);
+  g.scale(1, Math.max(0.04, ry / rx));
+  const grad = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+  grad.addColorStop(0, `rgba(${color}, ${alfa})`);
+  grad.addColorStop(0.45, `rgba(${color}, ${alfa * 0.5})`);
+  grad.addColorStop(1, `rgba(${color}, 0)`);
+  g.fillStyle = grad;
+  g.beginPath();
+  g.arc(0, 0, rx, 0, TAU);
+  g.fill();
+  g.restore();
+}
+
+function abrirParaiso() {
+  paraisoCanvas.width = canvas.width;
+  paraisoCanvas.height = canvas.height;
+  sembrarParaiso();
+  paraiso.born = performance.now();
+  paraiso.activo = true;
+}
+
+/* El castillo: roca, torres con tejado cónico y ventanas encendidas */
+function dibujarCastillo(g, x0, base, ancho, alto, t, luz) {
+  g.fillStyle = '#3a2a4e';
+  // la roca sobre la que se levanta
+  g.beginPath();
+  g.moveTo(x0 - ancho * 0.12, base);
+  g.lineTo(x0 + ancho * 0.08, base - alto * 0.16);
+  g.lineTo(x0 + ancho * 0.9, base - alto * 0.13);
+  g.lineTo(x0 + ancho * 1.12, base);
+  g.closePath();
+  g.fill();
+
+  for (const [cx, cw, ch] of TORRES) {
+    const w = ancho * cw, h = alto * ch;
+    const x = x0 + ancho * cx - w / 2;
+    const y = base - alto * 0.12 - h;
+    g.fillStyle = '#332446';
+    g.fillRect(x, y, w, h + alto * 0.14);
+    // tejado
+    g.beginPath();
+    g.moveTo(x - w * 0.16, y);
+    g.lineTo(x + w / 2, y - h * 0.34);
+    g.lineTo(x + w + w * 0.16, y);
+    g.closePath();
+    g.fillStyle = '#2a1c3b';
+    g.fill();
+    // ventanas encendidas, con su parpadeo
+    const filas = Math.max(2, Math.round(h / (alto * 0.13)));
+    for (let f = 0; f < filas; f++) {
+      for (let c = 0; c < 2; c++) {
+        const vx = x + w * (0.28 + c * 0.44);
+        const vy = y + h * 0.16 + f * (h * 0.78 / filas);
+        const parp = 0.65 + 0.35 * Math.sin(t * 1.4 + f * 2.1 + c * 3.7 + cx * 9);
+        g.fillStyle = `rgba(255, 214, 130, ${(0.5 + 0.45 * parp) * luz})`;
+        g.fillRect(vx - w * 0.05, vy, w * 0.1, h * 0.05);
+      }
+    }
+  }
+}
+
+/* El viaducto: arcos que llegan al castillo, con el tren cruzando */
+function dibujarViaducto(g, x0, x1, y, altoArco, t, W) {
+  const largo = x1 - x0;
+  const arcos = 7;
+  const paso = largo / arcos;
+  g.fillStyle = '#2f2242';
+  g.fillRect(x0, y - altoArco * 0.42, largo, altoArco * 0.42);
+  for (let i = 0; i < arcos; i++) {
+    const cx = x0 + paso * (i + 0.5);
+    g.beginPath();
+    g.moveTo(cx - paso * 0.3, y);
+    g.lineTo(cx - paso * 0.3, y - altoArco * 0.5);
+    g.arc(cx, y - altoArco * 0.5, paso * 0.3, Math.PI, 0);
+    g.lineTo(cx + paso * 0.3, y);
+    g.closePath();
+    g.fill();
+  }
+  // el tren: pasa una vez, sin prisa
+  const tren = (t - 4) / 16;
+  if (tren > 0 && tren < 1) {
+    const tx = x0 - paso + (largo + paso * 2) * tren;
+    const ty = y - altoArco * 0.42;
+    const alto = altoArco * 0.2, vagon = paso * 0.42;
+    g.fillStyle = '#7a1f3d';
+    g.fillRect(tx, ty - alto, vagon * 1.25, alto);
+    g.fillStyle = '#5e1a30';
+    for (let v = 1; v <= 3; v++) g.fillRect(tx - v * (vagon + 3), ty - alto * 0.85, vagon, alto * 0.85);
+    // ventanillas
+    g.fillStyle = 'rgba(255, 220, 150, 0.85)';
+    for (let v = 1; v <= 3; v++) {
+      for (let k = 0; k < 3; k++) {
+        g.fillRect(tx - v * (vagon + 3) + vagon * (0.15 + k * 0.3), ty - alto * 0.62, vagon * 0.16, alto * 0.26);
+      }
+    }
+    // humo
+    for (let h = 0; h < 7; h++) {
+      const edad = h / 7;
+      g.fillStyle = `rgba(255, 238, 220, ${0.3 * (1 - edad)})`;
+      g.beginPath();
+      g.arc(tx + vagon * 1.1 + h * paso * 0.14, ty - alto - h * alto * 0.5 - Math.sin(t * 2 + h) * 2,
+            alto * (0.22 + edad * 0.8), 0, TAU);
+      g.fill();
+    }
+  }
+}
+
+function dibujarParaiso(now) {
+  if (!paraiso.activo) return;
+  const g = paraisoCtx;
+  const W = paraisoCanvas.width, H = paraisoCanvas.height;
+  if (!W || !H) return;
+  const t = REDUCED ? 9 : (now - paraiso.born) / 1000;
+  const sube = 1 - Math.pow(1 - Math.min(1, t / 10), 3);   // el sol acaba de salir
+  const luz = 0.45 + 0.55 * Math.min(1, t / 6);            // y todo se va encendiendo
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const hor = H * 0.615;                                   // la orilla
+  const solX = W * 0.31, solR = Math.min(W, H) * 0.05;
+  const solY = hor - H * (0.012 + 0.058 * sube);
+
+  // --- cielo ---
+  const cielo = g.createLinearGradient(0, 0, 0, hor);
+  cielo.addColorStop(0, '#241d44');
+  cielo.addColorStop(0.3, '#55396b');
+  cielo.addColorStop(0.56, '#a55c7e');
+  cielo.addColorStop(0.78, '#e28f6c');
+  cielo.addColorStop(1, '#f7d18a');
+  g.fillStyle = cielo;
+  g.fillRect(0, 0, W, hor);
+
+  // --- resplandor del sol y el sol ---
+  const halo = g.createRadialGradient(solX, solY, 0, solX, solY, solR * 9);
+  halo.addColorStop(0, `rgba(255, 233, 176, ${0.7 * luz})`);
+  halo.addColorStop(0.4, `rgba(250, 190, 130, ${0.26 * luz})`);
+  halo.addColorStop(1, 'rgba(250, 190, 130, 0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, W, hor + H * 0.1);
+  const disco = g.createRadialGradient(solX, solY, solR * 0.2, solX, solY, solR * 1.25);
+  disco.addColorStop(0, `rgba(255, 250, 232, ${0.96 * luz})`);
+  disco.addColorStop(0.62, `rgba(255, 238, 190, ${0.85 * luz})`);
+  disco.addColorStop(1, `rgba(255, 220, 160, 0)`);
+  g.fillStyle = disco;
+  g.beginPath();
+  g.arc(solX, solY, solR * 1.25, 0, TAU);
+  g.fill();
+
+  // --- nubes largas, encendidas por abajo ---
+  for (const n of paraiso.nubes) {
+    const x = ((n.x + t * n.v) % 1.5 - 0.25) * W;
+    const y = n.y * hor;
+    const rx = n.rx * W, ry = n.ry * H * 0.16;
+    // el cuerpo en malva y, un poco más abajo, el filo que enciende el sol
+    franjaNube(g, x, y, rx, ry, '182, 150, 186', n.a * 0.8 * luz);
+    franjaNube(g, x + rx * 0.12, y + ry * 0.5, rx * 0.72, ry * 0.7, '255, 216, 178', n.a * 0.9 * luz);
+  }
+
+  // --- montañas al fondo ---
+  const monte = (base, altura, color, desfase) => {
+    g.fillStyle = color;
+    g.beginPath();
+    g.moveTo(0, base);
+    for (let x = 0; x <= W; x += W / 40) {
+      const k = x / W * 7 + desfase;
+      const y = base - altura * (0.45 + 0.4 * Math.sin(k) + 0.22 * Math.sin(k * 2.3));
+      g.lineTo(x, y);
+    }
+    g.lineTo(W, base);
+    g.closePath();
+    g.fill();
+  };
+  monte(hor, H * 0.1, `rgba(96, 74, 122, ${0.55 + 0.2 * luz})`, 1.2);
+  monte(hor, H * 0.062, `rgba(66, 50, 92, ${0.7 + 0.15 * luz})`, 3.4);
+
+  // --- castillo y viaducto (y sus reflejos) ---
+  const cx = W * 0.6, cAncho = W * 0.34, cAlto = H * 0.2;
+  const pintarTierra = () => {
+    dibujarViaducto(g, W * 0.02, W * 0.58, hor, H * 0.085, t, W);
+    dibujarCastillo(g, cx, hor, cAncho, cAlto, t, luz);
+  };
+  pintarTierra();
+
+  // --- lago ---
+  const agua = g.createLinearGradient(0, hor, 0, H);
+  agua.addColorStop(0, '#d9a882');
+  agua.addColorStop(0.18, '#a97a86');
+  agua.addColorStop(0.55, '#5b4272');
+  agua.addColorStop(1, '#2a2048');
+  g.fillStyle = agua;
+  g.fillRect(0, hor, W, H - hor);
+
+  // reflejo del castillo, del revés y desvaído
+  g.save();
+  g.beginPath();
+  g.rect(0, hor, W, H - hor);
+  g.clip();
+  g.globalAlpha = 0.34;
+  g.translate(0, hor * 2);
+  g.scale(1, -1);
+  pintarTierra();
+  g.restore();
+
+  // el camino de luz del sol sobre el agua
+  const camino = g.createLinearGradient(0, hor, 0, H);
+  camino.addColorStop(0, `rgba(255, 226, 170, ${0.5 * luz})`);
+  camino.addColorStop(1, 'rgba(255, 226, 170, 0)');
+  g.save();
+  g.beginPath();
+  g.moveTo(solX - solR * 0.9, hor);
+  g.lineTo(solX + solR * 0.9, hor);
+  g.lineTo(solX + W * 0.16, H);
+  g.lineTo(solX - W * 0.16, H);
+  g.closePath();
+  g.fillStyle = camino;
+  g.fill();
+  g.restore();
+
+  // las ondas: líneas claras que rompen el reflejo
+  for (let i = 0; i < 26; i++) {
+    const p = i / 26;
+    const y = hor + Math.pow(p, 1.7) * (H - hor);
+    const meneo = Math.sin(t * 1.1 + i * 0.9) * W * 0.012;
+    const ancho = W * (0.1 + p * 0.5);
+    g.strokeStyle = `rgba(255, 236, 206, ${(0.16 - p * 0.1) * luz})`;
+    g.lineWidth = Math.max(1, H * 0.0016);
+    g.beginPath();
+    g.moveTo(W * 0.5 + meneo - ancho, y);
+    g.lineTo(W * 0.5 + meneo + ancho, y);
+    g.stroke();
+  }
+
+  // --- aves cruzando ---
+  g.strokeStyle = `rgba(58, 42, 78, ${0.3 * luz})`;
+  g.lineWidth = Math.max(1, H * 0.0022);
+  for (const a of paraiso.aves) {
+    const x = ((a.x + t * a.v) % 1.2 - 0.1) * W;
+    const y = a.y * hor + Math.sin(t * 1.6 + a.fase) * H * 0.008;
+    const r = H * 0.011 * a.esc;
+    const bat = Math.sin(t * 5 + a.fase) * 0.35;
+    g.beginPath();
+    g.moveTo(x - r, y);
+    g.quadraticCurveTo(x - r * 0.5, y - r * (0.6 + bat), x, y);
+    g.quadraticCurveTo(x + r * 0.5, y - r * (0.6 + bat), x + r, y);
+    g.stroke();
+  }
 }
 
 /* Estrellas que titilan sobre la foto, repartidas por el cielo de arriba */
@@ -3307,6 +3697,7 @@ function cerrarVuelo() {
   if (!vuelo.activo) return;
   cancelTasks('vuelo');
   vuelo.activo = false;
+  vuelo.llegando = false;
   vueloBtn.classList.remove('in');
   vueloEl.classList.remove('show');
   vueloEl.classList.add('out');
@@ -3315,6 +3706,8 @@ function cerrarVuelo() {
     vueloEl.classList.remove('out');
     vueloLineasEl.replaceChildren();
     vueloBrillosEl.replaceChildren();
+    vueloEl.classList.remove('llego', 'elige');
+    paraiso.activo = false;
     if (!entradaMerodeador()) seguirTrasElMapa();
   }, 'vuelo');
 }
@@ -4216,6 +4609,17 @@ function bindExtras() {
   merodeadorBtn.addEventListener('click', () => castMerodeador());
   marauderCloseBtn.addEventListener('click', () => cerrarMerodeador());
   vueloBtn.addEventListener('click', cerrarVuelo);
+  vueloSiBtn.addEventListener('click', llegarAlParaiso);
+  // en móvil huye al tocarlo; con ratón, al acercarse
+  vueloNoBtn.addEventListener('pointerdown', e => {
+    vuelo.esquivo = huyeElNo();
+    if (vuelo.esquivo) e.preventDefault();
+  });
+  vueloNoBtn.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') huyeElNo(); });
+  vueloNoBtn.addEventListener('click', () => {
+    if (vuelo.esquivo) { vuelo.esquivo = false; return; }
+    huyeElNo();
+  });
   marauderAskBtn.addEventListener('click', aceptarJuramento);
   marauderNextBtn.addEventListener('click', avanzarCarta);
   // tocar el pergamino también pasa de trozo (el botón es sólo la señal)
@@ -4400,9 +4804,10 @@ function resetExtras() {
   document.body.classList.remove('florido');
   cerrarMerodeador(true);
   cancelTasks('vuelo');
-  vuelo.activo = false;
+  vuelo.activo = vuelo.llegando = false;
+  paraiso.activo = false;
   vueloEl.hidden = true;
-  vueloEl.classList.remove('show', 'out');
+  vueloEl.classList.remove('show', 'out', 'elige', 'llego');
   inviteEl.hidden = true;
   inviteEl.classList.remove('show');
   dinoSayEl.hidden = true;
@@ -5217,6 +5622,7 @@ function frame(now) {
   drawDracarys(now, dt);
   drawAustralis(now);
   drawOrchideous(now, dt);
+  dibujarParaiso(now);
   seasonOverlay(now);
   drawSeasonSweep(now);
   drawPanelFrame();
