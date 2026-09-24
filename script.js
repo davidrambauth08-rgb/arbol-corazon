@@ -220,8 +220,8 @@ const CONFIG = {
     ]
   },
 
-  /* El paraíso: al decir que sí, la nube baja y amanece sobre el lago de
-     Hogwarts. Está dibujado, no es una foto, así que sólo hay textos. */
+  /* El paraíso: al decir que sí, la nube baja y aterriza en una playa al
+     atardecer. Está dibujada, no es una foto, así que aquí sólo hay textos. */
   paraiso: {
     lineas: [
       "Llegamos.",
@@ -3380,40 +3380,46 @@ function llegarAlParaiso() {
 }
 
 /* =====================================================================
-   EL PARAÍSO — el lago de Hogwarts al amanecer
-   Está dibujado entero en su propio canvas: cielo que se enciende, el sol
-   subiendo, el castillo con sus ventanas, el viaducto con el tren cruzando
-   y el lago devolviendo el reflejo.
+   EL PARAÍSO — una playa al atardecer
+   Dibujada entera en su propio lienzo: el sol cayendo sobre el mar, el
+   camino de luz en el agua, las olas que suben y bajan por la arena,
+   palmeras a los lados y dos siluetas sentadas mirando el horizonte.
    ===================================================================== */
-const paraiso = { activo: false, born: 0, nubes: [], aves: [] };
-
-/* Las torres del castillo: [centro, ancho, alto] en fracción del bloque */
-const TORRES = [
-  [0.06, 0.13, 0.52], [0.20, 0.17, 0.74], [0.35, 0.12, 0.44],
-  [0.50, 0.20, 1.00], [0.66, 0.13, 0.62], [0.79, 0.16, 0.80], [0.93, 0.11, 0.40]
-];
+const paraiso = { activo: false, born: 0, nubes: [], aves: [], olas: [] };
 
 function sembrarParaiso() {
   paraiso.nubes.length = 0;
   for (let i = 0; i < 6; i++) {
-    // franjas largas y muy difuminadas, como las del amanecer de verdad
     paraiso.nubes.push({
       x: Math.random(),
-      y: 0.16 + Math.random() * 0.42,
-      rx: 0.13 + Math.random() * 0.14,
+      y: 0.14 + Math.random() * 0.42,
+      rx: 0.13 + Math.random() * 0.15,
       ry: 0.1 + Math.random() * 0.09,
       v: 0.003 + Math.random() * 0.005,
-      a: 0.16 + Math.random() * 0.18
+      a: 0.16 + Math.random() * 0.2
     });
   }
   paraiso.aves.length = 0;
   for (let i = 0; i < 3; i++) {
     paraiso.aves.push({
-      x: Math.random(), y: 0.52 + Math.random() * 0.18,
+      x: Math.random(), y: 0.4 + Math.random() * 0.22,
       v: 0.014 + Math.random() * 0.016, esc: 0.45 + Math.random() * 0.4,
       fase: Math.random() * TAU
     });
   }
+  // cada ola sube por la arena con su propio ritmo
+  paraiso.olas.length = 0;
+  for (let i = 0; i < 3; i++) {
+    paraiso.olas.push({ periodo: 5.5 + i * 2.2, fase: Math.random() * TAU, hondo: 0.5 + i * 0.26 });
+  }
+}
+
+function abrirParaiso() {
+  paraisoCanvas.width = canvas.width;
+  paraisoCanvas.height = canvas.height;
+  sembrarParaiso();
+  paraiso.born = performance.now();
+  paraiso.activo = true;
 }
 
 /* Una franja de nube: una lente muy aplastada que se apaga hacia los bordes */
@@ -3432,98 +3438,33 @@ function franjaNube(g, x, y, rx, ry, color, alfa) {
   g.restore();
 }
 
-function abrirParaiso() {
-  paraisoCanvas.width = canvas.width;
-  paraisoCanvas.height = canvas.height;
-  sembrarParaiso();
-  paraiso.born = performance.now();
-  paraiso.activo = true;
-}
-
-/* El castillo: roca, torres con tejado cónico y ventanas encendidas */
-function dibujarCastillo(g, x0, base, ancho, alto, t, luz) {
-  g.fillStyle = '#3a2a4e';
-  // la roca sobre la que se levanta
-  g.beginPath();
-  g.moveTo(x0 - ancho * 0.12, base);
-  g.lineTo(x0 + ancho * 0.08, base - alto * 0.16);
-  g.lineTo(x0 + ancho * 0.9, base - alto * 0.13);
-  g.lineTo(x0 + ancho * 1.12, base);
-  g.closePath();
-  g.fill();
-
-  for (const [cx, cw, ch] of TORRES) {
-    const w = ancho * cw, h = alto * ch;
-    const x = x0 + ancho * cx - w / 2;
-    const y = base - alto * 0.12 - h;
-    g.fillStyle = '#332446';
-    g.fillRect(x, y, w, h + alto * 0.14);
-    // tejado
+/* Dos siluetas sentadas en la arena, hombro con hombro, mirando al mar.
+   Muy sencillas a propósito: a este tamaño cualquier detalle se emborrona. */
+function dibujarSiluetas(g, x, suelo, alto, color) {
+  g.fillStyle = color;
+  const figura = (cx, esc, ladea) => {
+    const h = alto * esc;
+    // espalda: una curva que sale de la arena y se inclina hacia el mar
     g.beginPath();
-    g.moveTo(x - w * 0.16, y);
-    g.lineTo(x + w / 2, y - h * 0.34);
-    g.lineTo(x + w + w * 0.16, y);
-    g.closePath();
-    g.fillStyle = '#2a1c3b';
-    g.fill();
-    // ventanas encendidas, con su parpadeo
-    const filas = Math.max(2, Math.round(h / (alto * 0.13)));
-    for (let f = 0; f < filas; f++) {
-      for (let c = 0; c < 2; c++) {
-        const vx = x + w * (0.28 + c * 0.44);
-        const vy = y + h * 0.16 + f * (h * 0.78 / filas);
-        const parp = 0.65 + 0.35 * Math.sin(t * 1.4 + f * 2.1 + c * 3.7 + cx * 9);
-        g.fillStyle = `rgba(255, 214, 130, ${(0.5 + 0.45 * parp) * luz})`;
-        g.fillRect(vx - w * 0.05, vy, w * 0.1, h * 0.05);
-      }
-    }
-  }
-}
-
-/* El viaducto: arcos que llegan al castillo, con el tren cruzando */
-function dibujarViaducto(g, x0, x1, y, altoArco, t, W) {
-  const largo = x1 - x0;
-  const arcos = 7;
-  const paso = largo / arcos;
-  g.fillStyle = '#2f2242';
-  g.fillRect(x0, y - altoArco * 0.42, largo, altoArco * 0.42);
-  for (let i = 0; i < arcos; i++) {
-    const cx = x0 + paso * (i + 0.5);
-    g.beginPath();
-    g.moveTo(cx - paso * 0.3, y);
-    g.lineTo(cx - paso * 0.3, y - altoArco * 0.5);
-    g.arc(cx, y - altoArco * 0.5, paso * 0.3, Math.PI, 0);
-    g.lineTo(cx + paso * 0.3, y);
+    g.moveTo(cx - h * 0.22, suelo);
+    g.quadraticCurveTo(cx - h * 0.2, suelo - h * 0.62, cx + ladea * h * 0.12, suelo - h * 0.66);
+    g.quadraticCurveTo(cx + h * 0.1, suelo - h * 0.4, cx + h * 0.12, suelo);
     g.closePath();
     g.fill();
-  }
-  // el tren: pasa una vez, sin prisa
-  const tren = (t - 4) / 16;
-  if (tren > 0 && tren < 1) {
-    const tx = x0 - paso + (largo + paso * 2) * tren;
-    const ty = y - altoArco * 0.42;
-    const alto = altoArco * 0.2, vagon = paso * 0.42;
-    g.fillStyle = '#7a1f3d';
-    g.fillRect(tx, ty - alto, vagon * 1.25, alto);
-    g.fillStyle = '#5e1a30';
-    for (let v = 1; v <= 3; v++) g.fillRect(tx - v * (vagon + 3), ty - alto * 0.85, vagon, alto * 0.85);
-    // ventanillas
-    g.fillStyle = 'rgba(255, 220, 150, 0.85)';
-    for (let v = 1; v <= 3; v++) {
-      for (let k = 0; k < 3; k++) {
-        g.fillRect(tx - v * (vagon + 3) + vagon * (0.15 + k * 0.3), ty - alto * 0.62, vagon * 0.16, alto * 0.26);
-      }
-    }
-    // humo
-    for (let h = 0; h < 7; h++) {
-      const edad = h / 7;
-      g.fillStyle = `rgba(255, 238, 220, ${0.3 * (1 - edad)})`;
-      g.beginPath();
-      g.arc(tx + vagon * 1.1 + h * paso * 0.14, ty - alto - h * alto * 0.5 - Math.sin(t * 2 + h) * 2,
-            alto * (0.22 + edad * 0.8), 0, TAU);
-      g.fill();
-    }
-  }
+    // las piernas, dobladas hacia delante
+    g.beginPath();
+    g.moveTo(cx + h * 0.02, suelo - h * 0.3);
+    g.quadraticCurveTo(cx + h * 0.42, suelo - h * 0.3, cx + h * 0.5, suelo - h * 0.04);
+    g.quadraticCurveTo(cx + h * 0.3, suelo, cx + h * 0.05, suelo);
+    g.closePath();
+    g.fill();
+    // el cuello y la cabeza
+    g.beginPath();
+    g.arc(cx + ladea * h * 0.14, suelo - h * 0.82, h * 0.15, 0, TAU);
+    g.fill();
+  };
+  figura(x - alto * 0.3, 1, 0.35);      // ella, apoyada hacia él
+  figura(x + alto * 0.26, 0.9, -0.2);
 }
 
 function dibujarParaiso(now) {
@@ -3532,128 +3473,127 @@ function dibujarParaiso(now) {
   const W = paraisoCanvas.width, H = paraisoCanvas.height;
   if (!W || !H) return;
   const t = REDUCED ? 9 : (now - paraiso.born) / 1000;
-  const sube = 1 - Math.pow(1 - Math.min(1, t / 10), 3);   // el sol acaba de salir
-  const luz = 0.45 + 0.55 * Math.min(1, t / 6);            // y todo se va encendiendo
+  const baja = 1 - Math.pow(1 - Math.min(1, t / 14), 3);    // el sol va cayendo
+  const luz = 0.5 + 0.5 * Math.min(1, t / 5);
 
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, W, H);
 
-  const hor = H * 0.615;                                   // la orilla
-  const solX = W * 0.31, solR = Math.min(W, H) * 0.05;
-  const solY = hor - H * (0.012 + 0.058 * sube);
+  const hor = H * 0.52;                       // la línea del mar
+  const orilla = H * 0.80;                    // donde empieza la arena
+  const solX = W * 0.5, solR = Math.min(W, H) * 0.062;
+  const solY = hor - H * (0.085 - 0.06 * baja);
 
   // --- cielo ---
   const cielo = g.createLinearGradient(0, 0, 0, hor);
-  cielo.addColorStop(0, '#241d44');
-  cielo.addColorStop(0.3, '#55396b');
-  cielo.addColorStop(0.56, '#a55c7e');
-  cielo.addColorStop(0.78, '#e28f6c');
-  cielo.addColorStop(1, '#f7d18a');
+  cielo.addColorStop(0, '#2d2352');
+  cielo.addColorStop(0.28, '#6a3f75');
+  cielo.addColorStop(0.55, '#c2647c');
+  cielo.addColorStop(0.78, '#f09668');
+  cielo.addColorStop(1, '#ffd694');
   g.fillStyle = cielo;
   g.fillRect(0, 0, W, hor);
 
-  // --- resplandor del sol y el sol ---
-  const halo = g.createRadialGradient(solX, solY, 0, solX, solY, solR * 9);
-  halo.addColorStop(0, `rgba(255, 233, 176, ${0.7 * luz})`);
-  halo.addColorStop(0.4, `rgba(250, 190, 130, ${0.26 * luz})`);
-  halo.addColorStop(1, 'rgba(250, 190, 130, 0)');
+  // --- resplandor y sol ---
+  const halo = g.createRadialGradient(solX, solY, 0, solX, solY, solR * 10);
+  halo.addColorStop(0, `rgba(255, 226, 168, ${0.72 * luz})`);
+  halo.addColorStop(0.38, `rgba(252, 174, 112, ${0.26 * luz})`);
+  halo.addColorStop(1, 'rgba(252, 174, 112, 0)');
   g.fillStyle = halo;
-  g.fillRect(0, 0, W, hor + H * 0.1);
+  g.fillRect(0, 0, W, hor + H * 0.12);
   const disco = g.createRadialGradient(solX, solY, solR * 0.2, solX, solY, solR * 1.25);
-  disco.addColorStop(0, `rgba(255, 250, 232, ${0.96 * luz})`);
-  disco.addColorStop(0.62, `rgba(255, 238, 190, ${0.85 * luz})`);
-  disco.addColorStop(1, `rgba(255, 220, 160, 0)`);
+  disco.addColorStop(0, `rgba(255, 252, 238, ${0.97 * luz})`);
+  disco.addColorStop(0.62, `rgba(255, 234, 178, ${0.88 * luz})`);
+  disco.addColorStop(1, 'rgba(255, 214, 150, 0)');
   g.fillStyle = disco;
   g.beginPath();
   g.arc(solX, solY, solR * 1.25, 0, TAU);
   g.fill();
 
-  // --- nubes largas, encendidas por abajo ---
+  // --- nubes largas de atardecer ---
   for (const n of paraiso.nubes) {
     const x = ((n.x + t * n.v) % 1.5 - 0.25) * W;
     const y = n.y * hor;
     const rx = n.rx * W, ry = n.ry * H * 0.16;
-    // el cuerpo en malva y, un poco más abajo, el filo que enciende el sol
-    franjaNube(g, x, y, rx, ry, '182, 150, 186', n.a * 0.8 * luz);
-    franjaNube(g, x + rx * 0.12, y + ry * 0.5, rx * 0.72, ry * 0.7, '255, 216, 178', n.a * 0.9 * luz);
+    franjaNube(g, x, y, rx, ry, '150, 96, 130', n.a * 0.85 * luz);
+    franjaNube(g, x + rx * 0.12, y + ry * 0.5, rx * 0.72, ry * 0.7, '255, 206, 158', n.a * 0.95 * luz);
   }
 
-  // --- montañas al fondo ---
-  const monte = (base, altura, color, desfase) => {
-    g.fillStyle = color;
-    g.beginPath();
-    g.moveTo(0, base);
-    for (let x = 0; x <= W; x += W / 40) {
-      const k = x / W * 7 + desfase;
-      const y = base - altura * (0.45 + 0.4 * Math.sin(k) + 0.22 * Math.sin(k * 2.3));
-      g.lineTo(x, y);
+  // --- mar ---
+  const mar = g.createLinearGradient(0, hor, 0, orilla);
+  mar.addColorStop(0, '#f0a978');
+  mar.addColorStop(0.14, '#c4718a');
+  mar.addColorStop(0.5, '#5c4a90');
+  mar.addColorStop(1, '#3a3273');
+  g.fillStyle = mar;
+  g.fillRect(0, hor, W, orilla - hor);
+
+  // el reflejo del sol: destellos sueltos que se apagan hacia los bordes,
+  // no una franja recta (eso parecía una escalera)
+  for (let i = 0; i < 42; i++) {
+    const p = i / 42;
+    const y = hor + Math.pow(p, 1.5) * (orilla - hor);
+    const abanico = W * (0.02 + p * 0.26);
+    const cuantos = 1 + Math.floor(p * 3);
+    for (let k = 0; k < cuantos; k++) {
+      const meneo = Math.sin(t * 1.3 + i * 0.9 + k * 2.3) * abanico * 0.8;
+      const largo = abanico * (0.35 + 0.5 * Math.abs(Math.sin(t * 0.9 + i * 1.7 + k)));
+      const centro = solX + meneo;
+      const alfa = (0.55 - p * 0.4) * (0.45 + 0.55 * Math.abs(Math.sin(t * 1.7 + i + k))) * luz;
+      const brillo = g.createLinearGradient(centro - largo, 0, centro + largo, 0);
+      brillo.addColorStop(0, 'rgba(255, 240, 210, 0)');
+      brillo.addColorStop(0.5, `rgba(255, 244, 218, ${alfa})`);
+      brillo.addColorStop(1, 'rgba(255, 240, 210, 0)');
+      g.fillStyle = brillo;
+      g.fillRect(centro - largo, y, largo * 2, Math.max(1, H * 0.0022));
     }
-    g.lineTo(W, base);
+  }
+
+  // --- arena ---
+  const arena = g.createLinearGradient(0, orilla, 0, H);
+  arena.addColorStop(0, '#c49a86');
+  arena.addColorStop(0.3, '#a67d76');
+  arena.addColorStop(1, '#6b5064');
+  g.fillStyle = arena;
+  g.fillRect(0, orilla, W, H - orilla);
+
+  // --- las olas que suben y bajan por la arena ---
+  for (const ola of paraiso.olas) {
+    const ciclo = (Math.sin(t * TAU / ola.periodo + ola.fase) + 1) / 2;
+    const y = orilla + (H - orilla) * ola.hondo * 0.5 * ciclo;
+    const alfa = (0.85 - ola.hondo * 0.22) * (0.45 + 0.55 * ciclo) * luz;
+    // el agua que llega, mojando la arena
+    g.fillStyle = `rgba(206, 172, 198, ${alfa * 0.5})`;
+    g.beginPath();
+    g.moveTo(0, H);
+    g.lineTo(0, y);
+    for (let x = 0; x <= W; x += W / 30) {
+      g.lineTo(x, y + Math.sin(x / W * 5 + t * 1.3 + ola.fase) * H * 0.004);
+    }
+    g.lineTo(W, H);
     g.closePath();
     g.fill();
-  };
-  monte(hor, H * 0.1, `rgba(96, 74, 122, ${0.55 + 0.2 * luz})`, 1.2);
-  monte(hor, H * 0.062, `rgba(66, 50, 92, ${0.7 + 0.15 * luz})`, 3.4);
-
-  // --- castillo y viaducto (y sus reflejos) ---
-  const cx = W * 0.6, cAncho = W * 0.34, cAlto = H * 0.2;
-  const pintarTierra = () => {
-    dibujarViaducto(g, W * 0.02, W * 0.58, hor, H * 0.085, t, W);
-    dibujarCastillo(g, cx, hor, cAncho, cAlto, t, luz);
-  };
-  pintarTierra();
-
-  // --- lago ---
-  const agua = g.createLinearGradient(0, hor, 0, H);
-  agua.addColorStop(0, '#d9a882');
-  agua.addColorStop(0.18, '#a97a86');
-  agua.addColorStop(0.55, '#5b4272');
-  agua.addColorStop(1, '#2a2048');
-  g.fillStyle = agua;
-  g.fillRect(0, hor, W, H - hor);
-
-  // reflejo del castillo, del revés y desvaído
-  g.save();
-  g.beginPath();
-  g.rect(0, hor, W, H - hor);
-  g.clip();
-  g.globalAlpha = 0.34;
-  g.translate(0, hor * 2);
-  g.scale(1, -1);
-  pintarTierra();
-  g.restore();
-
-  // el camino de luz del sol sobre el agua
-  const camino = g.createLinearGradient(0, hor, 0, H);
-  camino.addColorStop(0, `rgba(255, 226, 170, ${0.5 * luz})`);
-  camino.addColorStop(1, 'rgba(255, 226, 170, 0)');
-  g.save();
-  g.beginPath();
-  g.moveTo(solX - solR * 0.9, hor);
-  g.lineTo(solX + solR * 0.9, hor);
-  g.lineTo(solX + W * 0.16, H);
-  g.lineTo(solX - W * 0.16, H);
-  g.closePath();
-  g.fillStyle = camino;
-  g.fill();
-  g.restore();
-
-  // las ondas: líneas claras que rompen el reflejo
-  for (let i = 0; i < 26; i++) {
-    const p = i / 26;
-    const y = hor + Math.pow(p, 1.7) * (H - hor);
-    const meneo = Math.sin(t * 1.1 + i * 0.9) * W * 0.012;
-    const ancho = W * (0.1 + p * 0.5);
-    g.strokeStyle = `rgba(255, 236, 206, ${(0.16 - p * 0.1) * luz})`;
-    g.lineWidth = Math.max(1, H * 0.0016);
+    // la espuma del borde
+    g.strokeStyle = `rgba(255, 244, 228, ${alfa})`;
+    g.lineWidth = Math.max(1.5, H * 0.003);
     g.beginPath();
-    g.moveTo(W * 0.5 + meneo - ancho, y);
-    g.lineTo(W * 0.5 + meneo + ancho, y);
+    for (let x = 0; x <= W; x += W / 40) {
+      const yy = y + Math.sin(x / W * 5 + t * 1.3 + ola.fase) * H * 0.004;
+      x === 0 ? g.moveTo(x, yy) : g.lineTo(x, yy);
+    }
     g.stroke();
   }
 
+  // --- palmeras a los lados ---
+  const verde = `rgba(36, 28, 50, ${0.88 * luz + 0.12})`;
+  dibujarPalmera(g, W * 0.19, orilla + (H - orilla) * 0.68, H * 0.26, 1, verde);
+  dibujarPalmera(g, W * 0.83, orilla + (H - orilla) * 0.5, H * 0.2, -1, verde);
+
+  // --- los dos, sentados mirando el mar (a un lado, para no tapar el texto) ---
+  dibujarSiluetas(g, W * 0.35, orilla + (H - orilla) * 0.34, H * 0.15, `rgba(28, 20, 42, ${0.88 * luz + 0.12})`);
+
   // --- aves cruzando ---
-  g.strokeStyle = `rgba(58, 42, 78, ${0.3 * luz})`;
+  g.strokeStyle = `rgba(48, 34, 66, ${0.35 * luz})`;
   g.lineWidth = Math.max(1, H * 0.0022);
   for (const a of paraiso.aves) {
     const x = ((a.x + t * a.v) % 1.2 - 0.1) * W;
@@ -4620,7 +4560,8 @@ function bindExtras() {
     vuelo.esquivo = huyeElNo();
     if (vuelo.esquivo) e.preventDefault();
   });
-  vueloNoBtn.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') huyeElNo(); });
+  // (antes huía con sólo pasar el ratón por encima y desaparecía de camino
+  //  al "Sí", sin que diera tiempo a verlo; ahora sólo huye si la intentan)
   vueloNoBtn.addEventListener('click', () => {
     if (vuelo.esquivo) { vuelo.esquivo = false; return; }
     huyeElNo();
