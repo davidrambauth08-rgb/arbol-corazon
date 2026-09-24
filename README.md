@@ -73,6 +73,14 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 
 **Easter egg:** con el árbol ya formado, tocar la copa 5 veces en 4 segundos muestra un mensaje oculto. Solo una vez por reproducción.
 
+**Dejar algo escrito** (`CONFIG.recado`). Al final del todo, después de la lluvia de corazones, aparece un recuadro para que ella conteste. La página es estática y no guarda nada por sí sola, así que hay que decirle por dónde sale, y usa la primera opción que esté rellena:
+
+1. `formulario`: una URL de [Formspree](https://formspree.io) o similar. Ella escribe, envía y se queda en la página con un «gracias»; a ti te llega al correo. **Es la buena.**
+2. `whatsapp`: tu número con indicativo y sin signos (`"573001112233"`). Se le abre WhatsApp con el mensaje ya escrito.
+3. Ninguna de las dos: el texto se le copia al portapapeles para que te lo mande por donde quiera. Es lo que hace de fábrica.
+
+Si el formulario falla, cae solo en el copiado, así que nunca se pierde lo escrito. Con `activo: false` no aparece.
+
 ## Personalizar
 
 Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
@@ -95,7 +103,8 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
 | `vuelo` | la escena de apertura: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |
-| `paraiso` | el amanecer sobre el lago: `lineas` y `boton` |
+| `paraiso` | la playa al atardecer: `lineas` y `boton` |
+| `recado` | el sitio para que ella escriba: `formulario`, `whatsapp`, `titulo`, `placeholder`, `boton` y los avisos (`gracias`, `copiado`, `error`) |
 | `merodeador` | la carta del merodeador: `frases` es tu texto (un párrafo por elemento), y además `encabezado`, `subtitulo`, `titulo`, `juramento`, `firma`, `seguir` y `cierre`. `pregunta` es lo que se pide antes de abrirlo (`linea`, `boton`, `desc`) y `entrada: false` lo quita del arranque. Con `activo: false` el hechizo no aparece |
 | `idiomas` | frases de Lingua Amoris (el español no está: se guarda para la línea final) |
 | `puerta` | clave, frase, pistas y mensajes de la entrada |

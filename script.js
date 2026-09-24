@@ -383,6 +383,26 @@ const CONFIG = {
     "Si pudiera repetir un día contigo, elegiría uno de los normales."
   ],
 
+  /* El recado: el sitio donde ella puede dejar algo escrito al final.
+     La página es estática y no guarda nada por sí sola, así que hay que
+     decirle por dónde sale. Se usa la primera que esté rellena:
+       formulario → una URL de Formspree (o similar): llega a tu correo
+                    y ella se queda en la página con un "gracias"
+       whatsapp   → tu número con indicativo y sin signos: "573001112233"
+       (ninguna)  → el texto se le copia al portapapeles */
+  recado: {
+    activo: true,
+    formulario: "",
+    whatsapp: "",
+    titulo: "¿Me dejas algo escrito?",
+    placeholder: "Lo que quieras decirme…",
+    boton: "Enviárselo",
+    enviando: "Yendo…",
+    gracias: "Ya lo tengo. Gracias.",
+    copiado: "Copiado. Mándamelo por donde quieras.",
+    error: "No ha salido. Copia el texto y mándamelo tú."
+  },
+
   // Cierre con lluvia de corazones
   finalMessage: {
     question: "¿Una última cosa?",
@@ -785,6 +805,10 @@ const askEl = document.getElementById('closing-ask');
 const askBtn = document.getElementById('closing-btn');
 const closingEl = document.getElementById('closing');
 const restartBtn = document.getElementById('restart-btn');
+const recadoEl = document.getElementById('recado');
+const recadoTextoEl = document.getElementById('recado-texto');
+const recadoBtn = document.getElementById('recado-btn');
+const recadoGraciasEl = document.getElementById('recado-gracias');
 const sealEl = document.getElementById('seal');
 const tempusBtn = document.getElementById('spell-tempus');
 const patronusBtn = document.getElementById('spell-patronus');
@@ -4531,6 +4555,12 @@ function buildExtras() {
   document.getElementById('closing-1').textContent = F.line1;
   document.getElementById('closing-2').textContent = F.line2;
   restartBtn.textContent = CONFIG.botonRepetir;
+  const R = CONFIG.recado;
+  if (R && R.activo) {
+    document.getElementById('recado-titulo').textContent = R.titulo || '';
+    recadoTextoEl.placeholder = R.placeholder || '';
+    fillPlate(recadoBtn, { runa: "✒", nombre: R.boton || 'Enviar', desc: '' });
+  }
   initMusic();
 }
 
@@ -4555,6 +4585,7 @@ function bindExtras() {
   marauderCloseBtn.addEventListener('click', () => cerrarMerodeador());
   vueloBtn.addEventListener('click', cerrarVuelo);
   vueloSiBtn.addEventListener('click', llegarAlParaiso);
+  recadoBtn.addEventListener('click', enviarRecado);
   // en móvil huye al tocarlo; con ratón, al acercarse
   vueloNoBtn.addEventListener('pointerdown', e => {
     vuelo.esquivo = huyeElNo();
@@ -4699,7 +4730,78 @@ function startClosing() {
   startConfetti(3600);
   reveal(document.getElementById('closing-1'), 500);
   reveal(document.getElementById('closing-2'), 2300);
-  reveal(restartBtn, 4400);
+  if (CONFIG.recado && CONFIG.recado.activo) {
+    later(3900, () => {
+      recadoEl.hidden = false;
+      void recadoEl.offsetWidth;
+      recadoEl.classList.add('in');
+      recadoBtn.classList.add('in');       // sin .in las placas no reciben el clic
+    });
+    reveal(restartBtn, 5600);
+  } else {
+    reveal(restartBtn, 4400);
+  }
+}
+
+/* Manda lo que ella haya escrito por donde esté configurado */
+async function enviarRecado() {
+  const R = CONFIG.recado || {};
+  const texto = (recadoTextoEl.value || '').trim();
+  if (!texto || recadoBtn.disabled) return;
+
+  const listo = mensaje => {
+    recadoEl.classList.add('enviado');
+    recadoGraciasEl.textContent = mensaje;
+    recadoGraciasEl.classList.add('show');
+    const r = recadoEl.getBoundingClientRect();
+    fxBurst(r.left + r.width / 2, r.top + r.height / 2, 22);
+  };
+
+  // 1) un formulario de verdad: llega solo y ella no tiene que hacer nada más
+  if (R.formulario) {
+    recadoBtn.disabled = true;
+    const antes = recadoBtn.querySelector('.plate-name');
+    if (antes) antes.textContent = R.enviando || 'Yendo…';
+    try {
+      const respuesta = await fetch(R.formulario, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ de: CONFIG.nombre, mensaje: texto })
+      });
+      if (!respuesta.ok) throw new Error(respuesta.status);
+      listo(R.gracias || 'Recibido.');
+    } catch (e) {
+      recadoBtn.disabled = false;
+      if (antes) antes.textContent = R.boton || 'Enviar';
+      copiarRecado(texto, R.error || 'No ha salido. Copia el texto y mándamelo tú.');
+    }
+    return;
+  }
+
+  // 2) WhatsApp: se le abre con el mensaje ya escrito
+  if (R.whatsapp) {
+    const numero = String(R.whatsapp).replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+    listo(R.gracias || 'Gracias.');
+    return;
+  }
+
+  // 3) sin nada configurado: se lo copiamos para que lo mande por donde quiera
+  copiarRecado(texto, R.copiado || 'Copiado.');
+}
+
+function copiarRecado(texto, mensaje) {
+  const decir = () => {
+    recadoGraciasEl.textContent = mensaje;
+    recadoGraciasEl.classList.add('show');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).then(decir, decir);
+  } else {
+    recadoTextoEl.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    decir();
+  }
 }
 
 function resetExtras() {
@@ -4778,6 +4880,13 @@ function resetExtras() {
   finale.lastMemory = '';
   finaleEl.hidden = true;
   closingEl.hidden = true;
+  recadoEl.hidden = true;
+  recadoEl.classList.remove('in', 'enviado');
+  recadoBtn.classList.remove('in');
+  recadoBtn.disabled = false;
+  recadoTextoEl.value = '';
+  recadoGraciasEl.textContent = '';
+  recadoGraciasEl.classList.remove('show');
   for (const node of [finaleEl, finaleCard, memoryEl, memoryBtn, askEl, restartBtn,
     document.getElementById('closing-1'), document.getElementById('closing-2')]) {
     node.classList.remove('in', 'out', 'has-memory', 'closing');

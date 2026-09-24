@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -153,6 +153,12 @@
   <div id="closing" hidden>
     <p id="closing-1" class="closing-line" hidden></p>
     <p id="closing-2" class="closing-line" hidden></p>
+    <div id="recado" hidden>
+      <p id="recado-titulo"></p>
+      <textarea id="recado-texto" rows="3" maxlength="1200" autocomplete="off"></textarea>
+      <button id="recado-btn" class="plate primary" type="button"></button>
+      <p id="recado-gracias" role="status"></p>
+    </div>
     <button id="restart-btn" class="finale-btn primary" type="button" hidden></button>
   </div>
 
@@ -213,6 +219,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=11"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>

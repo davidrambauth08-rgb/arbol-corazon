@@ -2311,3 +2311,66 @@ body.merodeando #music {
   background: linear-gradient(180deg, rgba(6, 6, 14, 0.18) 0%, rgba(6, 6, 14, 0) 20%, rgba(10, 8, 20, 0.1) 46%, rgba(10, 8, 20, 0.42) 62%, rgba(10, 8, 20, 0.34) 80%, rgba(10, 8, 20, 0.12) 100%);
   transition: background 1.6s ease;
 }
+
+/* =====================================================================
+   EL RECADO — el sitio donde ella puede dejar algo escrito
+   ===================================================================== */
+#recado {
+  width: min(92vw, 420px);
+  margin: 18px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+#recado[hidden] { display: none; }
+#recado.in { opacity: 1; transform: none; }
+#recado-titulo {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(17px, 4.6vw, 20px);
+  font-style: italic;
+  color: var(--parchment-light);
+  text-align: center;
+  text-shadow: 0 2px 18px rgba(6, 8, 18, 0.85);
+}
+#recado-texto {
+  width: 100%;
+  min-height: 92px;
+  padding: 12px 14px;
+  border: 1px solid rgba(201, 163, 74, 0.6);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(245, 235, 212, 0.97), rgba(232, 220, 194, 0.94));
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: clamp(15px, 4.1vw, 17px);
+  line-height: 1.35;
+  resize: none;
+  -webkit-user-select: text;
+  user-select: text;
+  box-shadow: inset 0 2px 10px rgba(122, 88, 42, 0.16);
+}
+#recado-texto::placeholder { color: rgba(74, 52, 38, 0.45); font-style: italic; }
+#recado-texto:focus { outline: 2px solid var(--warm-gold); outline-offset: 2px; }
+#recado-btn { width: auto; justify-content: center; }
+#recado-btn .plate-text { align-items: center; }
+#recado-btn[disabled] { opacity: 0.45; cursor: default; }
+#recado-gracias {
+  margin: 0;
+  min-height: 1.2em;
+  font-family: var(--serif);
+  font-size: clamp(14px, 3.8vw, 16px);
+  font-style: italic;
+  text-align: center;
+  color: var(--warm-gold);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+#recado-gracias.show { opacity: 1; }
+/* cuando ya lo ha mandado, el formulario se retira y queda el gracias */
+#recado.enviado #recado-titulo,
+#recado.enviado #recado-texto,
+#recado.enviado #recado-btn { display: none; }
