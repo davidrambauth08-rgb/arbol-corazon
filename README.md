@@ -105,6 +105,10 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 
 La carta se encadena sola y se ajusta para que nunca se corte. La vista previa del enlace en WhatsApp o iMessage se edita en las etiquetas `og:` de `index.html`.
 
+## Al publicar un cambio
+
+`index.html` pide `style.css?v=N` y `script.js?v=N`. **Sube ese número** cada vez que publiques, o los móviles que ya abrieron la página seguirán usando la copia guardada y verán el HTML nuevo con el código viejo (la página se queda a medias).
+
 ## Ejecutar en local
 
 ```bash
