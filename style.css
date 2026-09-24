@@ -2098,3 +2098,131 @@ body.merodeando #music {
   #marauder-next .flecha { animation: none; }
   #marauder-ask { transition-duration: 0.25s; }
 }
+
+/* =====================================================================
+   QUIERO VOLAR — la imagen a pantalla completa y la frase encima
+   Es lo primero que aparece al pasar la puerta encantada.
+   ===================================================================== */
+#vuelo {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  background: #06060c;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+#vuelo[hidden] { display: none; }
+#vuelo.show { opacity: 1; }
+#vuelo.out { opacity: 0; transition-duration: 0.9s; }
+
+/* La foto llena la pantalla y no se queda quieta: flota muy despacio,
+   como la nube en la que van sentados */
+#vuelo-foto {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transform: scale(1.07);
+  opacity: 0;
+  transition: opacity 1.8s ease;
+  will-change: transform;
+}
+#vuelo.show #vuelo-foto {
+  opacity: 1;
+  animation: vuelo-flota 24s ease-in-out infinite alternate;
+}
+@keyframes vuelo-flota {
+  from { transform: scale(1.07) translate3d(-1.1%, 0.9%, 0); }
+  to   { transform: scale(1.12) translate3d(1.1%, -1%, 0); }
+}
+
+/* Unas cuantas estrellas que titilan sobre las que ya trae la foto */
+#vuelo-brillos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 2.4s ease 0.8s;
+}
+#vuelo.show #vuelo-brillos { opacity: 1; }
+#vuelo-brillos i {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff6e8;
+  box-shadow: 0 0 6px rgba(255, 246, 232, 0.9);
+  opacity: 0;
+  animation: vuelo-titila var(--dur) ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes vuelo-titila {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  45%      { opacity: var(--max); transform: scale(1); }
+  60%      { opacity: calc(var(--max) * 0.55); transform: scale(0.9); }
+}
+
+/* Mientras no haya foto (o si no carga) queda el cielo de la experiencia */
+#vuelo.sin-foto #vuelo-foto {
+  opacity: 1;
+  background-image:
+    radial-gradient(60% 45% at 22% 18%, rgba(140, 110, 200, 0.28) 0%, rgba(140, 110, 200, 0) 60%),
+    radial-gradient(70% 50% at 80% 30%, rgba(90, 80, 170, 0.22) 0%, rgba(90, 80, 170, 0) 62%),
+    linear-gradient(180deg, #17172b 0%, #2b2147 42%, #0b1020 100%);
+}
+
+/* Velo oscuro para que la frase se lea sobre cualquier imagen */
+#vuelo-velo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(6, 6, 14, 0.5) 0%, rgba(6, 6, 14, 0) 26%, rgba(6, 6, 14, 0.12) 46%, rgba(6, 6, 14, 0.82) 82%, rgba(6, 6, 14, 0.95) 100%);
+}
+
+#vuelo-texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 0 22px calc(max(30px, env(safe-area-inset-bottom)) + 26px);
+  text-align: center;
+}
+#vuelo-lineas { display: flex; flex-direction: column; gap: 4px; }
+#vuelo-lineas .v-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(25px, 7.4vw, 40px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.16;
+  letter-spacing: 0.01em;
+  color: var(--magic-white);
+  text-shadow: 0 2px 26px rgba(6, 8, 18, 0.95), 0 0 46px rgba(245, 211, 107, 0.28);
+}
+/* cada letra se escribe sola, como en la intro */
+#vuelo-lineas .ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateY(6px);
+  transition: opacity 0.55s ease, filter 0.55s ease, transform 0.55s ease;
+  transition-delay: calc(var(--i) * 42ms);
+}
+#vuelo-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
+
+#vuelo-btn { width: auto; justify-content: center; }
+#vuelo-btn .plate-text { align-items: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  #vuelo, #vuelo-foto { transition-duration: 0.3s; }
+  #vuelo.show #vuelo-foto { animation: none; transform: scale(1.02); }
+  #vuelo-brillos i { animation: none; opacity: var(--max); }
+  #vuelo-lineas .ch { transition-duration: 0.25s; transition-delay: 0s; filter: none; }
+}

@@ -197,6 +197,21 @@ const CONFIG = {
     firma: "Dinosaurios incluidos."
   },
 
+  /* "Quiero volar": lo primero que aparece al pasar la puerta encantada.
+     La imagen llena la pantalla y la frase se escribe encima, letra a letra.
+     Pon tu foto en assets/ y apunta "imagen" a ella. */
+  vuelo: {
+    activo: true,
+    imagen: "assets/volar.jpg",
+    lineas: [
+      "Quiero volar,",
+      "y si es contigo, mejor."
+    ],
+    boton: "Entonces vamos",
+    botonDesc: "",
+    pausa: 900              // lo que espera la foto antes de que llegue la frase
+  },
+
   /* El Mapa del Merodeador: el pergamino se despliega, se escribe solo el
      juramento y después aparece la carta. Cambia "frases" por tu texto:
      cada elemento de la lista es un párrafo. "cierre" es el botón que lo dobla. */
@@ -244,9 +259,9 @@ const CONFIG = {
     // La carta no se suelta de golpe: se lee a trozos, y ella marca el ritmo
     seguir: "sigue leyendo",
 
-    /* Nada más abrirse la puerta el pergamino aparece cerrado y pregunta.
-       Con entrada: false el mapa deja de ser lo primero y sólo vive en la fila. */
-    entrada: true,
+    /* Con entrada: true el pergamino es lo primero al pasar la puerta (aparece
+       cerrado y pregunta). En false la carta vive sólo como hechizo del árbol. */
+    entrada: false,
     pregunta: {
       linea: "El pergamino no se abre para cualquiera. ¿Juras solemnemente que tus intenciones no son buenas?",
       boton: "Lo juro solemnemente",
@@ -759,6 +774,11 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const vueloEl = document.getElementById('vuelo');
+const vueloFotoEl = document.getElementById('vuelo-foto');
+const vueloLineasEl = document.getElementById('vuelo-lineas');
+const vueloBrillosEl = document.getElementById('vuelo-brillos');
+const vueloBtn = document.getElementById('vuelo-btn');
 const merodeadorBtn = document.getElementById('spell-merodeador');
 const marauderEl = document.getElementById('marauder');
 const marauderOathEl = document.getElementById('marauder-oath');
@@ -3209,6 +3229,104 @@ const MERO = {
 
 /* Deja el pergamino escrito: encabezado, juramento palabra a palabra,
    los párrafos de CONFIG.merodeador.frases y los dos rastros de pisadas. */
+/* =====================================================================
+   "Quiero volar" — lo primero al pasar la puerta
+   ===================================================================== */
+const vuelo = { activo: false };
+
+function mostrarVuelo() {
+  const V = CONFIG.vuelo;
+  if (!V || !V.activo || !V.imagen || vuelo.activo) return false;
+  vuelo.activo = true;
+
+  // si la foto no carga, queda el cielo de fondo en vez de un negro vacío
+  vueloEl.classList.add('sin-foto');
+  const foto = new Image();
+  foto.onload = () => {
+    vueloFotoEl.style.backgroundImage = 'url("' + V.imagen + '")';
+    vueloEl.classList.remove('sin-foto');
+  };
+  foto.src = V.imagen;
+
+  sembrarBrillos();
+  vueloLineasEl.replaceChildren();
+  vueloBtn.hidden = true;
+  vueloBtn.classList.remove('in');
+  fillPlate(vueloBtn, { runa: "❧", nombre: V.boton || 'Seguir', desc: V.botonDesc || '' });
+  vueloEl.hidden = false;
+  vueloEl.classList.remove('out');
+  void vueloEl.offsetWidth;                    // para que la transición arranque
+  vueloEl.classList.add('show');
+
+  // la frase llega cuando la imagen ya se ha dejado mirar
+  const lineas = Array.isArray(V.lineas) ? V.lineas : [];
+  let t = (V.pausa >= 0 ? V.pausa : 900) + 700;
+  for (const texto of lineas) {
+    later(t, () => escribirLineaVuelo(texto), 'vuelo');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 500, () => {
+    vueloBtn.hidden = false;
+    void vueloBtn.offsetWidth;
+    vueloBtn.classList.add('in');
+  }, 'vuelo');
+  return true;
+}
+
+/* Estrellas que titilan sobre la foto, repartidas por el cielo de arriba */
+function sembrarBrillos() {
+  vueloBrillosEl.replaceChildren();
+  if (REDUCED) return;
+  for (let i = 0; i < 18; i++) {
+    const b = el('i');
+    const r = 1.4 + Math.random() * 2;
+    b.style.width = b.style.height = r.toFixed(1) + 'px';
+    b.style.left = (4 + Math.random() * 92).toFixed(1) + '%';
+    b.style.top = (4 + Math.random() * 62).toFixed(1) + '%';   // sólo en el cielo
+    b.style.setProperty('--dur', (3.4 + Math.random() * 3.6).toFixed(1) + 's');
+    b.style.setProperty('--d', (Math.random() * 5).toFixed(1) + 's');
+    b.style.setProperty('--max', (0.5 + Math.random() * 0.45).toFixed(2));
+    vueloBrillosEl.append(b);
+  }
+}
+
+/* Una línea escrita letra a letra, igual que en la intro mágica */
+function escribirLineaVuelo(texto) {
+  const p = el('p', 'v-line');
+  graphemes(texto).forEach((ch, i) => {
+    const span = el('span', 'ch', ch);
+    span.style.setProperty('--i', i);
+    p.appendChild(span);
+  });
+  vueloLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+function cerrarVuelo() {
+  if (!vuelo.activo) return;
+  cancelTasks('vuelo');
+  vuelo.activo = false;
+  vueloBtn.classList.remove('in');
+  vueloEl.classList.remove('show');
+  vueloEl.classList.add('out');
+  later(950, () => {
+    vueloEl.hidden = true;
+    vueloEl.classList.remove('out');
+    vueloLineasEl.replaceChildren();
+    vueloBrillosEl.replaceChildren();
+    if (!entradaMerodeador()) seguirTrasElMapa();
+  }, 'vuelo');
+}
+
+/* Lo primero que se encuentra al pasar la puerta encantada */
+function entrada() {
+  if (mostrarVuelo()) return;
+  if (entradaMerodeador()) return;
+  seguirTrasElMapa();
+}
+
+
 /* Si la pantalla cambia (giro del móvil) la carta se reparte otra vez,
    dejando a la vista el párrafo por el que iba */
 function repartirDeNuevo() {
@@ -4097,6 +4215,7 @@ function bindExtras() {
   orchideousBtn.addEventListener('click', castOrchideous);
   merodeadorBtn.addEventListener('click', () => castMerodeador());
   marauderCloseBtn.addEventListener('click', () => cerrarMerodeador());
+  vueloBtn.addEventListener('click', cerrarVuelo);
   marauderAskBtn.addEventListener('click', aceptarJuramento);
   marauderNextBtn.addEventListener('click', avanzarCarta);
   // tocar el pergamino también pasa de trozo (el botón es sólo la señal)
@@ -4280,6 +4399,10 @@ function resetExtras() {
   quitarCielo();
   document.body.classList.remove('florido');
   cerrarMerodeador(true);
+  cancelTasks('vuelo');
+  vuelo.activo = false;
+  vueloEl.hidden = true;
+  vueloEl.classList.remove('show', 'out');
   inviteEl.hidden = true;
   inviteEl.classList.remove('show');
   dinoSayEl.hidden = true;
@@ -4584,8 +4707,7 @@ function abrirPuerta() {
   fxRing(r.left + r.width / 2, r.top + r.height / 2, { r1: 320, dur: 900 });
   later(520, () => {
     gateEl.classList.add('hide');
-    // lo primero que se encuentra al pasar la puerta es el mapa
-    if (!entradaMerodeador()) seguirTrasElMapa();
+    entrada();
   });
   later(1300, () => { gateEl.hidden = true; });
 }
@@ -5256,9 +5378,10 @@ function init() {
     introEl.hidden = true;
     magicEl.hidden = true;
     buildGate();
-  } else if (MAGIC.enabled || (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
+  } else if (MAGIC.enabled || (CONFIG.vuelo && CONFIG.vuelo.activo) ||
+             (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;
-    if (!entradaMerodeador()) seguirTrasElMapa();
+    entrada();
   }
 
   lastNow = performance.now();
