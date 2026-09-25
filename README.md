@@ -19,9 +19,11 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
-**Lo primero al pasar la puerta: «Quiero volar»** (`CONFIG.vuelo`). La imagen de `assets/volar.jpg` llena la pantalla y la frase se escribe encima letra a letra. La foto no se queda quieta: flota muy despacio (unos 9 px de deriva y un 5 % de zoom en ciclos de 24 s, ida y vuelta) y unas estrellas titilan sobre las que ya trae. Después la pregunta: **¿Vamos?**, con **Sí** y **No**. El «No» huye **al intentar tocarlo** —no con sólo pasar el ratón por encima, o desaparecería de camino al «Sí»— dos veces, y a la tercera se rinde, dejando sólo el «Sí».
+**Lo primero al pasar la puerta: Wingardium Leviosa** (`CONFIG.leviosa`). En el suelo de una sala a oscuras hay velas apagadas, libros, cartas y plumas. Al tocar **Wingardium Leviosa** todo se levanta despacio, las velas se encienden una a una al subir, el techo se llena de estrellas y sube polvo dorado con todo lo demás. Después se escriben las frases de `despues` y **Seguir** da paso a la intro mágica. Con `leviosa.entrada: false` deja de ser lo primero.
 
-**El paraíso** (`CONFIG.paraiso`). Al decir que sí, la foto se apaga y aparece una **playa al atardecer**: el sol cayendo sobre el mar, su reflejo roto en el agua, las olas subiendo y bajando por la arena, palmeras a los lados y los dos sentados mirando el horizonte. Está dibujada en su propio canvas, no es una foto. Luego se escriben las líneas de `paraiso.lineas` y el botón **Seguir** da paso a la intro mágica. Si la imagen no está o no carga, en su sitio queda el cielo nocturno de la experiencia. Con `vuelo.activo: false` se salta este paso.
+**«Quiero volar»** (`CONFIG.vuelo`), ahora en el hechizo **☁ Volar** de la fila del árbol. La imagen de `assets/volar.jpg` llena la pantalla y la frase se escribe encima letra a letra. La foto no se queda quieta: flota muy despacio (unos 9 px de deriva y un 5 % de zoom en ciclos de 24 s, ida y vuelta) y unas estrellas titilan sobre las que ya trae. Después la pregunta: **¿Vamos?**, con **Sí** y **No**. El «No» huye **al intentar tocarlo** —no con sólo pasar el ratón por encima, o desaparecería de camino al «Sí»— dos veces, y a la tercera se rinde, dejando sólo el «Sí».
+
+**El paraíso** (`CONFIG.paraiso`). Al decir que sí, la foto se apaga y aparece una **playa al atardecer**: el sol cayendo sobre el mar, su reflejo roto en el agua, las olas subiendo y bajando por la arena, palmeras a los lados y los dos sentados mirando el horizonte. Está dibujada en su propio canvas, no es una foto. Luego se escriben las líneas de `paraiso.lineas` y el botón **Seguir** cierra la escena. Si la imagen no está o no carga, en su sitio queda el cielo nocturno de la experiencia. Con `vuelo.activo: false` se salta este paso.
 
 **La carta del merodeador** (`CONFIG.merodeador`) vive ahora en el hechizo **⚜ Mapa** de la fila del árbol. Al lanzarlo, las solapas del pergamino se abren, se escribe el juramento y empieza la carta. La carta **no se suelta de golpe**: se lee por trozos, con unos puntos que indican cuánto queda y un **sigue leyendo ❯** (o tocando el pergamino) para pasar al siguiente; el membrete de los Merodeadores sólo sale en el primero. Al llegar al final aparece la firma y **Travesura realizada**, que dobla el mapa. El reparto en trozos **se mide en pantalla** cada vez que se abre, así que se adapta al móvil, al escritorio y al giro de pantalla. Con `merodeador.entrada: true` el mapa vuelve a ser lo primero tras la puerta y entonces sí pregunta el juramento antes de abrirse.
 
@@ -42,11 +44,13 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la escena entera da paso al otro lado del mundo (atardecer, Cruz del Sur, nubes, volcán y palmeras); un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
 | **Orchideous** | fila de hechizos del árbol | la escena entera se apaga a negro (árbol, bosque, carta y contador incluidos), crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
+| **Wingardium Leviosa** | al pasar la puerta | todo lo que hay en el suelo se levanta despacio y las velas se encienden al subir |
+| **Quiero volar** ☁ | fila de hechizos del árbol | la nube, la pregunta de Sí/No y la playa al atardecer |
 | **Juro solemnemente** ⚜ | fila de hechizos del árbol | el pergamino se despliega (primero las solapas de arriba y abajo, después las de los lados), se escribe el juramento palabra a palabra y aparece la carta, que se lee por trozos, con dos rastros de pisadas que se encuentran en un corazón. Se cierra con **Travesura realizada** y se puede repetir |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
-**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Tempus viven en una fila fija debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
+**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Quiero volar · Tempus viven en una fila (en el móvil se parte en dos líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
 
 **Cada hechizo trae su fondo**: Dracarys enciende un cielo de brasas (`CIELOS` en script.js, que se mezcla sobre el de la estación y vuelve solo al acabar). Orchideous y Terra Australis van más lejos y se quedan con la pantalla entera: el primero la apaga a negro para que sólo brillen los girasoles; el segundo la cambia por un atardecer del hemisferio sur, con la Cruz del Sur, nubes, un volcán y palmeras. Los dinosaurios son de dibujo, con panza clara, crestas, ojos grandes y mofletes.
 
@@ -57,7 +61,7 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
 
-**Intro mágica** (después de «Quiero volar»)
+**Intro mágica** (después del Wingardium Leviosa)
 - Aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
 - Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso a las pruebas. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
 - Secreto: tocar 3 veces seguidas la estrella de arriba a la derecha muestra un mensaje.
@@ -102,7 +106,8 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
-| `vuelo` | la escena de apertura: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |
+| `leviosa` | la apertura: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
+| `vuelo` | la nube y la playa: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |
 | `paraiso` | la playa al atardecer: `lineas` y `boton` |
 | `recado` | el sitio para que ella escriba: `formulario`, `whatsapp`, `titulo`, `placeholder`, `boton` y los avisos (`gracias`, `copiado`, `error`) |
 | `merodeador` | la carta del merodeador: `frases` es tu texto (un párrafo por elemento), y además `encabezado`, `subtitulo`, `titulo`, `juramento`, `firma`, `seguir` y `cierre`. `pregunta` es lo que se pide antes de abrirlo (`linea`, `boton`, `desc`) y `entrada: false` lo quita del arranque. Con `activo: false` el hechizo no aparece |
