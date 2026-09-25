@@ -185,6 +185,7 @@ const CONFIG = {
     australis: { runa: "✥", nombre: "Terra Australis", desc: "una invitación al otro lado del mundo", corto: "Australis" },
     orchideous: { runa: "✼", nombre: "Orchideous", desc: "hacer crecer un jardín de girasoles", corto: "Girasoles" },
     merodeador: { runa: "⚜", nombre: "Juro solemnemente", desc: "desplegar el mapa del merodeador", corto: "Mapa" },
+    vuelo: { runa: "☁", nombre: "Quiero volar", desc: "subirse a la nube y decidir si vamos", corto: "Volar" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -197,11 +198,32 @@ const CONFIG = {
     firma: "Dinosaurios incluidos."
   },
 
-  /* "Quiero volar": lo primero que aparece al pasar la puerta encantada.
+  /* Wingardium Leviosa: lo primero al pasar la puerta. En el suelo hay unas
+     cuantas cosas apagadas; al lanzar el hechizo todo se levanta, las velas
+     se encienden y el techo se llena de estrellas. */
+  leviosa: {
+    activo: true,
+    entrada: true,
+    antes: [
+      "Dicen que es el primer hechizo que se aprende.",
+      "Y que casi nadie lo dice bien."
+    ],
+    boton: "Wingardium Leviosa",
+    botonDesc: "con la uve larga y bien arrastrada",
+    despues: [
+      "Resulta que no era para levantar plumas.",
+      "Era para esto."
+    ],
+    seguir: "Seguir",
+    seguirDesc: ""
+  },
+
+  /* "Quiero volar": la nube y la playa al atardecer.
      La imagen llena la pantalla y la frase se escribe encima, letra a letra.
      Pon tu foto en assets/ y apunta "imagen" a ella. */
   vuelo: {
     activo: true,
+    entrada: false,          // true = es lo primero al pasar la puerta
     imagen: "assets/volar.jpg",
     lineas: [
       "Quiero volar,",
@@ -817,6 +839,13 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const leviosaEl = document.getElementById('leviosa');
+const leviosaCanvas = document.getElementById('leviosa-lienzo');
+const leviosaCtx = leviosaCanvas.getContext('2d');
+const leviosaLineasEl = document.getElementById('leviosa-lineas');
+const wingardiumBtn = document.getElementById('leviosa-btn');
+const wingardiumSeguirBtn = document.getElementById('leviosa-seguir');
+const vueloBtn2 = document.getElementById('spell-vuelo');
 const vueloEl = document.getElementById('vuelo');
 const vueloFotoEl = document.getElementById('vuelo-foto');
 const vueloLineasEl = document.getElementById('vuelo-lineas');
@@ -1294,6 +1323,10 @@ function resize() {
   if (typeof paraisoCanvas !== 'undefined' && paraiso.activo) {
     paraisoCanvas.width = canvas.width;
     paraisoCanvas.height = canvas.height;
+  }
+  if (typeof leviosaCanvas !== 'undefined' && wingardium.activo) {
+    leviosaCanvas.width = canvas.width;
+    leviosaCanvas.height = canvas.height;
   }
   if (typeof magicCanvas !== 'undefined') resizeMagic();
 
@@ -2294,6 +2327,7 @@ function hechizosFila() {
     { btn: australisBtn, activo: () => F.australis !== false },
     { btn: orchideousBtn, activo: () => F.orchideous !== false },
     { btn: merodeadorBtn, activo: () => F.merodeador !== false && !!(CONFIG.merodeador && CONFIG.merodeador.activo) },
+    { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -3285,12 +3319,14 @@ const MERO = {
 /* =====================================================================
    "Quiero volar" — lo primero al pasar la puerta
    ===================================================================== */
-const vuelo = { activo: false, huidas: 0, esquivo: false, llegando: false };
+const vuelo = { activo: false, entrada: false, huidas: 0, esquivo: false, llegando: false };
 
-function mostrarVuelo() {
+function mostrarVuelo(deEntrada) {
   const V = CONFIG.vuelo;
   if (!V || !V.activo || !V.imagen || vuelo.activo) return false;
   vuelo.activo = true;
+  vuelo.entrada = deEntrada === true;
+  document.body.classList.add('volando');   // el árbol y sus botones se apartan
 
   // si la foto no carga, queda el cielo de fondo en vez de un negro vacío
   vueloEl.classList.add('sin-foto');
@@ -3401,6 +3437,348 @@ function llegarAlParaiso() {
     void vueloBtn.offsetWidth;
     vueloBtn.classList.add('in');
   }, 'vuelo');
+}
+
+/* =====================================================================
+   WINGARDIUM LEVIOSA — todo se levanta del suelo
+   En el suelo hay velas apagadas, libros, cartas y una pluma. Al lanzar el
+   hechizo suben despacio, las velas se encienden una a una y el techo se
+   llena de estrellas. Todo dibujado en su propio lienzo.
+   ===================================================================== */
+const wingardium = { activo: false, born: 0, lanzado: 0, cosas: [], motas: [], estrellas: [] };
+
+/* [tipo, x, tamaño, retraso al subir, cuánto sube]
+   Las alturas van muy repartidas a propósito: unas cosas se quedan a media
+   altura y otras suben del todo, para que no queden todas en una franja. */
+const COSAS = [
+  ['vela',   0.12, 1.00, 0.10, 0.72],
+  ['libro',  0.22, 0.95, 0.55, 0.30],
+  ['vela',   0.34, 0.80, 0.30, 0.86],
+  ['carta',  0.44, 0.90, 0.80, 0.50],
+  ['vela',   0.55, 1.10, 0.00, 0.20],
+  ['pluma',  0.64, 1.00, 0.20, 0.92],
+  ['vela',   0.73, 0.86, 0.45, 0.58],
+  ['carta',  0.85, 0.95, 0.68, 0.16],
+  ['vela',   0.93, 1.00, 0.22, 0.40],
+  ['libro',  0.05, 0.85, 0.90, 0.62],
+  ['vela',   0.28, 0.72, 0.95, 0.12],
+  ['carta',  0.17, 0.8,  0.4,  0.78],
+  ['pluma',  0.79, 0.85, 1.05, 0.34],
+  ['vela',   0.48, 0.65, 0.62, 0.96],
+  ['libro',  0.66, 0.8,  0.25, 0.10]
+];
+
+function sembrarWingardium() {
+  wingardium.cosas = COSAS.map(([tipo, x, esc, retraso, sube], i) => ({
+    tipo, x, esc, retraso, sube,
+    fase: (i * 1.7) % TAU,
+    giro: (Math.random() - 0.5) * 0.5
+  }));
+  wingardium.motas.length = 0;
+  for (let i = 0; i < (REDUCED ? 14 : 44); i++) {
+    wingardium.motas.push({
+      x: Math.random(), y: Math.random(),
+      v: 0.02 + Math.random() * 0.05,
+      r: 0.6 + Math.random() * 1.8,
+      fase: Math.random() * TAU
+    });
+  }
+  wingardium.estrellas.length = 0;
+  for (let i = 0; i < 70; i++) {
+    wingardium.estrellas.push({
+      x: Math.random(), y: Math.random() * 0.55,
+      r: 0.4 + Math.random() * 1.3,
+      fase: Math.random() * TAU,
+      v: 0.6 + Math.random() * 1.6
+    });
+  }
+}
+
+/* Una vela: cuerpo, cera derramada y la llama, que sólo prende al subir */
+function dibujarVela(g, x, y, alto, prendida, t, fase) {
+  const ancho = alto * 0.22;
+  const cuerpo = g.createLinearGradient(x - ancho / 2, 0, x + ancho / 2, 0);
+  cuerpo.addColorStop(0, '#b8a284');
+  cuerpo.addColorStop(0.35, '#f2e6cd');
+  cuerpo.addColorStop(1, '#9d8a70');
+  g.fillStyle = cuerpo;
+  g.beginPath();
+  g.moveTo(x - ancho / 2, y);
+  g.lineTo(x - ancho / 2, y - alto);
+  g.quadraticCurveTo(x, y - alto - ancho * 0.12, x + ancho / 2, y - alto);
+  g.lineTo(x + ancho / 2, y);
+  g.closePath();
+  g.fill();
+  // la cera que ha corrido por un lado
+  g.fillStyle = 'rgba(255, 248, 232, 0.5)';
+  g.beginPath();
+  g.moveTo(x - ancho * 0.36, y - alto * 0.94);
+  g.quadraticCurveTo(x - ancho * 0.5, y - alto * 0.6, x - ancho * 0.3, y - alto * 0.45);
+  g.quadraticCurveTo(x - ancho * 0.2, y - alto * 0.7, x - ancho * 0.2, y - alto * 0.95);
+  g.fill();
+  // pábilo
+  g.strokeStyle = '#3a2c1e';
+  g.lineWidth = Math.max(1, alto * 0.02);
+  g.beginPath();
+  g.moveTo(x, y - alto);
+  g.lineTo(x, y - alto - alto * 0.07);
+  g.stroke();
+  if (prendida <= 0) return;
+
+  // la llama, con su temblor y su halo
+  const baile = Math.sin(t * 7 + fase) * alto * 0.012;
+  const lY = y - alto - alto * 0.06;
+  const lAlto = alto * 0.3 * prendida;
+  const halo = g.createRadialGradient(x, lY - lAlto * 0.4, 0, x, lY - lAlto * 0.4, alto * 1.5 * prendida);
+  halo.addColorStop(0, `rgba(255, 216, 140, ${0.5 * prendida})`);
+  halo.addColorStop(0.45, `rgba(255, 180, 90, ${0.16 * prendida})`);
+  halo.addColorStop(1, 'rgba(255, 180, 90, 0)');
+  g.fillStyle = halo;
+  g.beginPath();
+  g.arc(x, lY - lAlto * 0.4, alto * 1.5 * prendida, 0, TAU);
+  g.fill();
+  g.fillStyle = `rgba(255, 170, 70, ${0.95 * prendida})`;
+  g.beginPath();
+  g.moveTo(x - ancho * 0.2, lY);
+  g.quadraticCurveTo(x - ancho * 0.28 + baile, lY - lAlto * 0.6, x + baile, lY - lAlto);
+  g.quadraticCurveTo(x + ancho * 0.28 + baile, lY - lAlto * 0.6, x + ancho * 0.2, lY);
+  g.closePath();
+  g.fill();
+  g.fillStyle = `rgba(255, 248, 222, ${0.95 * prendida})`;
+  g.beginPath();
+  g.moveTo(x - ancho * 0.1, lY);
+  g.quadraticCurveTo(x - ancho * 0.12 + baile, lY - lAlto * 0.42, x + baile * 0.7, lY - lAlto * 0.62);
+  g.quadraticCurveTo(x + ancho * 0.12 + baile, lY - lAlto * 0.42, x + ancho * 0.1, lY);
+  g.closePath();
+  g.fill();
+}
+
+/* Un libro abierto, aleteando despacio como si fuera a echar a volar */
+function dibujarLibro(g, x, y, alto, aleteo) {
+  const abre = 0.35 + 0.65 * Math.abs(Math.sin(aleteo));    // cuánto abre las tapas
+  const w = alto * 0.85;
+  g.save();
+  g.translate(x, y);
+  for (const lado of [-1, 1]) {
+    g.save();
+    g.scale(lado, 1);
+    g.rotate(-0.5 * abre);
+    // la tapa con sus páginas: un rectángulo que se abre desde el lomo
+    g.fillStyle = '#6f2232';
+    g.fillRect(0, -alto * 0.06, w, alto * 0.5);
+    g.fillStyle = '#f3e7cd';
+    g.fillRect(w * 0.06, -alto * 0.02, w * 0.92, alto * 0.42);
+    g.strokeStyle = 'rgba(160, 130, 90, 0.4)';
+    g.lineWidth = Math.max(1, alto * 0.02);
+    for (let i = 1; i <= 3; i++) {
+      const yy = alto * (-0.02 + 0.1 * i);
+      g.beginPath();
+      g.moveTo(w * 0.18, yy);
+      g.lineTo(w * 0.86, yy);
+      g.stroke();
+    }
+    g.restore();
+  }
+  // el lomo, en medio
+  g.fillStyle = '#5a1a28';
+  g.fillRect(-alto * 0.05, -alto * 0.08, alto * 0.1, alto * 0.34);
+  g.restore();
+}
+
+/* Una carta doblada, girando despacio */
+function dibujarCarta(g, x, y, alto, giro) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(giro);
+  const w = alto * 1.35;
+  g.fillStyle = '#f5ebd4';
+  g.fillRect(-w / 2, -alto / 2, w, alto);
+  g.strokeStyle = 'rgba(122, 88, 42, 0.45)';
+  g.lineWidth = Math.max(1, alto * 0.05);
+  g.beginPath();
+  g.moveTo(-w / 2, -alto / 2);
+  g.lineTo(0, alto * 0.12);
+  g.lineTo(w / 2, -alto / 2);
+  g.stroke();
+  g.fillStyle = '#6f2232';
+  g.beginPath();
+  g.arc(0, alto * 0.16, alto * 0.14, 0, TAU);
+  g.fill();
+  g.restore();
+}
+
+/* Una pluma de escribir, que gira sobre sí misma */
+function dibujarPluma(g, x, y, alto, giro) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(giro);
+  g.fillStyle = 'rgba(245, 235, 212, 0.95)';
+  g.beginPath();
+  g.moveTo(0, alto * 0.5);
+  g.quadraticCurveTo(alto * 0.3, 0, 0, -alto * 0.5);
+  g.quadraticCurveTo(-alto * 0.16, 0, 0, alto * 0.5);
+  g.fill();
+  g.strokeStyle = 'rgba(160, 130, 90, 0.6)';
+  g.lineWidth = Math.max(1, alto * 0.035);
+  g.beginPath();
+  g.moveTo(0, alto * 0.56);
+  g.lineTo(0, -alto * 0.5);
+  g.stroke();
+  g.restore();
+}
+
+function abrirWingardium() {
+  leviosaCanvas.width = canvas.width;
+  leviosaCanvas.height = canvas.height;
+  sembrarWingardium();
+  wingardium.born = performance.now();
+  wingardium.lanzado = 0;
+  wingardium.activo = true;
+}
+
+function dibujarWingardium(now) {
+  if (!wingardium.activo) return;
+  const g = leviosaCtx;
+  const W = leviosaCanvas.width, H = leviosaCanvas.height;
+  if (!W || !H) return;
+  const t = (now - wingardium.born) / 1000;
+  // cuánto hace que se lanzó el hechizo (0 = todavía en el suelo)
+  const desde = wingardium.lanzado ? (now - wingardium.lanzado) / 1000 : 0;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const suelo = H * 0.88;
+
+  // --- el techo encantado: las estrellas salen con el hechizo ---
+  const cielo = Math.min(1, desde / 4);
+  for (const e of wingardium.estrellas) {
+    const brillo = (0.35 + 0.65 * Math.abs(Math.sin(t * e.v + e.fase))) * cielo;
+    g.fillStyle = `rgba(255, 246, 232, ${brillo * 0.9})`;
+    g.beginPath();
+    g.arc(e.x * W, e.y * H, e.r * (H / 900) * 1.6, 0, TAU);
+    g.fill();
+  }
+
+  // --- el suelo, que se va quedando a oscuras según sube todo ---
+  const brilloSuelo = 1 - Math.min(1, desde / 5) * 0.55;
+  const piso = g.createLinearGradient(0, suelo - H * 0.1, 0, H);
+  piso.addColorStop(0, `rgba(48, 36, 74, 0)`);
+  piso.addColorStop(0.35, `rgba(42, 32, 66, ${0.75 * brilloSuelo})`);
+  piso.addColorStop(1, `rgba(24, 18, 40, ${0.95 * brilloSuelo})`);
+  g.fillStyle = piso;
+  g.fillRect(0, suelo - H * 0.1, W, H - suelo + H * 0.1);
+
+  // --- las cosas ---
+  for (const c of wingardium.cosas) {
+    const avance = Math.max(0, desde - c.retraso);
+    const k = 1 - Math.pow(1 - Math.min(1, avance / 4.5), 3);      // subida con freno
+    const flota = Math.sin(t * 0.9 + c.fase) * H * 0.008 * k;
+    const y = suelo - (suelo - H * 0.18) * c.sube * k + flota;
+    const x = c.x * W + Math.sin(t * 0.55 + c.fase) * W * 0.012 * k;
+    const alto = H * 0.075 * c.esc;
+    const giro = c.giro * k + Math.sin(t * 0.7 + c.fase) * 0.22 * k;
+
+    if (c.tipo === 'vela') dibujarVela(g, x, y, alto * 1.5, Math.min(1, avance / 1.2), t, c.fase);
+    else if (c.tipo === 'libro') dibujarLibro(g, x, y - alto * 0.5, alto, t * 1.1 + c.fase);
+    else if (c.tipo === 'carta') dibujarCarta(g, x, y - alto * 0.5, alto * 0.8, giro);
+    else dibujarPluma(g, x, y - alto * 0.5, alto * 2, giro + t * 0.5);
+  }
+
+  // --- el polvo dorado que sube con todo lo demás ---
+  const polvo = Math.min(1, desde / 2);
+  for (const m of wingardium.motas) {
+    const y = ((m.y - t * m.v * polvo) % 1 + 1) % 1;
+    const brillo = (0.25 + 0.55 * Math.abs(Math.sin(t * 1.6 + m.fase))) * polvo;
+    g.fillStyle = `rgba(245, 211, 107, ${brillo * 0.65})`;
+    g.beginPath();
+    g.arc(m.x * W, y * H, m.r * (H / 900) * 1.8, 0, TAU);
+    g.fill();
+  }
+}
+
+/* La escena: primero las cosas en el suelo y el hechizo por decir */
+function mostrarWingardium(deEntrada) {
+  const L = CONFIG.leviosa;
+  if (!L || !L.activo || wingardium.activo) return false;
+  wingardium.entrada = deEntrada === true;
+  abrirWingardium();
+  leviosaLineasEl.replaceChildren();
+  wingardiumBtn.hidden = wingardiumSeguirBtn.hidden = true;
+  wingardiumBtn.classList.remove('in');
+  wingardiumSeguirBtn.classList.remove('in');
+  fillPlate(wingardiumBtn, { runa: "☁", nombre: L.boton || 'Wingardium Leviosa', desc: L.botonDesc || '' });
+  fillPlate(wingardiumSeguirBtn, { runa: "❧", nombre: L.seguir || 'Seguir', desc: L.seguirDesc || '' });
+  leviosaEl.hidden = false;
+  leviosaEl.classList.remove('out');
+  void leviosaEl.offsetWidth;
+  leviosaEl.classList.add('show');
+
+  let t = 900;
+  for (const texto of (L.antes || [])) {
+    later(t, () => escribirLineaLeviosa(texto), 'lev');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 400, () => {
+    wingardiumBtn.hidden = false;
+    void wingardiumBtn.offsetWidth;
+    wingardiumBtn.classList.add('in');
+  }, 'lev');
+  return true;
+}
+
+function escribirLineaLeviosa(texto) {
+  const p = el('p', 'v-line');
+  graphemes(texto).forEach((ch, i) => {
+    const span = el('span', 'ch', ch);
+    span.style.setProperty('--i', i);
+    p.appendChild(span);
+  });
+  leviosaLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+/* Se lanza el hechizo: todo se levanta */
+function lanzarWingardium() {
+  if (!wingardium.activo || wingardium.lanzado) return;
+  const L = CONFIG.leviosa || {};
+  wingardium.lanzado = performance.now();
+  castFxAt(wingardiumBtn, { sparks: 30, r1: 280, dur: 1000, waves: true });
+  wingardiumBtn.classList.remove('in');
+  later(500, () => { wingardiumBtn.hidden = true; }, 'lev');
+  for (const linea of leviosaLineasEl.children) linea.classList.add('out');
+
+  later(1400, () => leviosaLineasEl.replaceChildren(), 'lev');
+  let t = 2600;
+  for (const texto of (L.despues || [])) {
+    later(t, () => escribirLineaLeviosa(texto), 'lev');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 700, () => {
+    wingardiumSeguirBtn.hidden = false;
+    void wingardiumSeguirBtn.offsetWidth;
+    wingardiumSeguirBtn.classList.add('in');
+  }, 'lev');
+}
+
+function cerrarWingardium() {
+  if (!wingardium.activo) return;
+  cancelTasks('lev');
+  const eraEntrada = wingardium.entrada;
+  wingardium.entrada = false;
+  wingardiumSeguirBtn.classList.remove('in');
+  leviosaEl.classList.remove('show');
+  leviosaEl.classList.add('out');
+  later(950, () => {
+    wingardium.activo = false;
+    leviosaEl.hidden = true;
+    leviosaEl.classList.remove('out');
+    leviosaLineasEl.replaceChildren();
+    wingardiumBtn.hidden = wingardiumSeguirBtn.hidden = true;
+    document.body.classList.remove('levitando');
+    if (eraEntrada) seguirTrasElMapa();
+  }, 'lev');
 }
 
 /* =====================================================================
@@ -3738,13 +4116,16 @@ function cerrarVuelo() {
     vueloBrillosEl.replaceChildren();
     vueloEl.classList.remove('llego', 'elige');
     paraiso.activo = false;
-    if (!entradaMerodeador()) seguirTrasElMapa();
+    document.body.classList.remove('volando');
+    // sólo encadena con el resto si era la puerta de entrada
+    if (vuelo.entrada) { vuelo.entrada = false; seguirTrasElMapa(); }
   }, 'vuelo');
 }
 
 /* Lo primero que se encuentra al pasar la puerta encantada */
 function entrada() {
-  if (mostrarVuelo()) return;
+  if (CONFIG.leviosa && CONFIG.leviosa.entrada && mostrarWingardium(true)) return;
+  if (CONFIG.vuelo && CONFIG.vuelo.entrada && mostrarVuelo(true)) return;
   if (entradaMerodeador()) return;
   seguirTrasElMapa();
 }
@@ -4607,6 +4988,7 @@ function buildExtras() {
   fillRune(australisBtn, HX.australis);
   fillRune(orchideousBtn, HX.orchideous);
   fillRune(merodeadorBtn, HX.merodeador);
+  fillRune(vueloBtn2, HX.vuelo);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -4643,6 +5025,9 @@ function bindExtras() {
   australisBtn.addEventListener('click', castAustralis);
   orchideousBtn.addEventListener('click', castOrchideous);
   merodeadorBtn.addEventListener('click', () => castMerodeador());
+  vueloBtn2.addEventListener('click', () => mostrarVuelo());
+  wingardiumBtn.addEventListener('click', lanzarWingardium);
+  wingardiumSeguirBtn.addEventListener('click', cerrarWingardium);
   marauderCloseBtn.addEventListener('click', () => cerrarMerodeador());
   vueloBtn.addEventListener('click', cerrarVuelo);
   vueloSiBtn.addEventListener('click', llegarAlParaiso);
@@ -4899,7 +5284,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -4913,6 +5298,11 @@ function resetExtras() {
   document.body.classList.remove('florido');
   cerrarMerodeador(true);
   cancelTasks('vuelo');
+  cancelTasks('lev');
+  wingardium.activo = false;
+  wingardium.entrada = false;
+  leviosaEl.hidden = true;
+  leviosaEl.classList.remove('show', 'out');
   vuelo.activo = vuelo.llegando = false;
   paraiso.activo = false;
   vueloEl.hidden = true;
@@ -5721,6 +6111,7 @@ function frame(now) {
   // el paraíso va en su propio lienzo y ocurre antes de que arranque el árbol,
   // así que se dibuja aquí: más abajo el bucle se corta cuando t es null
   dibujarParaiso(now);
+  dibujarWingardium(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;
 
@@ -5902,7 +6293,8 @@ function init() {
     introEl.hidden = true;
     magicEl.hidden = true;
     buildGate();
-  } else if (MAGIC.enabled || (CONFIG.vuelo && CONFIG.vuelo.activo) ||
+  } else if (MAGIC.enabled || (CONFIG.leviosa && CONFIG.leviosa.entrada) ||
+             (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
              (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;
     entrada();

@@ -1514,7 +1514,9 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
 #spell-row {
   display: flex;
   justify-content: center;
-  flex-wrap: nowrap;          /* los hechizos del árbol caben siempre en una línea */
+  /* con muchos hechizos se parten en dos filas antes que apretujarse; como
+     aparecen todos a la vez, ninguno se mueve luego bajo el dedo */
+  flex-wrap: wrap;
   gap: 5px;
   width: 100%;
   margin-top: 2px;
@@ -1527,8 +1529,8 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
   align-items: center;
   justify-content: center;
   gap: 1px;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 1 58px;
+  min-width: 58px;
   min-height: 46px;
   padding: 5px 3px 6px;
   border: 1px solid rgba(201, 163, 74, 0.55);
@@ -1603,7 +1605,11 @@ body.florido #music,
 body.merodeando #letter,
 body.merodeando #spellbook,
 body.merodeando #clock,
-body.merodeando #music {
+body.merodeando #music,
+body.volando #letter,
+body.volando #spellbook,
+body.volando #clock,
+body.volando #music {
   opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
   pointer-events: none;
   transition: opacity 0.9s ease;
@@ -2374,3 +2380,72 @@ body.merodeando #music {
 #recado.enviado #recado-titulo,
 #recado.enviado #recado-texto,
 #recado.enviado #recado-btn { display: none; }
+
+/* =====================================================================
+   WINGARDIUM LEVIOSA — todo se levanta del suelo
+   ===================================================================== */
+#leviosa {
+  position: fixed;
+  inset: 0;
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* el texto va arriba: las cosas salen del suelo y suben hacia él */
+  justify-content: flex-start;
+  overflow: hidden;
+  background: radial-gradient(120% 85% at 50% 42%, #221a3e 0%, #120e24 55%, #07060f 100%);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+#leviosa[hidden] { display: none; }
+#leviosa.show { opacity: 1; }
+#leviosa.out { opacity: 0; transition-duration: 0.9s; }
+
+#leviosa-lienzo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#leviosa-texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: calc(max(28px, env(safe-area-inset-top)) + 26px) 22px 0;
+  text-align: center;
+}
+#leviosa-lineas { display: flex; flex-direction: column; gap: 5px; }
+#leviosa-lineas .v-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(21px, 6vw, 32px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.2;
+  color: var(--magic-white);
+  text-shadow: 0 2px 26px rgba(6, 8, 18, 0.95), 0 0 46px rgba(245, 211, 107, 0.3);
+}
+#leviosa-lineas .ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateY(6px);
+  transition: opacity 0.55s ease, filter 0.55s ease, transform 0.55s ease;
+  transition-delay: calc(var(--i) * 42ms);
+}
+#leviosa-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
+#leviosa-lineas .v-line.out {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(-8px);
+  transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
+}
+#leviosa-btn, #leviosa-seguir { width: auto; justify-content: center; }
+#leviosa-btn .plate-text, #leviosa-seguir .plate-text { align-items: center; }
