@@ -2424,7 +2424,7 @@ body.volando #music {
 #leviosa-lineas .v-line {
   margin: 0;
   font-family: var(--serif);
-  font-size: clamp(21px, 6vw, 32px);
+  font-size: clamp(19px, 5.1vw, 27px);
   font-weight: 600;
   font-style: italic;
   line-height: 1.2;

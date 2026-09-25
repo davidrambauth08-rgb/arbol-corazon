@@ -205,14 +205,16 @@ const CONFIG = {
     activo: true,
     entrada: true,
     antes: [
-      "Dicen que es el primer hechizo que se aprende.",
-      "Y que casi nadie lo dice bien."
+      "El primer hechizo que se aprende sirve para levantar una pluma.",
+      "Nadie avisa de lo que hace cuando lo dices pensando en alguien."
     ],
     boton: "Wingardium Leviosa",
-    botonDesc: "con la uve larga y bien arrastrada",
+    botonDesc: "es Levi-O-sa, no Levio-sá",
     despues: [
-      "Resulta que no era para levantar plumas.",
-      "Era para esto."
+      "Dicen que la Amortentia huele a lo que uno más quiere.",
+      "La mía olería a ti.",
+      "Y si algún día preguntas cuánto va a durar esto,",
+      "la respuesta es la de siempre. Siempre."
     ],
     seguir: "Seguir",
     seguirDesc: ""
