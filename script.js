@@ -207,15 +207,24 @@ const CONFIG = {
     activo: true,
     entrada: true,
     antes: [
-      "Aquí va tu texto.",
-      "Esta frase se escribe antes de lanzar el hechizo."
+      "Quiero explicarte algo."
+    ],
+    /* La parte oscura: mientras se escribe, el paisaje se apaga, el castillo
+       se queda a oscuras, la escarcha entra por los bordes y los dementores
+       cruzan el lago. Se lee en frío, más pequeño, como lo que es. */
+    oscuro: [
+      "La pornografía tipo webcam puede generar un placer más intenso que el contenido grabado,",
+      "porque combina excitación sexual, novedad e interacción en tiempo real.",
+      "La sensación de que la otra persona responde específicamente a ti aumenta la anticipación y la recompensa,",
+      "y hace que el cerebro libere dopamina y quiera repetir la experiencia con más frecuencia."
     ],
     boton: "Expelliarmus",
     botonDesc: "el hechizo de Harry: desarmar, nunca herir",
     despues: [
-      "Y aquí el tuyo de después.",
-      "Estas frases salen cuando la varita ya ha salido volando.",
-      "Pon las que quieras: se escriben una detrás de otra."
+      "No quiero seguir mal.",
+      "Cometo errores y trato de no hacerlo.",
+      "Solo quiero estar bien contigo",
+      "y tenerte a mi lado."
     ],
     seguir: "Seguir",
     seguirDesc: ""
@@ -3482,7 +3491,7 @@ function llegarAlParaiso() {
    de noche. Dos varitas enfrentadas abajo. Al lanzar el hechizo sale un haz
    de luz, una varita se va volando y el cielo amanece.
    ===================================================================== */
-const expel = { activo: false, entrada: false, born: 0, lanzado: 0, estrellas: [], nieblas: [], chispas: [] };
+const expel = { activo: false, entrada: false, born: 0, lanzado: 0, oscuro: 0, estrellas: [], nieblas: [], dementores: [] };
 
 /* Las torres del castillo: [centro, ancho, alto] en fracción del bloque */
 const TORRES_EXPEL = [
@@ -3506,7 +3515,64 @@ function sembrarExpel() {
       a: 0.1 + Math.random() * 0.14
     });
   }
-  expel.chispas.length = 0;
+  // los dementores cruzan el lago mientras dura la parte oscura
+  expel.dementores.length = 0;
+  for (let i = 0; i < 4; i++) {
+    expel.dementores.push({
+      x: -0.3 - i * 0.28, y: 0.44 + (i % 2) * 0.09,
+      v: 0.055 + Math.random() * 0.03,
+      esc: 0.7 + Math.random() * 0.6,
+      fase: Math.random() * TAU
+    });
+  }
+}
+
+/* Un dementor: la capucha, el vacío donde debería estar la cara y los
+   jirones de tela que se arrastran debajo */
+function dibujarDementor(g, x, y, alto, t, fase, alfa) {
+  const w = alto * 0.5;
+  g.save();
+  g.translate(x, y);
+  g.rotate(Math.sin(t * 0.7 + fase) * 0.05);
+
+  // los jirones, que ondean cada uno a su ritmo
+  g.fillStyle = `rgba(10, 8, 18, ${0.85 * alfa})`;
+  g.beginPath();
+  g.moveTo(-w * 0.5, 0);
+  for (let i = 0; i <= 6; i++) {
+    const u = i / 6;
+    const largo = alto * (0.7 + 0.45 * Math.abs(Math.sin(t * 1.6 + fase + i * 1.9)));
+    g.lineTo(-w * 0.5 + w * u, largo);
+    g.lineTo(-w * 0.5 + w * (u + 0.5 / 6), largo * 0.55);
+  }
+  g.lineTo(w * 0.5, 0);
+  g.closePath();
+  g.fill();
+
+  // la capucha
+  g.fillStyle = `rgba(14, 11, 24, ${0.94 * alfa})`;
+  g.beginPath();
+  g.moveTo(-w * 0.52, alto * 0.06);
+  g.quadraticCurveTo(-w * 0.58, -alto * 0.48, 0, -alto * 0.56);
+  g.quadraticCurveTo(w * 0.58, -alto * 0.48, w * 0.52, alto * 0.06);
+  g.quadraticCurveTo(0, alto * 0.2, -w * 0.52, alto * 0.06);
+  g.fill();
+
+  // el hueco de la cara: negro absoluto
+  g.fillStyle = `rgba(0, 0, 0, ${0.92 * alfa})`;
+  g.beginPath();
+  g.ellipse(0, -alto * 0.26, w * 0.28, alto * 0.24, 0, 0, TAU);
+  g.fill();
+
+  // el frío que arrastran consigo
+  const frio = g.createRadialGradient(0, -alto * 0.2, 0, 0, -alto * 0.2, alto * 1.3);
+  frio.addColorStop(0, `rgba(150, 180, 220, ${0.1 * alfa})`);
+  frio.addColorStop(1, 'rgba(150, 180, 220, 0)');
+  g.fillStyle = frio;
+  g.beginPath();
+  g.arc(0, -alto * 0.2, alto * 1.3, 0, TAU);
+  g.fill();
+  g.restore();
 }
 
 /* El castillo, al otro lado del agua, con sus ventanas encendidas */
@@ -3539,7 +3605,7 @@ function dibujarCastilloExpel(g, x0, base, ancho, alto, t, luz) {
         const vx = x + w * (0.28 + c * 0.44);
         const vy = y + h * 0.16 + f * (h * 0.78 / filas);
         const parp = 0.65 + 0.35 * Math.sin(t * 1.4 + f * 2.1 + c * 3.7 + cx * 9);
-        g.fillStyle = `rgba(255, 214, 130, ${0.45 + 0.5 * parp * luz})`;
+        g.fillStyle = `rgba(255, 214, 130, ${(0.45 + 0.5 * parp) * luz})`;
         g.fillRect(vx - w * 0.05, vy, w * 0.1, h * 0.05);
       }
     }
@@ -3596,6 +3662,9 @@ function dibujarExpel(now) {
   const desde = expel.lanzado ? (now - expel.lanzado) / 1000 : 0;
   // el amanecer entra despacio en cuanto se lanza el hechizo
   const alba = expel.lanzado ? 1 - Math.pow(1 - Math.min(1, desde / 7), 3) : 0;
+  // y antes de eso, la noche se cierra del todo con la parte oscura
+  const cerrando = expel.oscuro ? Math.min(1, (now - expel.oscuro) / 5000) : 0;
+  const sombra = cerrando * (1 - Math.min(1, desde / 1.6));
   const mezcla = (a, b) => a + (b - a) * alba;
 
   g.setTransform(1, 0, 0, 1, 0, 0);
@@ -3618,7 +3687,7 @@ function dibujarExpel(now) {
   // --- estrellas, que se apagan al amanecer ---
   const noche = 1 - alba;
   for (const e of expel.estrellas) {
-    const brillo = (0.35 + 0.65 * Math.abs(Math.sin(t * e.v + e.fase))) * noche;
+    const brillo = (0.35 + 0.65 * Math.abs(Math.sin(t * e.v + e.fase))) * noche * (1 - sombra);
     g.fillStyle = `rgba(255, 246, 232, ${brillo * 0.85})`;
     g.beginPath();
     g.arc(e.x * W, e.y * hor, e.r * (H / 900) * 1.6, 0, TAU);
@@ -3626,16 +3695,17 @@ function dibujarExpel(now) {
   }
 
   // --- la luna de noche, el sol al amanecer ---
-  if (noche > 0.05) {
+  if (noche * (1 - sombra * 0.95) > 0.05) {
+    const lunaK = noche * (1 - sombra * 0.95);
     const lx = W * 0.7, ly = hor * 0.28, lr = Math.min(W, H) * 0.035;
     const halo = g.createRadialGradient(lx, ly, 0, lx, ly, lr * 6);
-    halo.addColorStop(0, `rgba(226, 232, 255, ${0.35 * noche})`);
+    halo.addColorStop(0, `rgba(226, 232, 255, ${0.35 * lunaK})`);
     halo.addColorStop(1, 'rgba(226, 232, 255, 0)');
     g.fillStyle = halo;
     g.beginPath();
     g.arc(lx, ly, lr * 6, 0, TAU);
     g.fill();
-    g.fillStyle = `rgba(240, 244, 255, ${0.9 * noche})`;
+    g.fillStyle = `rgba(240, 244, 255, ${0.9 * lunaK})`;
     g.beginPath();
     g.arc(lx, ly, lr, 0, TAU);
     g.fill();
@@ -3682,7 +3752,7 @@ function dibujarExpel(now) {
 
   // --- el castillo al otro lado del agua ---
   const cAncho = W * 0.34, cAlto = H * 0.2;
-  const pintarCastillo = () => dibujarCastilloExpel(g, W * 0.56, hor, cAncho, cAlto, t, 1);
+  const pintarCastillo = () => dibujarCastilloExpel(g, W * 0.56, hor, cAncho, cAlto, t, 1 - sombra * 0.92);
   pintarCastillo();
 
   // --- el lago ---
@@ -3784,6 +3854,31 @@ function dibujarExpel(now) {
   const fyy = vy - H * 0.42 * Math.sin(Math.PI * Math.min(1, vuela * 0.95));
   dibujarVarita(g, fx, fyy, largo, -2.8 + vuela * 12, expel.lanzado ? 0 : carga * 0.35, t);
 
+  // --- los dementores cruzando el lago ---
+  if (sombra > 0.01) {
+    for (const d of expel.dementores) {
+      // al lanzarse el hechizo salen despedidos hacia atrás
+      const huida = expel.lanzado ? Math.min(1, desde / 1.6) : 0;
+      const x = (d.x + t * d.v + huida * 0.8) * W;
+      if (x < -W * 0.2 || x > W * 1.2) continue;
+      const y = d.y * H + Math.sin(t * 0.8 + d.fase) * H * 0.02;
+      dibujarDementor(g, x, y, H * 0.17 * d.esc, t, d.fase, sombra * (1 - huida));
+    }
+  }
+
+  // --- la escarcha entrando por los bordes ---
+  if (sombra > 0.01) {
+    const hielo = g.createRadialGradient(W / 2, H * 0.5, Math.min(W, H) * 0.2, W / 2, H * 0.5, Math.max(W, H) * 0.72);
+    hielo.addColorStop(0, 'rgba(120, 160, 205, 0)');
+    hielo.addColorStop(0.72, `rgba(110, 150, 200, ${0.16 * sombra})`);
+    hielo.addColorStop(1, `rgba(150, 185, 225, ${0.4 * sombra})`);
+    g.fillStyle = hielo;
+    g.fillRect(0, 0, W, H);
+    // y el frío apagándolo todo
+    g.fillStyle = `rgba(6, 8, 20, ${0.5 * sombra})`;
+    g.fillRect(0, 0, W, H);
+  }
+
   // --- el haz de luz del hechizo ---
   if (expel.lanzado && desde < 1.1) {
     const k = desde / 1.1;
@@ -3838,7 +3933,25 @@ function mostrarExpel(deEntrada) {
     later(t, () => escribirLineaExpel(texto), 'expel');
     t += 520 + graphemes(texto).length * 42;
   }
-  later(t + 400, () => {
+
+  // la parte oscura: el paisaje se apaga mientras se lee
+  const oscuras = E.oscuro || [];
+  if (oscuras.length) {
+    t += 700;
+    later(t, () => {
+      expel.oscuro = performance.now();
+      expelEl.classList.add('frio');
+      for (const linea of expelLineasEl.children) linea.classList.add('out');
+    }, 'expel');
+    later(t + 900, () => expelLineasEl.replaceChildren(), 'expel');
+    t += 1300;
+    for (const texto of oscuras) {
+      later(t, () => escribirLineaExpel(texto, true), 'expel');
+      t += 420 + graphemes(texto).length * 26;
+    }
+  }
+
+  later(t + 700, () => {
     expelBtn.hidden = false;
     void expelBtn.offsetWidth;
     expelBtn.classList.add('in');
@@ -3846,8 +3959,8 @@ function mostrarExpel(deEntrada) {
   return true;
 }
 
-function escribirLineaExpel(texto) {
-  const p = el('p', 'v-line');
+function escribirLineaExpel(texto, frio) {
+  const p = el('p', 'v-line' + (frio ? ' frio' : ''));
   graphemes(texto).forEach((ch, i) => {
     const span = el('span', 'ch', ch);
     span.style.setProperty('--i', i);
@@ -3863,6 +3976,7 @@ function lanzarExpel() {
   if (!expel.activo || expel.lanzado) return;
   const E = CONFIG.expelliarmus || {};
   expel.lanzado = performance.now();
+  expelEl.classList.remove('frio');
   castFxAt(expelBtn, { sparks: 32, r1: 300, dur: 1000, waves: true });
   expelBtn.classList.remove('in');
   later(500, () => { expelBtn.hidden = true; }, 'expel');
@@ -3894,6 +4008,8 @@ function cerrarExpel() {
     expelEl.hidden = true;
     expelEl.classList.remove('out');
     expelLineasEl.replaceChildren();
+    expelEl.classList.remove('frio');
+    expel.oscuro = 0;
     expelBtn.hidden = expelSeguirBtn.hidden = true;
     document.body.classList.remove('duelando');
     if (eraEntrada) seguirTrasElMapa();

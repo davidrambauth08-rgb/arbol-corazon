@@ -2525,3 +2525,34 @@ body.duelando #music {
 }
 #expel-btn, #expel-seguir { width: auto; justify-content: center; }
 #expel-btn .plate-text, #expel-seguir .plate-text { align-items: center; }
+
+/* La parte oscura del Expelliarmus: se lee en frío, más pequeño y sin
+   el brillo dorado del resto. El texto tiembla un poco, muy poco. */
+#expel-lineas .v-line.frio {
+  font-size: clamp(14.5px, 3.7vw, 18px);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.34;
+  letter-spacing: 0.01em;
+  color: #b9c6dc;
+  text-shadow: 0 2px 20px rgba(4, 6, 16, 0.98), 0 0 34px rgba(120, 160, 205, 0.28);
+  max-width: min(94vw, 620px);
+  animation: expel-frio 5.5s ease-in-out infinite;
+}
+@keyframes expel-frio {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(0.4px, -0.3px); }
+  60%      { transform: translate(-0.4px, 0.3px); }
+}
+/* mientras dura el frío, el botón pierde el calor dorado */
+#expel.frio #expel-btn {
+  background: linear-gradient(180deg, #cdd8e8, #93a6c0);
+  border-color: rgba(150, 185, 225, 0.8);
+  box-shadow: 0 8px 26px rgba(6, 8, 18, 0.55), 0 0 22px rgba(150, 185, 225, 0.35),
+    inset 0 0 0 2px rgba(226, 236, 250, 0.6);
+}
+#expel.frio #expel-btn .plate-rune { color: #3f5d80; text-shadow: 0 0 10px rgba(150, 185, 225, 0.7); }
+
+@media (prefers-reduced-motion: reduce) {
+  #expel-lineas .v-line.frio { animation: none; }
+}

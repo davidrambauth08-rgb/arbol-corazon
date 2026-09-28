@@ -19,7 +19,7 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
-**Lo primero al pasar la puerta: Expelliarmus** (`CONFIG.expelliarmus`). Un paisaje de noche: el castillo al otro lado del lago con sus ventanas encendidas, las montañas, el bosque a los lados, la niebla sobre el agua y la luna. Abajo, en la orilla, dos varitas enfrentadas. Al tocar **Expelliarmus** sale un haz de luz, la otra varita se va volando por el aire y el cielo **amanece**: las estrellas se apagan, la luna deja paso al sol y todo el paisaje —agua, montañas, bosque— cambia de color con él. Las frases de `antes` y `despues` son tuyas; luego **Seguir** da paso a la intro mágica. Con `expelliarmus.entrada: false` deja de ser lo primero.
+**Lo primero al pasar la puerta: Expelliarmus** (`CONFIG.expelliarmus`). Un paisaje de noche: el castillo al otro lado del lago con sus ventanas encendidas, las montañas, el bosque a los lados, la niebla sobre el agua y la luna. Abajo, en la orilla, dos varitas enfrentadas. Después llega **la parte oscura** (`oscuro`): el paisaje se apaga —el castillo se queda sin luces, las estrellas y la luna se borran, la escarcha entra por los bordes— y **cuatro dementores** cruzan el lago mientras se lee. Ese texto sale en frío: más pequeño, sin cursiva, en azul pálido y temblando un poco. Al tocar **Expelliarmus** sale un haz de luz, los dementores salen despedidos, la otra varita se va volando por el aire y el cielo **amanece**: las estrellas se apagan, la luna deja paso al sol y todo el paisaje —agua, montañas, bosque— cambia de color con él. Las frases de `antes` y `despues` son tuyas; luego **Seguir** da paso a la intro mágica. Con `expelliarmus.entrada: false` deja de ser lo primero.
 
 **Wingardium Leviosa** (`CONFIG.leviosa`), ahora en el hechizo **❦ Leviosa** de la fila del árbol. En el suelo de una sala a oscuras hay velas apagadas, libros, cartas y plumas. Al tocar **Wingardium Leviosa** todo se levanta despacio, las velas se encienden una a una al subir, el techo se llena de estrellas y sube polvo dorado con todo lo demás. Después se escriben las frases de `despues` —la Amortentia, que huele a lo que uno más quiere, y el «siempre» de Snape— y **Seguir** da paso a la intro mágica. Con `leviosa.entrada: false` deja de ser lo primero.
 
@@ -109,7 +109,7 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
-| `expelliarmus` | la apertura: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
+| `expelliarmus` | la apertura: `antes`, `oscuro` (la parte fría, con los dementores) y `despues`, más `boton`, `seguir` y `entrada` |
 | `leviosa` | el Wingardium Leviosa: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
 | `vuelo` | la nube y la playa: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |
 | `paraiso` | la playa al atardecer: `lineas` y `boton` |
