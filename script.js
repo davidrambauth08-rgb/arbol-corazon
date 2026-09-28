@@ -186,6 +186,7 @@ const CONFIG = {
     orchideous: { runa: "✼", nombre: "Orchideous", desc: "hacer crecer un jardín de girasoles", corto: "Girasoles" },
     merodeador: { runa: "⚜", nombre: "Juro solemnemente", desc: "desplegar el mapa del merodeador", corto: "Mapa" },
     vuelo: { runa: "☁", nombre: "Quiero volar", desc: "subirse a la nube y decidir si vamos", corto: "Volar" },
+    wingardium: { runa: "❦", nombre: "Wingardium Leviosa", desc: "levantar todo lo que hay en el suelo", corto: "Leviosa" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -198,12 +199,34 @@ const CONFIG = {
     firma: "Dinosaurios incluidos."
   },
 
-  /* Wingardium Leviosa: lo primero al pasar la puerta. En el suelo hay unas
+  /* Expelliarmus: lo primero al pasar la puerta. Un paisaje de noche —el
+     castillo al otro lado del lago, el bosque, la niebla— y dos varitas
+     enfrentadas. Al lanzar el hechizo, una varita sale volando y amanece.
+     Las frases son tuyas: cámbialas por lo que quieras. */
+  expelliarmus: {
+    activo: true,
+    entrada: true,
+    antes: [
+      "Aquí va tu texto.",
+      "Esta frase se escribe antes de lanzar el hechizo."
+    ],
+    boton: "Expelliarmus",
+    botonDesc: "el hechizo de Harry: desarmar, nunca herir",
+    despues: [
+      "Y aquí el tuyo de después.",
+      "Estas frases salen cuando la varita ya ha salido volando.",
+      "Pon las que quieras: se escriben una detrás de otra."
+    ],
+    seguir: "Seguir",
+    seguirDesc: ""
+  },
+
+  /* Wingardium Leviosa: un hechizo más de la fila del árbol. En el suelo hay unas
      cuantas cosas apagadas; al lanzar el hechizo todo se levanta, las velas
      se encienden y el techo se llena de estrellas. */
   leviosa: {
     activo: true,
-    entrada: true,
+    entrada: false,         // true = es lo primero al pasar la puerta
     antes: [
       "El primer hechizo que se aprende sirve para levantar una pluma.",
       "Nadie avisa de lo que hace cuando lo dices pensando en alguien."
@@ -841,6 +864,12 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const expelEl = document.getElementById('expel');
+const expelCanvas = document.getElementById('expel-lienzo');
+const expelCtx = expelCanvas.getContext('2d');
+const expelLineasEl = document.getElementById('expel-lineas');
+const expelBtn = document.getElementById('expel-btn');
+const expelSeguirBtn = document.getElementById('expel-seguir');
 const leviosaEl = document.getElementById('leviosa');
 const leviosaCanvas = document.getElementById('leviosa-lienzo');
 const leviosaCtx = leviosaCanvas.getContext('2d');
@@ -848,6 +877,7 @@ const leviosaLineasEl = document.getElementById('leviosa-lineas');
 const wingardiumBtn = document.getElementById('leviosa-btn');
 const wingardiumSeguirBtn = document.getElementById('leviosa-seguir');
 const vueloBtn2 = document.getElementById('spell-vuelo');
+const wingardiumFilaBtn = document.getElementById('spell-wingardium');
 const vueloEl = document.getElementById('vuelo');
 const vueloFotoEl = document.getElementById('vuelo-foto');
 const vueloLineasEl = document.getElementById('vuelo-lineas');
@@ -1329,6 +1359,10 @@ function resize() {
   if (typeof leviosaCanvas !== 'undefined' && wingardium.activo) {
     leviosaCanvas.width = canvas.width;
     leviosaCanvas.height = canvas.height;
+  }
+  if (typeof expelCanvas !== 'undefined' && expel.activo) {
+    expelCanvas.width = canvas.width;
+    expelCanvas.height = canvas.height;
   }
   if (typeof magicCanvas !== 'undefined') resizeMagic();
 
@@ -2330,6 +2364,7 @@ function hechizosFila() {
     { btn: orchideousBtn, activo: () => F.orchideous !== false },
     { btn: merodeadorBtn, activo: () => F.merodeador !== false && !!(CONFIG.merodeador && CONFIG.merodeador.activo) },
     { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
+    { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -3442,6 +3477,430 @@ function llegarAlParaiso() {
 }
 
 /* =====================================================================
+   EXPELLIARMUS — el duelo junto al lago
+   El paisaje: el castillo al otro lado del agua, montañas, bosque y niebla,
+   de noche. Dos varitas enfrentadas abajo. Al lanzar el hechizo sale un haz
+   de luz, una varita se va volando y el cielo amanece.
+   ===================================================================== */
+const expel = { activo: false, entrada: false, born: 0, lanzado: 0, estrellas: [], nieblas: [], chispas: [] };
+
+/* Las torres del castillo: [centro, ancho, alto] en fracción del bloque */
+const TORRES_EXPEL = [
+  [0.06, 0.13, 0.52], [0.20, 0.17, 0.74], [0.35, 0.12, 0.44],
+  [0.50, 0.20, 1.00], [0.66, 0.13, 0.62], [0.79, 0.16, 0.80], [0.93, 0.11, 0.40]
+];
+
+function sembrarExpel() {
+  expel.estrellas.length = 0;
+  for (let i = 0; i < 90; i++) {
+    expel.estrellas.push({
+      x: Math.random(), y: Math.random() * 0.5,
+      r: 0.4 + Math.random() * 1.3, fase: Math.random() * TAU, v: 0.5 + Math.random() * 1.8
+    });
+  }
+  expel.nieblas.length = 0;
+  for (let i = 0; i < 5; i++) {
+    expel.nieblas.push({
+      x: Math.random(), y: 0.62 + Math.random() * 0.1,
+      rx: 0.2 + Math.random() * 0.2, v: 0.004 + Math.random() * 0.007,
+      a: 0.1 + Math.random() * 0.14
+    });
+  }
+  expel.chispas.length = 0;
+}
+
+/* El castillo, al otro lado del agua, con sus ventanas encendidas */
+function dibujarCastilloExpel(g, x0, base, ancho, alto, t, luz) {
+  g.fillStyle = '#2b1f40';
+  g.beginPath();
+  g.moveTo(x0 - ancho * 0.12, base);
+  g.lineTo(x0 + ancho * 0.08, base - alto * 0.16);
+  g.lineTo(x0 + ancho * 0.9, base - alto * 0.13);
+  g.lineTo(x0 + ancho * 1.12, base);
+  g.closePath();
+  g.fill();
+
+  for (const [cx, cw, ch] of TORRES_EXPEL) {
+    const w = ancho * cw, h = alto * ch;
+    const x = x0 + ancho * cx - w / 2;
+    const y = base - alto * 0.12 - h;
+    g.fillStyle = '#261b3a';
+    g.fillRect(x, y, w, h + alto * 0.14);
+    g.beginPath();
+    g.moveTo(x - w * 0.16, y);
+    g.lineTo(x + w / 2, y - h * 0.34);
+    g.lineTo(x + w + w * 0.16, y);
+    g.closePath();
+    g.fillStyle = '#1e142e';
+    g.fill();
+    const filas = Math.max(2, Math.round(h / (alto * 0.13)));
+    for (let f = 0; f < filas; f++) {
+      for (let c = 0; c < 2; c++) {
+        const vx = x + w * (0.28 + c * 0.44);
+        const vy = y + h * 0.16 + f * (h * 0.78 / filas);
+        const parp = 0.65 + 0.35 * Math.sin(t * 1.4 + f * 2.1 + c * 3.7 + cx * 9);
+        g.fillStyle = `rgba(255, 214, 130, ${0.45 + 0.5 * parp * luz})`;
+        g.fillRect(vx - w * 0.05, vy, w * 0.1, h * 0.05);
+      }
+    }
+  }
+}
+
+/* Una varita: el mango, la punta y, si toca, la chispa que espera */
+function dibujarVarita(g, x, y, largo, giro, chispa, t) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(giro);
+  g.strokeStyle = '#3a2a1e';
+  g.lineWidth = Math.max(2, largo * 0.055);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(-largo * 0.5, 0);
+  g.lineTo(largo * 0.5, 0);
+  g.stroke();
+  g.strokeStyle = '#231a12';
+  g.lineWidth = Math.max(3, largo * 0.085);
+  g.beginPath();
+  g.moveTo(-largo * 0.5, 0);
+  g.lineTo(-largo * 0.24, 0);
+  g.stroke();
+  if (chispa > 0) {
+    const r = largo * 0.16 * chispa * (0.85 + 0.15 * Math.sin(t * 6));
+    const halo = g.createRadialGradient(largo * 0.5, 0, 0, largo * 0.5, 0, r * 4);
+    halo.addColorStop(0, `rgba(255, 240, 200, ${0.9 * chispa})`);
+    halo.addColorStop(0.35, `rgba(245, 211, 107, ${0.35 * chispa})`);
+    halo.addColorStop(1, 'rgba(245, 211, 107, 0)');
+    g.fillStyle = halo;
+    g.beginPath();
+    g.arc(largo * 0.5, 0, r * 4, 0, TAU);
+    g.fill();
+  }
+  g.restore();
+}
+
+function abrirExpel() {
+  expelCanvas.width = canvas.width;
+  expelCanvas.height = canvas.height;
+  sembrarExpel();
+  expel.born = performance.now();
+  expel.lanzado = 0;
+  expel.activo = true;
+}
+
+function dibujarExpel(now) {
+  if (!expel.activo) return;
+  const g = expelCtx;
+  const W = expelCanvas.width, H = expelCanvas.height;
+  if (!W || !H) return;
+  const t = (now - expel.born) / 1000;
+  const desde = expel.lanzado ? (now - expel.lanzado) / 1000 : 0;
+  // el amanecer entra despacio en cuanto se lanza el hechizo
+  const alba = expel.lanzado ? 1 - Math.pow(1 - Math.min(1, desde / 7), 3) : 0;
+  const mezcla = (a, b) => a + (b - a) * alba;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const hor = H * 0.615;
+
+  // --- cielo: de noche cerrada a amanecer ---
+  const cielo = g.createLinearGradient(0, 0, 0, hor);
+  const col = (n1, n2, n3, d1, d2, d3) =>
+    `rgb(${Math.round(mezcla(n1, d1))}, ${Math.round(mezcla(n2, d2))}, ${Math.round(mezcla(n3, d3))})`;
+  cielo.addColorStop(0, col(11, 16, 32, 41, 31, 72));
+  cielo.addColorStop(0.35, col(23, 23, 43, 108, 68, 112));
+  cielo.addColorStop(0.62, col(43, 33, 71, 190, 108, 126));
+  cielo.addColorStop(0.85, col(58, 42, 86, 238, 150, 110));
+  cielo.addColorStop(1, col(74, 54, 102, 255, 210, 146));
+  g.fillStyle = cielo;
+  g.fillRect(0, 0, W, hor);
+
+  // --- estrellas, que se apagan al amanecer ---
+  const noche = 1 - alba;
+  for (const e of expel.estrellas) {
+    const brillo = (0.35 + 0.65 * Math.abs(Math.sin(t * e.v + e.fase))) * noche;
+    g.fillStyle = `rgba(255, 246, 232, ${brillo * 0.85})`;
+    g.beginPath();
+    g.arc(e.x * W, e.y * hor, e.r * (H / 900) * 1.6, 0, TAU);
+    g.fill();
+  }
+
+  // --- la luna de noche, el sol al amanecer ---
+  if (noche > 0.05) {
+    const lx = W * 0.7, ly = hor * 0.28, lr = Math.min(W, H) * 0.035;
+    const halo = g.createRadialGradient(lx, ly, 0, lx, ly, lr * 6);
+    halo.addColorStop(0, `rgba(226, 232, 255, ${0.35 * noche})`);
+    halo.addColorStop(1, 'rgba(226, 232, 255, 0)');
+    g.fillStyle = halo;
+    g.beginPath();
+    g.arc(lx, ly, lr * 6, 0, TAU);
+    g.fill();
+    g.fillStyle = `rgba(240, 244, 255, ${0.9 * noche})`;
+    g.beginPath();
+    g.arc(lx, ly, lr, 0, TAU);
+    g.fill();
+    g.globalCompositeOperation = 'destination-out';
+    g.beginPath();
+    g.arc(lx + lr * 0.45, ly - lr * 0.3, lr * 0.92, 0, TAU);
+    g.fill();
+    g.globalCompositeOperation = 'source-over';
+  }
+  if (alba > 0.05) {
+    const sx = W * 0.3, sr = Math.min(W, H) * 0.05;
+    const sy = hor - H * (0.005 + 0.05 * alba);
+    const halo = g.createRadialGradient(sx, sy, 0, sx, sy, sr * 9);
+    halo.addColorStop(0, `rgba(255, 233, 176, ${0.7 * alba})`);
+    halo.addColorStop(0.4, `rgba(250, 190, 130, ${0.26 * alba})`);
+    halo.addColorStop(1, 'rgba(250, 190, 130, 0)');
+    g.fillStyle = halo;
+    g.fillRect(0, 0, W, hor + H * 0.1);
+    const disco = g.createRadialGradient(sx, sy, sr * 0.2, sx, sy, sr * 1.25);
+    disco.addColorStop(0, `rgba(255, 250, 232, ${0.96 * alba})`);
+    disco.addColorStop(0.62, `rgba(255, 238, 190, ${0.85 * alba})`);
+    disco.addColorStop(1, 'rgba(255, 220, 160, 0)');
+    g.fillStyle = disco;
+    g.beginPath();
+    g.arc(sx, sy, sr * 1.25, 0, TAU);
+    g.fill();
+  }
+
+  // --- montañas al fondo ---
+  const monte = (base, altura, color, desfase) => {
+    g.fillStyle = color;
+    g.beginPath();
+    g.moveTo(0, base);
+    for (let x = 0; x <= W; x += W / 40) {
+      const k = x / W * 7 + desfase;
+      g.lineTo(x, base - altura * (0.45 + 0.4 * Math.sin(k) + 0.22 * Math.sin(k * 2.3)));
+    }
+    g.lineTo(W, base);
+    g.closePath();
+    g.fill();
+  };
+  monte(hor, H * 0.1, `rgba(${Math.round(mezcla(58, 96))}, ${Math.round(mezcla(46, 74))}, ${Math.round(mezcla(86, 122))}, 0.7)`, 1.2);
+  monte(hor, H * 0.062, `rgba(${Math.round(mezcla(38, 66))}, ${Math.round(mezcla(30, 50))}, ${Math.round(mezcla(62, 92))}, 0.85)`, 3.4);
+
+  // --- el castillo al otro lado del agua ---
+  const cAncho = W * 0.34, cAlto = H * 0.2;
+  const pintarCastillo = () => dibujarCastilloExpel(g, W * 0.56, hor, cAncho, cAlto, t, 1);
+  pintarCastillo();
+
+  // --- el lago ---
+  const agua = g.createLinearGradient(0, hor, 0, H * 0.86);
+  agua.addColorStop(0, col(38, 30, 62, 217, 168, 130));
+  agua.addColorStop(0.3, col(30, 24, 54, 169, 122, 134));
+  agua.addColorStop(1, col(18, 14, 36, 62, 48, 92));
+  g.fillStyle = agua;
+  g.fillRect(0, hor, W, H * 0.86 - hor);
+
+  // el reflejo del castillo, del revés y desvaído
+  g.save();
+  g.beginPath();
+  g.rect(0, hor, W, H * 0.86 - hor);
+  g.clip();
+  g.globalAlpha = 0.3;
+  g.translate(0, hor * 2);
+  g.scale(1, -1);
+  pintarCastillo();
+  g.restore();
+
+  // las ondas
+  for (let i = 0; i < 22; i++) {
+    const p = i / 22;
+    const y = hor + Math.pow(p, 1.7) * (H * 0.86 - hor);
+    const meneo = Math.sin(t * 1.1 + i * 0.9) * W * 0.012;
+    const ancho = W * (0.08 + p * 0.45);
+    g.strokeStyle = `rgba(255, 236, 206, ${(0.1 + 0.1 * alba - p * 0.06) * 0.9})`;
+    g.lineWidth = Math.max(1, H * 0.0016);
+    g.beginPath();
+    g.moveTo(W * 0.5 + meneo - ancho, y);
+    g.lineTo(W * 0.5 + meneo + ancho, y);
+    g.stroke();
+  }
+
+  // --- niebla sobre el agua ---
+  for (const n of expel.nieblas) {
+    const x = ((n.x + t * n.v) % 1.4 - 0.2) * W;
+    const y = n.y * H;
+    const rx = n.rx * W;
+    g.save();
+    g.translate(x, y);
+    g.scale(1, 0.1);
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+    grad.addColorStop(0, `rgba(214, 206, 236, ${n.a})`);
+    grad.addColorStop(1, 'rgba(214, 206, 236, 0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(0, 0, rx, 0, TAU);
+    g.fill();
+    g.restore();
+  }
+
+  // --- la orilla de delante, donde están los dos ---
+  const orilla = H * 0.86;
+  const suelo = g.createLinearGradient(0, orilla - H * 0.03, 0, H);
+  suelo.addColorStop(0, `rgba(${Math.round(mezcla(26, 74))}, ${Math.round(mezcla(20, 54))}, ${Math.round(mezcla(44, 74))}, 1)`);
+  suelo.addColorStop(1, `rgba(${Math.round(mezcla(14, 44))}, ${Math.round(mezcla(10, 32))}, ${Math.round(mezcla(28, 52))}, 1)`);
+  g.fillStyle = suelo;
+  g.beginPath();
+  g.moveTo(0, H);
+  g.lineTo(0, orilla);
+  for (let x = 0; x <= W; x += W / 24) {
+    g.lineTo(x, orilla + Math.sin(x / W * 6) * H * 0.006);
+  }
+  g.lineTo(W, H);
+  g.closePath();
+  g.fill();
+
+  // --- el bosque, en los dos lados ---
+  const arboles = (desdeX, haciaX, cuantos, alto, color) => {
+    g.fillStyle = color;
+    for (let i = 0; i < cuantos; i++) {
+      const u = i / (cuantos - 1 || 1);
+      const x = desdeX + (haciaX - desdeX) * u;
+      const h = alto * (0.6 + 0.4 * Math.abs(Math.sin(i * 2.7)));
+      const w = h * 0.34;
+      g.beginPath();
+      g.moveTo(x - w / 2, orilla + H * 0.01);
+      g.lineTo(x, orilla + H * 0.01 - h);
+      g.lineTo(x + w / 2, orilla + H * 0.01);
+      g.closePath();
+      g.fill();
+    }
+  };
+  const tono = `rgba(${Math.round(mezcla(16, 40))}, ${Math.round(mezcla(13, 30))}, ${Math.round(mezcla(30, 50))}, 1)`;
+  arboles(-W * 0.02, W * 0.2, 7, H * 0.13, tono);
+  arboles(W * 0.82, W * 1.02, 6, H * 0.12, tono);
+
+  // --- las dos varitas, enfrentadas sobre la orilla ---
+  const vy = orilla + H * 0.045;
+  const largo = H * 0.075;
+  const carga = Math.min(1, t / 2.5);
+  // la de ella, a la izquierda, apuntando a la derecha
+  dibujarVarita(g, W * 0.3, vy, largo, -0.35, expel.lanzado ? 1 : carga * 0.5, t);
+  // la de él sale volando al lanzarse el hechizo
+  const vuela = expel.lanzado ? Math.min(1, desde / 2.2) : 0;
+  const fx = W * 0.7 + W * 0.28 * vuela;
+  const fyy = vy - H * 0.42 * Math.sin(Math.PI * Math.min(1, vuela * 0.95));
+  dibujarVarita(g, fx, fyy, largo, -2.8 + vuela * 12, expel.lanzado ? 0 : carga * 0.35, t);
+
+  // --- el haz de luz del hechizo ---
+  if (expel.lanzado && desde < 1.1) {
+    const k = desde / 1.1;
+    const avance = Math.min(1, k * 2.2);
+    const x1 = W * 0.3 + largo * 0.5, x2 = x1 + (W * 0.7 - x1) * avance;
+    const alfa = 1 - Math.max(0, (k - 0.45) / 0.55);
+    const haz = g.createLinearGradient(x1, 0, x2, 0);
+    haz.addColorStop(0, `rgba(255, 244, 214, 0)`);
+    haz.addColorStop(0.5, `rgba(255, 244, 214, ${0.95 * alfa})`);
+    haz.addColorStop(1, `rgba(255, 216, 130, ${0.9 * alfa})`);
+    g.strokeStyle = haz;
+    g.lineWidth = H * 0.008 * (1 + alfa);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(x1, vy - largo * 0.18);
+    g.quadraticCurveTo((x1 + x2) / 2, vy - largo * 0.5, x2, vy - largo * 0.2);
+    g.stroke();
+    // el fogonazo al llegar
+    if (avance >= 1) {
+      const r = H * 0.09 * (1 - Math.max(0, (k - 0.4) / 0.6));
+      const flash = g.createRadialGradient(W * 0.7, vy, 0, W * 0.7, vy, r * 3);
+      flash.addColorStop(0, `rgba(255, 250, 230, ${0.8 * alfa})`);
+      flash.addColorStop(1, 'rgba(255, 220, 150, 0)');
+      g.fillStyle = flash;
+      g.beginPath();
+      g.arc(W * 0.7, vy, r * 3, 0, TAU);
+      g.fill();
+    }
+  }
+}
+
+/* La escena: el paisaje de noche y el hechizo por lanzar */
+function mostrarExpel(deEntrada) {
+  const E = CONFIG.expelliarmus;
+  if (!E || !E.activo || expel.activo) return false;
+  expel.entrada = deEntrada === true;
+  document.body.classList.add('duelando');
+  abrirExpel();
+  expelLineasEl.replaceChildren();
+  expelBtn.hidden = expelSeguirBtn.hidden = true;
+  expelBtn.classList.remove('in');
+  expelSeguirBtn.classList.remove('in');
+  fillPlate(expelBtn, { runa: "✦", nombre: E.boton || 'Expelliarmus', desc: E.botonDesc || '' });
+  fillPlate(expelSeguirBtn, { runa: "❧", nombre: E.seguir || 'Seguir', desc: E.seguirDesc || '' });
+  expelEl.hidden = false;
+  expelEl.classList.remove('out');
+  void expelEl.offsetWidth;
+  expelEl.classList.add('show');
+
+  let t = 900;
+  for (const texto of (E.antes || [])) {
+    later(t, () => escribirLineaExpel(texto), 'expel');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 400, () => {
+    expelBtn.hidden = false;
+    void expelBtn.offsetWidth;
+    expelBtn.classList.add('in');
+  }, 'expel');
+  return true;
+}
+
+function escribirLineaExpel(texto) {
+  const p = el('p', 'v-line');
+  graphemes(texto).forEach((ch, i) => {
+    const span = el('span', 'ch', ch);
+    span.style.setProperty('--i', i);
+    p.appendChild(span);
+  });
+  expelLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+/* Se lanza: la varita sale volando y amanece */
+function lanzarExpel() {
+  if (!expel.activo || expel.lanzado) return;
+  const E = CONFIG.expelliarmus || {};
+  expel.lanzado = performance.now();
+  castFxAt(expelBtn, { sparks: 32, r1: 300, dur: 1000, waves: true });
+  expelBtn.classList.remove('in');
+  later(500, () => { expelBtn.hidden = true; }, 'expel');
+  for (const linea of expelLineasEl.children) linea.classList.add('out');
+
+  later(1500, () => expelLineasEl.replaceChildren(), 'expel');
+  let t = 2800;
+  for (const texto of (E.despues || [])) {
+    later(t, () => escribirLineaExpel(texto), 'expel');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 700, () => {
+    expelSeguirBtn.hidden = false;
+    void expelSeguirBtn.offsetWidth;
+    expelSeguirBtn.classList.add('in');
+  }, 'expel');
+}
+
+function cerrarExpel() {
+  if (!expel.activo) return;
+  cancelTasks('expel');
+  const eraEntrada = expel.entrada;
+  expel.entrada = false;
+  expelSeguirBtn.classList.remove('in');
+  expelEl.classList.remove('show');
+  expelEl.classList.add('out');
+  later(950, () => {
+    expel.activo = false;
+    expelEl.hidden = true;
+    expelEl.classList.remove('out');
+    expelLineasEl.replaceChildren();
+    expelBtn.hidden = expelSeguirBtn.hidden = true;
+    document.body.classList.remove('duelando');
+    if (eraEntrada) seguirTrasElMapa();
+  }, 'expel');
+}
+
+/* =====================================================================
    WINGARDIUM LEVIOSA — todo se levanta del suelo
    En el suelo hay velas apagadas, libros, cartas y una pluma. Al lanzar el
    hechizo suben despacio, las velas se encienden una a una y el techo se
@@ -3704,6 +4163,7 @@ function mostrarWingardium(deEntrada) {
   const L = CONFIG.leviosa;
   if (!L || !L.activo || wingardium.activo) return false;
   wingardium.entrada = deEntrada === true;
+  document.body.classList.add('levitando');   // el árbol y sus botones se apartan
   abrirWingardium();
   leviosaLineasEl.replaceChildren();
   wingardiumBtn.hidden = wingardiumSeguirBtn.hidden = true;
@@ -4126,6 +4586,7 @@ function cerrarVuelo() {
 
 /* Lo primero que se encuentra al pasar la puerta encantada */
 function entrada() {
+  if (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada && mostrarExpel(true)) return;
   if (CONFIG.leviosa && CONFIG.leviosa.entrada && mostrarWingardium(true)) return;
   if (CONFIG.vuelo && CONFIG.vuelo.entrada && mostrarVuelo(true)) return;
   if (entradaMerodeador()) return;
@@ -4991,6 +5452,7 @@ function buildExtras() {
   fillRune(orchideousBtn, HX.orchideous);
   fillRune(merodeadorBtn, HX.merodeador);
   fillRune(vueloBtn2, HX.vuelo);
+  fillRune(wingardiumFilaBtn, HX.wingardium);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -5028,6 +5490,9 @@ function bindExtras() {
   orchideousBtn.addEventListener('click', castOrchideous);
   merodeadorBtn.addEventListener('click', () => castMerodeador());
   vueloBtn2.addEventListener('click', () => mostrarVuelo());
+  wingardiumFilaBtn.addEventListener('click', () => mostrarWingardium());
+  expelBtn.addEventListener('click', lanzarExpel);
+  expelSeguirBtn.addEventListener('click', cerrarExpel);
   wingardiumBtn.addEventListener('click', lanzarWingardium);
   wingardiumSeguirBtn.addEventListener('click', cerrarWingardium);
   marauderCloseBtn.addEventListener('click', () => cerrarMerodeador());
@@ -5286,7 +5751,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -5301,6 +5766,11 @@ function resetExtras() {
   cerrarMerodeador(true);
   cancelTasks('vuelo');
   cancelTasks('lev');
+  cancelTasks('expel');
+  expel.activo = expel.entrada = false;
+  expelEl.hidden = true;
+  expelEl.classList.remove('show', 'out');
+  document.body.classList.remove('duelando');
   wingardium.activo = false;
   wingardium.entrada = false;
   leviosaEl.hidden = true;
@@ -6114,6 +6584,7 @@ function frame(now) {
   // así que se dibuja aquí: más abajo el bucle se corta cuando t es null
   dibujarParaiso(now);
   dibujarWingardium(now);
+  dibujarExpel(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;
 
@@ -6295,7 +6766,8 @@ function init() {
     introEl.hidden = true;
     magicEl.hidden = true;
     buildGate();
-  } else if (MAGIC.enabled || (CONFIG.leviosa && CONFIG.leviosa.entrada) ||
+  } else if (MAGIC.enabled || (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
+             (CONFIG.leviosa && CONFIG.leviosa.entrada) ||
              (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
              (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;

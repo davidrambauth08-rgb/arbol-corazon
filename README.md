@@ -19,7 +19,9 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
-**Lo primero al pasar la puerta: Wingardium Leviosa** (`CONFIG.leviosa`). En el suelo de una sala a oscuras hay velas apagadas, libros, cartas y plumas. Al tocar **Wingardium Leviosa** todo se levanta despacio, las velas se encienden una a una al subir, el techo se llena de estrellas y sube polvo dorado con todo lo demás. Después se escriben las frases de `despues` —la Amortentia, que huele a lo que uno más quiere, y el «siempre» de Snape— y **Seguir** da paso a la intro mágica. Con `leviosa.entrada: false` deja de ser lo primero.
+**Lo primero al pasar la puerta: Expelliarmus** (`CONFIG.expelliarmus`). Un paisaje de noche: el castillo al otro lado del lago con sus ventanas encendidas, las montañas, el bosque a los lados, la niebla sobre el agua y la luna. Abajo, en la orilla, dos varitas enfrentadas. Al tocar **Expelliarmus** sale un haz de luz, la otra varita se va volando por el aire y el cielo **amanece**: las estrellas se apagan, la luna deja paso al sol y todo el paisaje —agua, montañas, bosque— cambia de color con él. Las frases de `antes` y `despues` son tuyas; luego **Seguir** da paso a la intro mágica. Con `expelliarmus.entrada: false` deja de ser lo primero.
+
+**Wingardium Leviosa** (`CONFIG.leviosa`), ahora en el hechizo **❦ Leviosa** de la fila del árbol. En el suelo de una sala a oscuras hay velas apagadas, libros, cartas y plumas. Al tocar **Wingardium Leviosa** todo se levanta despacio, las velas se encienden una a una al subir, el techo se llena de estrellas y sube polvo dorado con todo lo demás. Después se escriben las frases de `despues` —la Amortentia, que huele a lo que uno más quiere, y el «siempre» de Snape— y **Seguir** da paso a la intro mágica. Con `leviosa.entrada: false` deja de ser lo primero.
 
 **«Quiero volar»** (`CONFIG.vuelo`), ahora en el hechizo **☁ Volar** de la fila del árbol. La imagen de `assets/volar.jpg` llena la pantalla y la frase se escribe encima letra a letra. La foto no se queda quieta: flota muy despacio (unos 9 px de deriva y un 5 % de zoom en ciclos de 24 s, ida y vuelta) y unas estrellas titilan sobre las que ya trae. Después la pregunta: **¿Vamos?**, con **Sí** y **No**. El «No» huye **al intentar tocarlo** —no con sólo pasar el ratón por encima, o desaparecería de camino al «Sí»— dos veces, y a la tercera se rinde, dejando sólo el «Sí».
 
@@ -44,13 +46,14 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la escena entera da paso al otro lado del mundo (atardecer, Cruz del Sur, nubes, volcán y palmeras); un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
 | **Orchideous** | fila de hechizos del árbol | la escena entera se apaga a negro (árbol, bosque, carta y contador incluidos), crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
-| **Wingardium Leviosa** | al pasar la puerta | todo lo que hay en el suelo se levanta despacio y las velas se encienden al subir |
+| **Expelliarmus** | al pasar la puerta | el duelo junto al lago: la varita sale volando y amanece sobre el castillo |
+| **Wingardium Leviosa** ❦ | fila de hechizos del árbol | todo lo que hay en el suelo se levanta despacio y las velas se encienden al subir |
 | **Quiero volar** ☁ | fila de hechizos del árbol | la nube, la pregunta de Sí/No y la playa al atardecer |
 | **Juro solemnemente** ⚜ | fila de hechizos del árbol | el pergamino se despliega (primero las solapas de arriba y abajo, después las de los lados), se escribe el juramento palabra a palabra y aparece la carta, que se lee por trozos, con dos rastros de pisadas que se encuentran en un corazón. Se cierra con **Travesura realizada** y se puede repetir |
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
-**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Quiero volar · Tempus viven en una fila (en el móvil se parte en dos líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
+**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Quiero volar · Wingardium Leviosa · Tempus viven en una fila (en el móvil se parte en dos líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
 
 **Cada hechizo trae su fondo**: Dracarys enciende un cielo de brasas (`CIELOS` en script.js, que se mezcla sobre el de la estación y vuelve solo al acabar). Orchideous y Terra Australis van más lejos y se quedan con la pantalla entera: el primero la apaga a negro para que sólo brillen los girasoles; el segundo la cambia por un atardecer del hemisferio sur, con la Cruz del Sur, nubes, un volcán y palmeras. Los dinosaurios son de dibujo, con panza clara, crestas, ojos grandes y mofletes.
 
@@ -61,7 +64,7 @@ No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
 
-**Intro mágica** (después del Wingardium Leviosa)
+**Intro mágica** (después del Expelliarmus)
 - Aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
 - Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso a las pruebas. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
 - Secreto: tocar 3 veces seguidas la estrella de arriba a la derecha muestra un mensaje.
@@ -106,7 +109,8 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
-| `leviosa` | la apertura: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
+| `expelliarmus` | la apertura: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
+| `leviosa` | el Wingardium Leviosa: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
 | `vuelo` | la nube y la playa: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |
 | `paraiso` | la playa al atardecer: `lineas` y `boton` |
 | `recado` | el sitio para que ella escriba: `formulario`, `whatsapp`, `titulo`, `placeholder`, `boton` y los avisos (`gracias`, `copiado`, `error`) |

@@ -1609,7 +1609,15 @@ body.merodeando #music,
 body.volando #letter,
 body.volando #spellbook,
 body.volando #clock,
-body.volando #music {
+body.volando #music,
+body.levitando #letter,
+body.levitando #spellbook,
+body.levitando #clock,
+body.levitando #music,
+body.duelando #letter,
+body.duelando #spellbook,
+body.duelando #clock,
+body.duelando #music {
   opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
   pointer-events: none;
   transition: opacity 0.9s ease;
@@ -2449,3 +2457,71 @@ body.volando #music {
 }
 #leviosa-btn, #leviosa-seguir { width: auto; justify-content: center; }
 #leviosa-btn .plate-text, #leviosa-seguir .plate-text { align-items: center; }
+
+/* =====================================================================
+   EXPELLIARMUS — el duelo junto al lago
+   ===================================================================== */
+#expel {
+  position: fixed;
+  inset: 0;
+  z-index: 17;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  background: #07060f;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+#expel[hidden] { display: none; }
+#expel.show { opacity: 1; }
+#expel.out { opacity: 0; transition-duration: 0.9s; }
+
+#expel-lienzo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#expel-texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: calc(max(28px, env(safe-area-inset-top)) + 24px) 22px 0;
+  text-align: center;
+}
+#expel-lineas { display: flex; flex-direction: column; gap: 5px; }
+#expel-lineas .v-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(19px, 5.1vw, 27px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.22;
+  color: var(--magic-white);
+  text-shadow: 0 2px 26px rgba(6, 8, 18, 0.95), 0 0 46px rgba(245, 211, 107, 0.3);
+}
+#expel-lineas .ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateY(6px);
+  transition: opacity 0.55s ease, filter 0.55s ease, transform 0.55s ease;
+  transition-delay: calc(var(--i) * 42ms);
+}
+#expel-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
+#expel-lineas .v-line.out {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(-8px);
+  transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
+}
+#expel-btn, #expel-seguir { width: auto; justify-content: center; }
+#expel-btn .plate-text, #expel-seguir .plate-text { align-items: center; }
