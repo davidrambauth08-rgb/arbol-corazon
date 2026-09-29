@@ -1617,7 +1617,11 @@ body.levitando #music,
 body.duelando #letter,
 body.duelando #spellbook,
 body.duelando #clock,
-body.duelando #music {
+body.duelando #music,
+body.evocando #letter,
+body.evocando #spellbook,
+body.evocando #clock,
+body.evocando #music {
   opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
   pointer-events: none;
   transition: opacity 0.9s ease;
@@ -2556,3 +2560,71 @@ body.duelando #music {
 @media (prefers-reduced-motion: reduce) {
   #expel-lineas .v-line.frio { animation: none; }
 }
+
+/* =====================================================================
+   PRIORI INCANTATEM — los ecos que salen de la varita
+   ===================================================================== */
+#priori {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 62%, #1d1636 0%, #100c22 55%, #06050d 100%);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+#priori[hidden] { display: none; }
+#priori.show { opacity: 1; }
+#priori.out { opacity: 0; transition-duration: 0.9s; }
+
+#priori-lienzo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#priori-texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: calc(max(26px, env(safe-area-inset-top)) + 20px) 22px 0;
+  text-align: center;
+}
+#priori-lineas { display: flex; flex-direction: column; gap: 5px; }
+#priori-lineas .v-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(18px, 4.9vw, 26px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.22;
+  color: var(--magic-white);
+  text-shadow: 0 2px 26px rgba(6, 8, 18, 0.95), 0 0 46px rgba(245, 211, 107, 0.32);
+}
+#priori-lineas .ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateY(6px);
+  transition: opacity 0.55s ease, filter 0.55s ease, transform 0.55s ease;
+  transition-delay: calc(var(--i) * 42ms);
+}
+#priori-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
+#priori-lineas .v-line.out {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(-8px);
+  transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
+}
+#priori-btn, #priori-seguir { width: auto; justify-content: center; }
+#priori-btn .plate-text, #priori-seguir .plate-text { align-items: center; }

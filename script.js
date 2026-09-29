@@ -187,6 +187,7 @@ const CONFIG = {
     merodeador: { runa: "⚜", nombre: "Juro solemnemente", desc: "desplegar el mapa del merodeador", corto: "Mapa" },
     vuelo: { runa: "☁", nombre: "Quiero volar", desc: "subirse a la nube y decidir si vamos", corto: "Volar" },
     wingardium: { runa: "❦", nombre: "Wingardium Leviosa", desc: "levantar todo lo que hay en el suelo", corto: "Leviosa" },
+    expelliarmus: { runa: "✷", nombre: "Expelliarmus", desc: "el duelo junto al lago", corto: "Expelliarmus" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -199,13 +200,46 @@ const CONFIG = {
     firma: "Dinosaurios incluidos."
   },
 
-  /* Expelliarmus: lo primero al pasar la puerta. Un paisaje de noche —el
+  /* Priori Incantatem: lo primero al pasar la puerta. De la punta de la
+     varita salen, uno a uno, los ecos de lo que ya pasó. Cada eco es una
+     de tus imágenes: entra desde la varita, se queda viva un rato
+     respirando y se deshace en luz para dejar sitio a la siguiente. */
+  priori: {
+    activo: true,
+    entrada: true,
+    antes: [
+      "Cuando dos varitas hermanas se enfrentan,",
+      "de la punta salen los ecos de todo lo que hicieron."
+    ],
+    boton: "Priori Incantatem",
+    botonDesc: "que salga lo que ya pasó",
+    // Cada eco: la imagen y, si quieres, una línea debajo
+    ecos: [
+      { src: "assets/eco-1.jpg" },
+      { src: "assets/eco-2.jpg" },
+      { src: "assets/eco-3.jpg" },
+      { src: "assets/eco-4.jpg" },
+      { src: "assets/eco-5.jpg" },
+      { src: "assets/eco-6.jpg" }
+    ],
+    entra: 1.5,             // segundos que tarda en formarse
+    vive: 3.4,              // lo que se queda a la vista
+    sale: 1.2,              // lo que tarda en deshacerse
+    despues: [
+      "Todo eso también salió de nosotros.",
+      "Y sigue saliendo."
+    ],
+    seguir: "Seguir",
+    seguirDesc: ""
+  },
+
+  /* Expelliarmus: un hechizo más de la fila del árbol. Un paisaje de noche —el
      castillo al otro lado del lago, el bosque, la niebla— y dos varitas
      enfrentadas. Al lanzar el hechizo, una varita sale volando y amanece.
      Las frases son tuyas: cámbialas por lo que quieras. */
   expelliarmus: {
     activo: true,
-    entrada: true,
+    entrada: false,         // true = es lo primero al pasar la puerta
     antes: [
       "Quiero explicarte algo."
     ],
@@ -873,6 +907,13 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const prioriEl = document.getElementById('priori');
+const prioriCanvas = document.getElementById('priori-lienzo');
+const prioriCtx = prioriCanvas.getContext('2d');
+const prioriLineasEl = document.getElementById('priori-lineas');
+const prioriBtn = document.getElementById('priori-btn');
+const prioriSeguirBtn = document.getElementById('priori-seguir');
+const expelFilaBtn = document.getElementById('spell-expel');
 const expelEl = document.getElementById('expel');
 const expelCanvas = document.getElementById('expel-lienzo');
 const expelCtx = expelCanvas.getContext('2d');
@@ -1372,6 +1413,10 @@ function resize() {
   if (typeof expelCanvas !== 'undefined' && expel.activo) {
     expelCanvas.width = canvas.width;
     expelCanvas.height = canvas.height;
+  }
+  if (typeof prioriCanvas !== 'undefined' && priori.activo) {
+    prioriCanvas.width = canvas.width;
+    prioriCanvas.height = canvas.height;
   }
   if (typeof magicCanvas !== 'undefined') resizeMagic();
 
@@ -2374,6 +2419,7 @@ function hechizosFila() {
     { btn: merodeadorBtn, activo: () => F.merodeador !== false && !!(CONFIG.merodeador && CONFIG.merodeador.activo) },
     { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
     { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
+    { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -3483,6 +3529,321 @@ function llegarAlParaiso() {
     void vueloBtn.offsetWidth;
     vueloBtn.classList.add('in');
   }, 'vuelo');
+}
+
+/* =====================================================================
+   PRIORI INCANTATEM — los ecos que salen de la varita
+   De la punta sale un hilo de luz y, uno detrás de otro, se forman los
+   ecos: cada imagen se arma desde la varita, se queda viva respirando y
+   se deshace en motas para dejar sitio a la siguiente.
+   ===================================================================== */
+const priori = { activo: false, entrada: false, born: 0, lanzado: 0, eco: -1, ecoDesde: 0,
+                 imagenes: [], motas: [], polvo: [] };
+
+function cargarEcos() {
+  const P = CONFIG.priori || {};
+  priori.imagenes = (P.ecos || []).map(e => {
+    const img = new Image();
+    img.src = typeof e === 'string' ? e : e.src;
+    return { img, pie: (typeof e === 'string' ? '' : e.pie) || '', listo: false };
+  });
+  for (const e of priori.imagenes) e.img.onload = () => { e.listo = true; };
+}
+
+function abrirPriori() {
+  prioriCanvas.width = canvas.width;
+  prioriCanvas.height = canvas.height;
+  priori.born = performance.now();
+  priori.lanzado = 0;
+  priori.eco = -1;
+  priori.motas.length = 0;
+  priori.polvo.length = 0;
+  for (let i = 0; i < (REDUCED ? 14 : 40); i++) {
+    priori.polvo.push({ x: Math.random(), y: Math.random(), v: 0.015 + Math.random() * 0.04,
+                        r: 0.5 + Math.random() * 1.6, fase: Math.random() * TAU });
+  }
+  priori.activo = true;
+}
+
+/* Las motas que van de la varita al eco mientras se forma, y las que se
+   desprenden cuando se deshace */
+function soltarMotas(x, y, cuantas, hacia) {
+  if (REDUCED) return;
+  for (let i = 0; i < cuantas; i++) {
+    const a = Math.random() * TAU, v = 0.3 + Math.random() * 1.2;
+    priori.motas.push({
+      x, y,
+      vx: Math.cos(a) * v + (hacia ? hacia[0] : 0),
+      vy: Math.sin(a) * v + (hacia ? hacia[1] : 0),
+      vida: 0, dura: 0.8 + Math.random() * 1.1,
+      r: 0.8 + Math.random() * 2
+    });
+  }
+}
+
+/* La varita de la que salen los ecos */
+function dibujarVaritaPriori(g, x, y, largo, brillo, t) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(-0.72);
+  g.strokeStyle = '#3a2a1e';
+  g.lineWidth = Math.max(2, largo * 0.06);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(-largo * 0.5, 0);
+  g.lineTo(largo * 0.5, 0);
+  g.stroke();
+  g.strokeStyle = '#231a12';
+  g.lineWidth = Math.max(3, largo * 0.095);
+  g.beginPath();
+  g.moveTo(-largo * 0.5, 0);
+  g.lineTo(-largo * 0.22, 0);
+  g.stroke();
+  g.restore();
+  if (brillo <= 0) return;
+  const r = largo * 0.2 * brillo * (0.85 + 0.15 * Math.sin(t * 6));
+  const halo = g.createRadialGradient(x, y, 0, x, y, r * 5);
+  halo.addColorStop(0, `rgba(255, 246, 216, ${0.95 * brillo})`);
+  halo.addColorStop(0.3, `rgba(245, 211, 107, ${0.4 * brillo})`);
+  halo.addColorStop(1, 'rgba(245, 211, 107, 0)');
+  g.fillStyle = halo;
+  g.beginPath();
+  g.arc(x, y, r * 5, 0, TAU);
+  g.fill();
+}
+
+/* Un eco: la imagen dentro de su marco de luz */
+function dibujarEco(g, eco, cx, cy, ancho, alto, k, t, fase) {
+  if (!eco || !eco.listo) return;
+  const img = eco.img;
+  // la imagen entra contenida en el hueco, sin recortarse ni deformarse
+  const escala = Math.min(ancho / img.naturalWidth, alto / img.naturalHeight);
+  const w = img.naturalWidth * escala, h = img.naturalHeight * escala;
+  const respira = 1 + Math.sin(t * 0.5 + fase) * 0.012;
+  const deriva = Math.sin(t * 0.36 + fase) * ancho * 0.012;
+
+  g.save();
+  g.translate(cx + deriva, cy + Math.sin(t * 0.44 + fase) * alto * 0.012);
+  g.scale(k.esc * respira, k.esc * respira);
+  g.rotate(k.giro);
+  g.globalAlpha = k.alfa;
+
+  // el resplandor de detrás
+  const halo = g.createRadialGradient(0, 0, 0, 0, 0, w * 0.8);
+  halo.addColorStop(0, `rgba(255, 232, 178, ${0.34 * k.alfa})`);
+  halo.addColorStop(1, 'rgba(255, 232, 178, 0)');
+  g.fillStyle = halo;
+  g.beginPath();
+  g.arc(0, 0, w * 0.8, 0, TAU);
+  g.fill();
+
+  // el marco y la imagen
+  const m = Math.max(3, w * 0.022);
+  g.fillStyle = `rgba(245, 235, 212, ${0.95 * k.alfa})`;
+  g.fillRect(-w / 2 - m, -h / 2 - m, w + m * 2, h + m * 2);
+  g.drawImage(img, -w / 2, -h / 2, w, h);
+  g.strokeStyle = `rgba(245, 211, 107, ${0.75 * k.alfa})`;
+  g.lineWidth = Math.max(1.5, w * 0.006);
+  g.strokeRect(-w / 2 - m, -h / 2 - m, w + m * 2, h + m * 2);
+  g.restore();
+
+  if (eco.pie) {
+    g.save();
+    g.globalAlpha = k.alfa;
+    g.fillStyle = 'rgba(245, 235, 212, 0.92)';
+    g.textAlign = 'center';
+    g.font = `italic ${Math.round(alto * 0.055)}px "Cormorant Garamond", Georgia, serif`;
+    g.fillText(eco.pie, cx, cy + (h / 2) * k.esc + alto * 0.1);
+    g.restore();
+  }
+  return { w: w * k.esc, h: h * k.esc };
+}
+
+function dibujarPriori(now) {
+  if (!priori.activo) return;
+  const g = prioriCtx;
+  const W = prioriCanvas.width, H = prioriCanvas.height;
+  if (!W || !H) return;
+  const P = CONFIG.priori || {};
+  const t = (now - priori.born) / 1000;
+  const dt = 1 / 60;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  // --- el polvo de luz que flota siempre ---
+  for (const m of priori.polvo) {
+    const y = ((m.y - t * m.v) % 1 + 1) % 1;
+    const brillo = 0.2 + 0.5 * Math.abs(Math.sin(t * 1.4 + m.fase));
+    g.fillStyle = `rgba(245, 211, 107, ${brillo * 0.45})`;
+    g.beginPath();
+    g.arc(m.x * W, y * H, m.r * (H / 900) * 1.7, 0, TAU);
+    g.fill();
+  }
+
+  const vx = W * 0.2, vy = H * 0.84, largo = H * 0.09;
+  const cargando = Math.min(1, t / 2.5);
+
+  // --- el eco que toca ahora ---
+  if (priori.lanzado) {
+    const entra = P.entra || 1.5, vive = P.vive || 3.4, sale = P.sale || 1.2;
+    const ciclo = entra + vive + sale;
+    const pasado = (now - priori.lanzado) / 1000;
+    const cual = Math.floor(pasado / ciclo);
+    const dentro = pasado - cual * ciclo;
+
+    if (cual !== priori.eco && cual < priori.imagenes.length) {
+      priori.eco = cual;
+      soltarMotas(vx, vy, 16, [0.3, -0.5]);
+    }
+
+    const eco = priori.imagenes[cual];
+    if (eco) {
+      const cx = W * 0.5, cy = H * 0.46;
+      const hueco = Math.min(W * 0.72, H * 0.42);
+      let k;
+      if (dentro < entra) {
+        // se forma: sale de la varita y crece hasta su sitio
+        const u = 1 - Math.pow(1 - dentro / entra, 3);
+        k = { esc: 0.25 + 0.75 * u, alfa: Math.min(1, u * 1.6), giro: (1 - u) * -0.35 };
+        g.save();
+        g.translate((vx - cx) * (1 - u), (vy - cy) * (1 - u));
+        dibujarEco(g, eco, cx, cy, hueco, hueco, k, t, cual * 1.7);
+        g.restore();
+        if (Math.random() < 0.5) soltarMotas(vx, vy, 1, [(cx - vx) / H * 1.2, (cy - vy) / H * 1.2]);
+      } else if (dentro < entra + vive) {
+        k = { esc: 1, alfa: 1, giro: 0 };
+        dibujarEco(g, eco, cx, cy, hueco, hueco, k, t, cual * 1.7);
+      } else {
+        // se deshace en luz
+        const u = (dentro - entra - vive) / sale;
+        k = { esc: 1 + u * 0.14, alfa: 1 - u, giro: u * 0.1 };
+        dibujarEco(g, eco, cx, cy - u * H * 0.06, hueco, hueco, k, t, cual * 1.7);
+        if (Math.random() < 0.6) soltarMotas(cx + (Math.random() - 0.5) * hueco, cy + (Math.random() - 0.5) * hueco, 1, [0, -0.6]);
+      }
+
+      // el hilo de luz de la varita al eco, mientras se forma
+      if (dentro < entra) {
+        const alfa = 1 - dentro / entra;
+        const hilo = g.createLinearGradient(vx, vy, W * 0.5, H * 0.46);
+        hilo.addColorStop(0, `rgba(255, 244, 214, ${0.85 * alfa})`);
+        hilo.addColorStop(1, `rgba(245, 211, 107, 0)`);
+        g.strokeStyle = hilo;
+        g.lineWidth = H * 0.005;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(vx, vy);
+        g.quadraticCurveTo(W * 0.3, H * 0.6, W * 0.5, H * 0.46);
+        g.stroke();
+      }
+    }
+  }
+
+  // --- la varita ---
+  dibujarVaritaPriori(g, vx, vy, largo, priori.lanzado ? 1 : cargando * 0.6, t);
+
+  // --- las motas sueltas ---
+  for (let i = priori.motas.length - 1; i >= 0; i--) {
+    const m = priori.motas[i];
+    m.vida += dt;
+    if (m.vida >= m.dura) { priori.motas.splice(i, 1); continue; }
+    m.x += m.vx * H * 0.006;
+    m.y += m.vy * H * 0.006;
+    m.vy -= 0.012;
+    const a = 1 - m.vida / m.dura;
+    g.fillStyle = `rgba(255, 238, 190, ${a * 0.85})`;
+    g.beginPath();
+    g.arc(m.x, m.y, m.r * (H / 900) * 1.8 * a, 0, TAU);
+    g.fill();
+  }
+}
+
+/* La escena */
+function mostrarPriori(deEntrada) {
+  const P = CONFIG.priori;
+  if (!P || !P.activo || priori.activo) return false;
+  priori.entrada = deEntrada === true;
+  document.body.classList.add('evocando');
+  cargarEcos();
+  abrirPriori();
+  prioriLineasEl.replaceChildren();
+  prioriBtn.hidden = prioriSeguirBtn.hidden = true;
+  prioriBtn.classList.remove('in');
+  prioriSeguirBtn.classList.remove('in');
+  fillPlate(prioriBtn, { runa: "✦", nombre: P.boton || 'Priori Incantatem', desc: P.botonDesc || '' });
+  fillPlate(prioriSeguirBtn, { runa: "❧", nombre: P.seguir || 'Seguir', desc: P.seguirDesc || '' });
+  prioriEl.hidden = false;
+  prioriEl.classList.remove('out');
+  void prioriEl.offsetWidth;
+  prioriEl.classList.add('show');
+
+  let t = 900;
+  for (const texto of (P.antes || [])) {
+    later(t, () => escribirLineaPriori(texto), 'priori');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 400, () => {
+    prioriBtn.hidden = false;
+    void prioriBtn.offsetWidth;
+    prioriBtn.classList.add('in');
+  }, 'priori');
+  return true;
+}
+
+function escribirLineaPriori(texto) {
+  const p = el('p', 'v-line');
+  graphemes(texto).forEach((ch, i) => {
+    const span = el('span', 'ch', ch);
+    span.style.setProperty('--i', i);
+    p.appendChild(span);
+  });
+  prioriLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+/* Se lanza: empiezan a salir los ecos, uno detrás de otro */
+function lanzarPriori() {
+  if (!priori.activo || priori.lanzado) return;
+  const P = CONFIG.priori || {};
+  priori.lanzado = performance.now();
+  castFxAt(prioriBtn, { sparks: 30, r1: 280, dur: 1000, waves: true });
+  prioriBtn.classList.remove('in');
+  later(500, () => { prioriBtn.hidden = true; }, 'priori');
+  for (const linea of prioriLineasEl.children) linea.classList.add('out');
+  later(1200, () => prioriLineasEl.replaceChildren(), 'priori');
+
+  // cuando ha pasado el último eco llegan las frases del final
+  const ciclo = (P.entra || 1.5) + (P.vive || 3.4) + (P.sale || 1.2);
+  let t = ciclo * 1000 * (P.ecos || []).length + 400;
+  for (const texto of (P.despues || [])) {
+    later(t, () => escribirLineaPriori(texto), 'priori');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 600, () => {
+    prioriSeguirBtn.hidden = false;
+    void prioriSeguirBtn.offsetWidth;
+    prioriSeguirBtn.classList.add('in');
+  }, 'priori');
+}
+
+function cerrarPriori() {
+  if (!priori.activo) return;
+  cancelTasks('priori');
+  const eraEntrada = priori.entrada;
+  priori.entrada = false;
+  prioriSeguirBtn.classList.remove('in');
+  prioriEl.classList.remove('show');
+  prioriEl.classList.add('out');
+  later(950, () => {
+    priori.activo = false;
+    prioriEl.hidden = true;
+    prioriEl.classList.remove('out');
+    prioriLineasEl.replaceChildren();
+    prioriBtn.hidden = prioriSeguirBtn.hidden = true;
+    document.body.classList.remove('evocando');
+    if (eraEntrada) seguirTrasElMapa();
+  }, 'priori');
 }
 
 /* =====================================================================
@@ -4702,6 +5063,7 @@ function cerrarVuelo() {
 
 /* Lo primero que se encuentra al pasar la puerta encantada */
 function entrada() {
+  if (CONFIG.priori && CONFIG.priori.entrada && mostrarPriori(true)) return;
   if (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada && mostrarExpel(true)) return;
   if (CONFIG.leviosa && CONFIG.leviosa.entrada && mostrarWingardium(true)) return;
   if (CONFIG.vuelo && CONFIG.vuelo.entrada && mostrarVuelo(true)) return;
@@ -5569,6 +5931,7 @@ function buildExtras() {
   fillRune(merodeadorBtn, HX.merodeador);
   fillRune(vueloBtn2, HX.vuelo);
   fillRune(wingardiumFilaBtn, HX.wingardium);
+  fillRune(expelFilaBtn, HX.expelliarmus);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -5607,6 +5970,9 @@ function bindExtras() {
   merodeadorBtn.addEventListener('click', () => castMerodeador());
   vueloBtn2.addEventListener('click', () => mostrarVuelo());
   wingardiumFilaBtn.addEventListener('click', () => mostrarWingardium());
+  expelFilaBtn.addEventListener('click', () => mostrarExpel());
+  prioriBtn.addEventListener('click', lanzarPriori);
+  prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
   expelSeguirBtn.addEventListener('click', cerrarExpel);
   wingardiumBtn.addEventListener('click', lanzarWingardium);
@@ -5867,7 +6233,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -5883,6 +6249,11 @@ function resetExtras() {
   cancelTasks('vuelo');
   cancelTasks('lev');
   cancelTasks('expel');
+  cancelTasks('priori');
+  priori.activo = priori.entrada = false;
+  prioriEl.hidden = true;
+  prioriEl.classList.remove('show', 'out');
+  document.body.classList.remove('evocando');
   expel.activo = expel.entrada = false;
   expelEl.hidden = true;
   expelEl.classList.remove('show', 'out');
@@ -6701,6 +7072,7 @@ function frame(now) {
   dibujarParaiso(now);
   dibujarWingardium(now);
   dibujarExpel(now);
+  dibujarPriori(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;
 
@@ -6882,7 +7254,8 @@ function init() {
     introEl.hidden = true;
     magicEl.hidden = true;
     buildGate();
-  } else if (MAGIC.enabled || (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
+  } else if (MAGIC.enabled || (CONFIG.priori && CONFIG.priori.entrada) ||
+             (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
              (CONFIG.leviosa && CONFIG.leviosa.entrada) ||
              (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
              (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
