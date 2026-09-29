@@ -213,14 +213,16 @@ const CONFIG = {
     ],
     boton: "Priori Incantatem",
     botonDesc: "que salga lo que ya pasó",
-    // Cada eco: la imagen y, si quieres, una línea debajo
+    /* Cada eco: la imagen, la flor que le sale alrededor y lo que esa flor
+       significa. Flores posibles: margarita, rosa, girasol, nomeolvides,
+       lavanda y camelia. "pie" es una línea opcional debajo de la imagen. */
     ecos: [
-      { src: "assets/eco-1.jpg" },
-      { src: "assets/eco-2.jpg" },
-      { src: "assets/eco-3.jpg" },
-      { src: "assets/eco-4.jpg" },
-      { src: "assets/eco-5.jpg" },
-      { src: "assets/eco-6.jpg" }
+      { src: "assets/eco-1.jpg", flor: "hiedra",      nombre: "Hiedra",       significado: "se agarra y no se suelta: fidelidad" },
+      { src: "assets/eco-2.jpg", flor: "margarita",   nombre: "Margarita",    significado: "lealtad, y lo sencillo bien hecho" },
+      { src: "assets/eco-3.jpg", flor: "girasol",     nombre: "Girasol",      significado: "los dos mirando hacia la misma luz" },
+      { src: "assets/eco-4.jpg", flor: "lavanda",     nombre: "Lavanda",      significado: "calma, y quedarse" },
+      { src: "assets/eco-5.jpg", flor: "rosa",        nombre: "Rosa roja",    significado: "amor verdadero" },
+      { src: "assets/eco-6.jpg", flor: "camelia",     nombre: "Camelia",      significado: "te querré siempre" }
     ],
     entra: 1.5,             // segundos que tarda en formarse
     vive: 3.4,              // lo que se queda a la vista
@@ -3537,15 +3539,18 @@ function llegarAlParaiso() {
    ecos: cada imagen se arma desde la varita, se queda viva respirando y
    se deshace en motas para dejar sitio a la siguiente.
    ===================================================================== */
-const priori = { activo: false, entrada: false, born: 0, lanzado: 0, eco: -1, ecoDesde: 0,
-                 imagenes: [], motas: [], polvo: [] };
+const priori = { activo: false, entrada: false, born: 0, lanzado: 0, eco: -1,
+                 imagenes: [], motas: [], polvo: [], flores: [] };
 
 function cargarEcos() {
   const P = CONFIG.priori || {};
   priori.imagenes = (P.ecos || []).map(e => {
+    const d = typeof e === 'string' ? { src: e } : e;
     const img = new Image();
-    img.src = typeof e === 'string' ? e : e.src;
-    return { img, pie: (typeof e === 'string' ? '' : e.pie) || '', listo: false };
+    img.src = d.src;
+    // se lleva todo lo suyo: la flor, su nombre y lo que significa
+    return { img, listo: false, pie: d.pie || '', flor: d.flor || 'margarita',
+             nombre: d.nombre || '', significado: d.significado || '' };
   });
   for (const e of priori.imagenes) e.img.onload = () => { e.listo = true; };
 }
@@ -3612,8 +3617,167 @@ function dibujarVaritaPriori(g, x, y, largo, brillo, t) {
   g.fill();
 }
 
+/* ---------- Las flores que rodean cada eco ----------
+   Cada tipo tiene su forma; todas se dibujan alrededor del marco y se
+   mecen despacio, como si les diera aire. */
+function petalo(g, largo, ancho, color) {
+  g.fillStyle = color;
+  g.beginPath();
+  g.moveTo(0, 0);
+  g.quadraticCurveTo(-ancho, -largo * 0.55, 0, -largo);
+  g.quadraticCurveTo(ancho, -largo * 0.55, 0, 0);
+  g.fill();
+}
+
+function corona(g, cuantos, largo, ancho, giro, color) {
+  for (let i = 0; i < cuantos; i++) {
+    g.save();
+    g.rotate(giro + (i / cuantos) * TAU);
+    petalo(g, largo, ancho, color);
+    g.restore();
+  }
+}
+
+function hojita(g, x, y, largo, giro, color) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(giro);
+  g.fillStyle = color;
+  g.beginPath();
+  g.moveTo(0, 0);
+  g.quadraticCurveTo(largo * 0.45, -largo * 0.3, largo, 0);
+  g.quadraticCurveTo(largo * 0.45, largo * 0.3, 0, 0);
+  g.fill();
+  g.restore();
+}
+
+function dibujarFlor(g, x, y, r, tipo, giro, t, fase, alfa) {
+  if (alfa <= 0.01) return;
+  const brisa = Math.sin(t * 1.1 + fase) * 0.13;
+  g.save();
+  g.translate(x, y);
+  g.rotate(giro + brisa);
+  g.globalAlpha = alfa;
+  const verde = 'rgba(58, 108, 74, 0.9)';
+
+  if (tipo === 'margarita') {
+    hojita(g, -r * 0.1, r * 0.5, r * 0.8, 2.5, verde);
+    corona(g, 12, r, r * 0.22, 0, 'rgba(255, 252, 244, 0.97)');
+    g.fillStyle = '#f0c54a';
+    g.beginPath(); g.arc(0, 0, r * 0.26, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(200, 150, 40, 0.5)';
+    g.beginPath(); g.arc(-r * 0.06, -r * 0.06, r * 0.13, 0, TAU); g.fill();
+
+  } else if (tipo === 'girasol') {
+    hojita(g, -r * 0.1, r * 0.5, r * 0.85, 2.4, verde);
+    corona(g, 15, r, r * 0.2, 0.2, 'rgba(228, 164, 40, 0.95)');
+    corona(g, 12, r * 0.82, r * 0.22, 0, 'rgba(255, 208, 84, 0.97)');
+    g.fillStyle = '#4a3018';
+    g.beginPath(); g.arc(0, 0, r * 0.3, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(28, 18, 8, 0.5)';
+    for (let i = 0; i < 24; i++) {
+      const a = i * 2.39996, rad = r * 0.27 * Math.sqrt(i / 24);
+      g.beginPath(); g.arc(Math.cos(a) * rad, Math.sin(a) * rad, r * 0.028, 0, TAU); g.fill();
+    }
+
+  } else if (tipo === 'nomeolvides') {
+    corona(g, 5, r * 0.9, r * 0.36, 0.3, 'rgba(126, 162, 226, 0.95)');
+    corona(g, 5, r * 0.62, r * 0.3, 0.3, 'rgba(172, 199, 240, 0.9)');
+    g.fillStyle = '#f5d36b';
+    g.beginPath(); g.arc(0, 0, r * 0.2, 0, TAU); g.fill();
+
+  } else if (tipo === 'rosa') {
+    hojita(g, -r * 0.2, r * 0.55, r * 0.75, 2.6, verde);
+    // capas de pétalos, de fuera hacia dentro
+    const capas = [[1, 'rgba(146, 28, 52, 0.95)'], [0.78, 'rgba(178, 38, 66, 0.96)'],
+                   [0.56, 'rgba(206, 58, 86, 0.96)'], [0.34, 'rgba(226, 92, 116, 0.97)']];
+    for (const [k, color] of capas) corona(g, 6, r * k, r * k * 0.5, k * 5, color);
+    g.fillStyle = 'rgba(240, 130, 150, 0.95)';
+    g.beginPath(); g.arc(0, 0, r * 0.12, 0, TAU); g.fill();
+
+  } else if (tipo === 'camelia') {
+    hojita(g, -r * 0.2, r * 0.5, r * 0.8, 2.5, verde);
+    const capas = [[1, 'rgba(214, 122, 152, 0.94)'], [0.74, 'rgba(232, 156, 180, 0.95)'],
+                   [0.5, 'rgba(246, 196, 212, 0.96)']];
+    for (const [k, color] of capas) corona(g, 8, r * k, r * k * 0.42, k * 4, color);
+    g.fillStyle = '#f5d36b';
+    g.beginPath(); g.arc(0, 0, r * 0.15, 0, TAU); g.fill();
+
+  } else if (tipo === 'lavanda') {
+    // un tallo con sus capullos, no una flor abierta
+    g.strokeStyle = verde;
+    g.lineWidth = Math.max(1, r * 0.1);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(0, r * 1.5);
+    g.quadraticCurveTo(r * 0.12, r * 0.4, 0, -r * 0.4);
+    g.stroke();
+    for (let i = 0; i < 9; i++) {
+      const u = i / 8;
+      const yy = r * 0.5 - u * r * 1.5;
+      const lado = i % 2 ? 1 : -1;
+      g.fillStyle = `rgba(${140 - u * 20}, ${110 - u * 20}, ${200 + u * 30}, 0.92)`;
+      g.beginPath();
+      g.ellipse(lado * r * 0.16 * (1 - u * 0.5), yy, r * 0.17 * (1 - u * 0.4), r * 0.24 * (1 - u * 0.4), lado * 0.4, 0, TAU);
+      g.fill();
+    }
+
+  } else {  // hiedra: un tallo con sus hojas
+    g.strokeStyle = 'rgba(48, 92, 62, 0.9)';
+    g.lineWidth = Math.max(1, r * 0.09);
+    g.beginPath();
+    g.moveTo(-r * 1.1, r * 0.5);
+    g.quadraticCurveTo(0, -r * 0.5, r * 1.1, r * 0.4);
+    g.stroke();
+    for (let i = 0; i < 5; i++) {
+      const u = i / 4;
+      const hx = -r * 1.1 + u * r * 2.2;
+      const hy = r * 0.5 + (u - 0.5) * (u - 0.5) * r * 3.4 - r * 0.85;
+      // hoja de hiedra: tres puntas
+      g.save();
+      g.translate(hx, hy);
+      g.rotate((i % 2 ? 1 : -1) * 0.5 + brisa * 0.5);
+      g.fillStyle = i % 2 ? 'rgba(62, 116, 78, 0.95)' : 'rgba(46, 94, 62, 0.95)';
+      const hr = r * 0.52;
+      g.beginPath();
+      g.moveTo(0, hr * 0.7);
+      g.quadraticCurveTo(-hr * 0.9, hr * 0.2, -hr * 0.75, -hr * 0.4);
+      g.quadraticCurveTo(-hr * 0.3, -hr * 0.2, 0, -hr * 0.9);
+      g.quadraticCurveTo(hr * 0.3, -hr * 0.2, hr * 0.75, -hr * 0.4);
+      g.quadraticCurveTo(hr * 0.9, hr * 0.2, 0, hr * 0.7);
+      g.fill();
+      g.restore();
+    }
+  }
+  g.restore();
+}
+
+/* Reparte las flores alrededor del marco, siempre en los mismos sitios */
+function sembrarFlores(n, cuantas) {
+  const flores = [];
+  let semilla = 1000 + n * 977;
+  const azar = () => { semilla = (semilla * 16807) % 2147483647; return semilla / 2147483647; };
+  // se deja libre el bajo del marco: ahí va el nombre de la flor
+  const hueco = 1.5;                         // radianes que se saltan abajo
+  const vuelta = TAU - hueco;
+  for (let i = 0; i < cuantas; i++) {
+    const u = (i + 0.5) / cuantas;
+    let a = Math.PI / 2 + hueco / 2 + u * vuelta + (azar() - 0.5) * 0.3;
+    if (a > TAU) a -= TAU;
+    flores.push({
+      a,                                   // dónde, alrededor del marco (nunca justo abajo)
+      fuera: 0.52 + azar() * 0.26,         // cuánto se separa del borde
+      r: 0.05 + azar() * 0.05,             // tamaño
+      giro: azar() * TAU,
+      fase: azar() * TAU,
+      retraso: azar() * 0.5
+    });
+  }
+  return flores;
+}
+
 /* Un eco: la imagen dentro de su marco de luz */
-function dibujarEco(g, eco, cx, cy, ancho, alto, k, t, fase) {
+function dibujarEco(g, eco, cx, cy, ancho, alto, k, t, fase, flores) {
   if (!eco || !eco.listo) return;
   const img = eco.img;
   // la imagen entra contenida en el hueco, sin recortarse ni deformarse
@@ -3647,13 +3811,57 @@ function dibujarEco(g, eco, cx, cy, ancho, alto, k, t, fase) {
   g.strokeRect(-w / 2 - m, -h / 2 - m, w + m * 2, h + m * 2);
   g.restore();
 
-  if (eco.pie) {
+  // --- las flores alrededor del marco ---
+  if (flores && eco.flor !== false) {
+    const rx = (w / 2 + m) * k.esc, ry = (h / 2 + m) * k.esc;
+    for (const f of flores) {
+      const fx = cx + deriva + Math.cos(f.a) * rx * (1 + f.fuera * 0.45);
+      const fy = cy + Math.sin(f.a) * ry * (1 + f.fuera * 0.4);
+      const abre = Math.max(0, Math.min(1, (k.alfa - f.retraso) / (1 - f.retraso || 1)));
+      dibujarFlor(g, fx, fy, ancho * f.r * k.esc * (0.35 + 0.65 * abre), eco.flor || 'margarita',
+                  f.giro, t, f.fase, k.alfa * abre);
+    }
+  }
+
+  // --- el nombre de la flor y lo que significa ---
+  if (eco.nombre || eco.pie) {
+    const anchoLienzo = g.canvas ? g.canvas.width : ancho * 2;
+    const altoLienzo = g.canvas ? g.canvas.height : alto * 2;
+    // al lado si la pantalla es ancha; debajo si es un móvil de pie
+    const alLado = anchoLienzo > altoLienzo * 0.85;
+    const bx = alLado ? cx + (w / 2 + m) * k.esc + ancho * 0.12 : cx;
+    const by = alLado ? cy - alto * 0.04 : cy + (h / 2 + m) * k.esc + alto * 0.15;
     g.save();
     g.globalAlpha = k.alfa;
-    g.fillStyle = 'rgba(245, 235, 212, 0.92)';
-    g.textAlign = 'center';
-    g.font = `italic ${Math.round(alto * 0.055)}px "Cormorant Garamond", Georgia, serif`;
-    g.fillText(eco.pie, cx, cy + (h / 2) * k.esc + alto * 0.1);
+    g.textAlign = alLado ? 'left' : 'center';
+    const tam = Math.round(alto * (alLado ? 0.062 : 0.058));
+    if (eco.nombre) {
+      g.fillStyle = 'rgba(245, 211, 107, 0.95)';
+      g.font = `600 ${tam}px "Cormorant Garamond", Georgia, serif`;
+      g.fillText(eco.nombre, bx, by);
+    }
+    if (eco.significado) {
+      g.fillStyle = 'rgba(240, 232, 214, 0.88)';
+      g.font = `italic ${Math.round(tam * 0.82)}px "Cormorant Garamond", Georgia, serif`;
+      // parte la frase en dos si no cabe de una
+      const maxAncho = alLado ? anchoLienzo - bx - ancho * 0.06 : ancho * 1.1;
+      const palabras = eco.significado.split(' ');
+      const lineas = [];
+      let actual = '';
+      for (const w2 of palabras) {
+        const prueba = actual ? actual + ' ' + w2 : w2;
+        if (g.measureText(prueba).width > maxAncho && actual) { lineas.push(actual); actual = w2; }
+        else actual = prueba;
+      }
+      if (actual) lineas.push(actual);
+      lineas.forEach((l, i) => g.fillText(l, bx, by + tam * (1.15 + i * 0.95)));
+    }
+    if (eco.pie) {
+      g.fillStyle = 'rgba(245, 235, 212, 0.9)';
+      g.textAlign = 'center';
+      g.font = `italic ${Math.round(alto * 0.055)}px "Cormorant Garamond", Georgia, serif`;
+      g.fillText(eco.pie, cx, cy + (h / 2) * k.esc + alto * (alLado ? 0.1 : 0.26));
+    }
     g.restore();
   }
   return { w: w * k.esc, h: h * k.esc };
@@ -3694,13 +3902,14 @@ function dibujarPriori(now) {
 
     if (cual !== priori.eco && cual < priori.imagenes.length) {
       priori.eco = cual;
+      priori.flores = sembrarFlores(cual, REDUCED ? 6 : 11);
       soltarMotas(vx, vy, 16, [0.3, -0.5]);
     }
 
     const eco = priori.imagenes[cual];
     if (eco) {
       const cx = W * 0.5, cy = H * 0.46;
-      const hueco = Math.min(W * 0.72, H * 0.42);
+      const hueco = Math.min(W * 0.6, H * 0.36);
       let k;
       if (dentro < entra) {
         // se forma: sale de la varita y crece hasta su sitio
@@ -3708,17 +3917,17 @@ function dibujarPriori(now) {
         k = { esc: 0.25 + 0.75 * u, alfa: Math.min(1, u * 1.6), giro: (1 - u) * -0.35 };
         g.save();
         g.translate((vx - cx) * (1 - u), (vy - cy) * (1 - u));
-        dibujarEco(g, eco, cx, cy, hueco, hueco, k, t, cual * 1.7);
+        dibujarEco(g, eco, cx, cy, hueco, hueco, k, t, cual * 1.7, priori.flores);
         g.restore();
         if (Math.random() < 0.5) soltarMotas(vx, vy, 1, [(cx - vx) / H * 1.2, (cy - vy) / H * 1.2]);
       } else if (dentro < entra + vive) {
         k = { esc: 1, alfa: 1, giro: 0 };
-        dibujarEco(g, eco, cx, cy, hueco, hueco, k, t, cual * 1.7);
+        dibujarEco(g, eco, cx, cy, hueco, hueco, k, t, cual * 1.7, priori.flores);
       } else {
         // se deshace en luz
         const u = (dentro - entra - vive) / sale;
         k = { esc: 1 + u * 0.14, alfa: 1 - u, giro: u * 0.1 };
-        dibujarEco(g, eco, cx, cy - u * H * 0.06, hueco, hueco, k, t, cual * 1.7);
+        dibujarEco(g, eco, cx, cy - u * H * 0.06, hueco, hueco, k, t, cual * 1.7, priori.flores);
         if (Math.random() < 0.6) soltarMotas(cx + (Math.random() - 0.5) * hueco, cy + (Math.random() - 0.5) * hueco, 1, [0, -0.6]);
       }
 
