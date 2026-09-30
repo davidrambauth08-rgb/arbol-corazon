@@ -187,7 +187,8 @@ const CONFIG = {
     merodeador: { runa: "⚜", nombre: "Juro solemnemente", desc: "desplegar el mapa del merodeador", corto: "Mapa" },
     vuelo: { runa: "☁", nombre: "Quiero volar", desc: "subirse a la nube y decidir si vamos", corto: "Volar" },
     wingardium: { runa: "❦", nombre: "Wingardium Leviosa", desc: "levantar todo lo que hay en el suelo", corto: "Leviosa" },
-    expelliarmus: { runa: "✷", nombre: "Expelliarmus", desc: "el duelo junto al lago", corto: "Expelliarmus" },
+    expelliarmus: { runa: "✷", nombre: "Expelliarmus", desc: "el duelo junto al lago", corto: "Duelo" },
+    priori: { runa: "❈", nombre: "Priori Incantatem", desc: "que salgan los ecos de lo que ya pasó", corto: "Ecos" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -206,7 +207,7 @@ const CONFIG = {
      respirando y se deshace en luz para dejar sitio a la siguiente. */
   priori: {
     activo: true,
-    entrada: true,
+    entrada: false,         // true = es lo primero al pasar la puerta
     antes: [
       "Cuando dos varitas hermanas se enfrentan,",
       "de la punta salen los ecos de todo lo que hicieron."
@@ -909,6 +910,7 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const prioriFilaBtn = document.getElementById('spell-priori');
 const prioriEl = document.getElementById('priori');
 const prioriCanvas = document.getElementById('priori-lienzo');
 const prioriCtx = prioriCanvas.getContext('2d');
@@ -2422,6 +2424,7 @@ function hechizosFila() {
     { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
     { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
+    { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -6141,6 +6144,7 @@ function buildExtras() {
   fillRune(vueloBtn2, HX.vuelo);
   fillRune(wingardiumFilaBtn, HX.wingardium);
   fillRune(expelFilaBtn, HX.expelliarmus);
+  fillRune(prioriFilaBtn, HX.priori);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -6180,6 +6184,7 @@ function bindExtras() {
   vueloBtn2.addEventListener('click', () => mostrarVuelo());
   wingardiumFilaBtn.addEventListener('click', () => mostrarWingardium());
   expelFilaBtn.addEventListener('click', () => mostrarExpel());
+  prioriFilaBtn.addEventListener('click', () => mostrarPriori());
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
@@ -6442,7 +6447,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');

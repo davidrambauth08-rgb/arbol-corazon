@@ -19,7 +19,7 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
-**Lo primero al pasar la puerta: Priori Incantatem** (`CONFIG.priori`). Una varita abajo a la izquierda, con la punta encendida. Al lanzar el hechizo empiezan a salir los **ecos**: cada imagen de `ecos` se forma desde la punta de la varita por un hilo de luz, crece hasta el centro, se queda un rato **viva** —respirando, con una deriva y un zoom lentos— y se deshace en motas doradas para dejar sitio a la siguiente. Los tiempos son `entra`, `vive` y `sale`, en segundos.
+**Priori Incantatem** (`CONFIG.priori`), en el hechizo **❈ Ecos** de la fila del árbol. Una varita abajo a la izquierda, con la punta encendida. Al lanzar el hechizo empiezan a salir los **ecos**: cada imagen de `ecos` se forma desde la punta de la varita por un hilo de luz, crece hasta el centro, se queda un rato **viva** —respirando, con una deriva y un zoom lentos— y se deshace en motas doradas para dejar sitio a la siguiente. Los tiempos son `entra`, `vive` y `sale`, en segundos.
 
 Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la brisa— y debajo **lo que esa flor significa**, en español. Las flores disponibles son `hiedra`, `margarita`, `girasol`, `lavanda`, `rosa` y `camelia`; se eligen con `flor`, y el texto con `nombre` y `significado`. La parte de abajo del marco se deja libre a propósito, para que ninguna flor se cruce con el nombre. En pantalla ancha el texto va al lado; en el móvil, debajo. Cada eco puede llevar además un `pie`. Con `priori.entrada: false` deja de ser lo primero.
 
@@ -50,7 +50,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la escena entera da paso al otro lado del mundo (atardecer, Cruz del Sur, nubes, volcán y palmeras); un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
 | **Orchideous** | fila de hechizos del árbol | la escena entera se apaga a negro (árbol, bosque, carta y contador incluidos), crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
-| **Priori Incantatem** | al pasar la puerta | los ecos salen de la varita: cada imagen se forma, vive y se deshace en luz |
+| **Priori Incantatem** ❈ | fila de hechizos del árbol | los ecos salen de la varita: cada imagen se forma, vive y se deshace en luz |
 | **Expelliarmus** ✷ | fila de hechizos del árbol | el duelo junto al lago: la varita sale volando y amanece sobre el castillo |
 | **Wingardium Leviosa** ❦ | fila de hechizos del árbol | todo lo que hay en el suelo se levanta despacio y las velas se encienden al subir |
 | **Quiero volar** ☁ | fila de hechizos del árbol | la nube, la pregunta de Sí/No y la playa al atardecer |
@@ -58,7 +58,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
-**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Quiero volar · Wingardium Leviosa · Tempus viven en una fila (en el móvil se parte en dos líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
+**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Quiero volar · Wingardium Leviosa · Expelliarmus · Priori Incantatem · Tempus viven en una fila (en el móvil se parte en dos líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
 
 **Cada hechizo trae su fondo**: Dracarys enciende un cielo de brasas (`CIELOS` en script.js, que se mezcla sobre el de la estación y vuelve solo al acabar). Orchideous y Terra Australis van más lejos y se quedan con la pantalla entera: el primero la apaga a negro para que sólo brillen los girasoles; el segundo la cambia por un atardecer del hemisferio sur, con la Cruz del Sur, nubes, un volcán y palmeras. Los dinosaurios son de dibujo, con panza clara, crestas, ojos grandes y mofletes.
 
@@ -69,7 +69,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
 
-**Intro mágica** (después del Priori Incantatem)
+**Intro mágica** (lo primero al pasar la puerta)
 - Aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
 - Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso a las pruebas. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
 - Secreto: tocar 3 veces seguidas la estrella de arriba a la derecha muestra un mensaje.
