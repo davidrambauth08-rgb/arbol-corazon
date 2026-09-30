@@ -1621,7 +1621,11 @@ body.duelando #music,
 body.evocando #letter,
 body.evocando #spellbook,
 body.evocando #clock,
-body.evocando #music {
+body.evocando #music,
+body.reparando #letter,
+body.reparando #spellbook,
+body.reparando #clock,
+body.reparando #music {
   opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
   pointer-events: none;
   transition: opacity 0.9s ease;
@@ -2628,3 +2632,63 @@ body.evocando #music {
 }
 #priori-btn, #priori-seguir { width: auto; justify-content: center; }
 #priori-btn .plate-text, #priori-seguir .plate-text { align-items: center; }
+
+/* =====================================================================
+   REPARO — perdón al cielo, con el fondo cambiando detrás
+   ===================================================================== */
+#reparo {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  background: #0a0816;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+#reparo[hidden] { display: none; }
+#reparo.show { opacity: 1; }
+#reparo.out { opacity: 0; transition-duration: 0.9s; }
+#reparo-lienzo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#reparo-texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: calc(max(26px, env(safe-area-inset-top)) + 20px) 22px 0;
+  text-align: center;
+}
+#reparo-lineas { display: flex; flex-direction: column; gap: 5px; }
+#reparo-lineas .v-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(18px, 4.9vw, 26px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.22;
+  color: var(--magic-white);
+  text-shadow: 0 2px 26px rgba(6, 8, 18, 0.95), 0 0 46px rgba(245, 211, 107, 0.32);
+}
+#reparo-lineas .ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateY(6px);
+  transition: opacity 0.55s ease, filter 0.55s ease, transform 0.55s ease;
+  transition-delay: calc(var(--i) * 42ms);
+}
+#reparo-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
+#reparo-lineas .v-line.out {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(-8px);
+  transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
+}
+#reparo-btn, #reparo-seguir { width: auto; justify-content: center; }
+#reparo-btn .plate-text, #reparo-seguir .plate-text { align-items: center; }

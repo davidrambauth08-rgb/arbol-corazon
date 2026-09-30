@@ -19,6 +19,8 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 
 No distingue mayúsculas, tildes ni espacios. Al primer fallo responde breve, al segundo da una pista, y al acertar la cerradura gira y se rompe con luz. Cambia `pasos[].valor` para poner otras respuestas y `activo: false` para quitar la puerta.
 
+**Lo primero al pasar la puerta: Reparo** (`CONFIG.reparo`). El encanto que arregla lo que se rompió. Al lanzarlo salen las láminas de `laminas`, una detrás de otra, y **el cielo de detrás cambia con cada una**: amanecer con el sol y sus rayos girando, noche con la luna y las nubes pasando, cielo estrellado, bosque con las hojas cayendo y el oro del final con su polvo de luz. Cada lámina lleva su frase en español (`dice`) y el cielo que le toca (`cielo`). Los tiempos son `entra`, `vive` y `sale`. Con `reparo.entrada: false` deja de ser lo primero.
+
 **Priori Incantatem** (`CONFIG.priori`), en el hechizo **❈ Ecos** de la fila del árbol. Una varita abajo a la izquierda, con la punta encendida. Al lanzar el hechizo empiezan a salir los **ecos**: cada imagen de `ecos` se forma desde la punta de la varita por un hilo de luz, crece hasta el centro, se queda un rato **viva** —respirando, con una deriva y un zoom lentos— y se deshace en motas doradas para dejar sitio a la siguiente. Los tiempos son `entra`, `vive` y `sale`, en segundos.
 
 Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la brisa— y debajo **lo que esa flor significa**, en español. Las flores disponibles son `hiedra`, `margarita`, `girasol`, `lavanda`, `rosa` y `camelia`; se eligen con `flor`, y el texto con `nombre` y `significado`. La parte de abajo del marco se deja libre a propósito, para que ninguna flor se cruce con el nombre. En pantalla ancha el texto va al lado; en el móvil, debajo. Cada eco puede llevar además un `pie`. Con `priori.entrada: false` deja de ser lo primero.
@@ -50,6 +52,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 | **Dracarys** | fila de hechizos del árbol | el cielo se vuelve ceniza y fuego, un dragón entra en picado, se sostiene frente al árbol, lo enciende con su llamarada y deja brasas cayendo (se puede repetir) |
 | **Terra Australis** | fila de hechizos del árbol | la escena entera da paso al otro lado del mundo (atardecer, Cruz del Sur, nubes, volcán y palmeras); un dinosaurio se acerca y pregunta «¿Te vienes conmigo?», y al irse llega la invitación a Australia |
 | **Orchideous** | fila de hechizos del árbol | la escena entera se apaga a negro (árbol, bosque, carta y contador incluidos), crece un jardín de girasoles y una camioneta cisterna lo cruza regándolo |
+| **Reparo** | al pasar la puerta | perdón al sol, a la luna, a las estrellas y a la naturaleza, con el cielo cambiando detrás |
 | **Priori Incantatem** ❈ | fila de hechizos del árbol | los ecos salen de la varita: cada imagen se forma, vive y se deshace en luz |
 | **Expelliarmus** ✷ | fila de hechizos del árbol | el duelo junto al lago: la varita sale volando y amanece sobre el castillo |
 | **Wingardium Leviosa** ❦ | fila de hechizos del árbol | todo lo que hay en el suelo se levanta despacio y las velas se encienden al subir |
@@ -69,7 +72,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 **Estética:** bosque nocturno (cielo azul noche y violeta, estrellas, siluetas de árboles, niebla y polvo dorado) con la carta, las placas de hechizo y las tarjetas en pergamino y tinta. La paleta única está en `:root` (bloque "PALETA MÁGICA GLOBAL" de style.css) y en `COLORS` de script.js:
 `--magic-night #0B1020` · `--magic-night-2 #17172B` · `--magic-violet #2B2147` · `--parchment #E8DCC2` · `--parchment-light #F5EBD4` · `--ink #4A3426` · `--old-gold #C9A34A` · `--warm-gold #F5D36B` · `--burgundy #6F2232` · `--romantic-rose #C78FA1` · `--magic-white #FFF6E8` · `--magic-green #2D5B49`.
 
-**Intro mágica** (lo primero al pasar la puerta)
+**Intro mágica** (después del Reparo)
 - Aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
 - Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso a las pruebas. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
 - Secreto: tocar 3 veces seguidas la estrella de arriba a la derecha muestra un mensaje.
@@ -114,7 +117,8 @@ Todo lo editable está en **`CONFIG`**, al principio de `script.js`:
 | `finalPhoto` | `enabled`, `file`, `caption` y `placeholder` (texto mientras no haya foto) |
 | `recuerdosFoto` | fotos que Accio puede traer como recuerdo, mezcladas con las frases |
 | `australia` | `pregunta` (lo que dice el dinosaurio) y `titulo`, `linea` y `firma` de la invitación de Terra Australis |
-| `priori` | la apertura: `ecos` (las imágenes, con `src`, `flor`, `nombre`, `significado` y `pie` opcional), los tiempos `entra`/`vive`/`sale`, `antes`, `despues`, `boton`, `seguir` y `entrada` |
+| `reparo` | la apertura: `laminas` (imagen, `dice` y `cielo`), los tiempos `entra`/`vive`/`sale`, `antes`, `despues`, `boton`, `seguir` y `entrada` |
+| `priori` | los ecos: `ecos` (las imágenes, con `src`, `flor`, `nombre`, `significado` y `pie` opcional), los tiempos `entra`/`vive`/`sale`, `antes`, `despues`, `boton`, `seguir` y `entrada` |
 | `expelliarmus` | el duelo junto al lago: `antes`, `oscuro` (la parte fría, con los dementores) y `despues`, más `boton`, `seguir` y `entrada` |
 | `leviosa` | el Wingardium Leviosa: `antes` y `despues` (las frases), `boton`, `seguir` y `entrada` |
 | `vuelo` | la nube y la playa: `imagen`, `lineas` (la frase, una por renglón), `pregunta`, `si`, `no`, `noDice` (lo que se lee cada vez que el «No» huye), `pausa` y `activo` |

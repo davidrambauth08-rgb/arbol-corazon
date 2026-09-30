@@ -7,6 +7,7 @@ Pon aquí estos dos archivos, con estos nombres exactos:
 - `recuerdo-1.jpg` y `recuerdo-2.jpg`: fotos que Accio trae como recuerdo, mezcladas con las frases. Puedes añadir más y listarlas en `CONFIG.recuerdosFoto`.
 - `foto-final.jpg`: la foto de la tarjeta final. Cualquier orientación: se ajusta sin recortarse ni deformarse.
 - `eco-1.jpg` … `eco-6.jpg`: las ilustraciones que salen de la varita en el Priori Incantatem, en ese orden. Se listan en `CONFIG.priori.ecos`; puedes poner más o menos.
+- `perdon-1.jpg` … `perdon-5.jpg`: las láminas del Reparo (sol, luna, estrellas, naturaleza y los ojos), en ese orden. Se listan en `CONFIG.reparo.laminas`.
 - `volar.jpg`: la imagen de apertura ("Quiero volar"). Llena toda la pantalla, así que conviene **vertical** y sin nada importante en la parte de abajo, que es donde va la frase.
 
 Si faltan, la página funciona igual: sin música ni controles de sonido, y con un marcador bonito en lugar de la foto.

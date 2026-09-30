@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -62,6 +62,7 @@
       <button id="spell-wingardium" class="rune-btn" type="button" hidden></button>
       <button id="spell-expel" class="rune-btn" type="button" hidden></button>
       <button id="spell-priori" class="rune-btn" type="button" hidden></button>
+      <button id="spell-reparo" class="rune-btn" type="button" hidden></button>
       <button id="spell-tempus" class="rune-btn" type="button" hidden></button>
     </div>
   </div>
@@ -72,6 +73,16 @@
     <p id="invite-title"></p>
     <p id="invite-line"></p>
     <p id="invite-sign"></p>
+  </div>
+
+  <!-- Reparo: perdón al cielo, con el fondo cambiando (CONFIG.reparo) -->
+  <div id="reparo" hidden>
+    <canvas id="reparo-lienzo" aria-hidden="true"></canvas>
+    <div id="reparo-texto">
+      <div id="reparo-lineas" aria-live="polite"></div>
+      <button id="reparo-btn" class="plate primary" type="button" hidden></button>
+      <button id="reparo-seguir" class="plate quiet" type="button" hidden></button>
+    </div>
   </div>
 
   <!-- Priori Incantatem: los ecos salen de la varita (CONFIG.priori) -->
@@ -253,6 +264,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=22"></script>
+  <script src="script.js?v=23"></script>
 </body>
 </html>

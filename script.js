@@ -189,6 +189,7 @@ const CONFIG = {
     wingardium: { runa: "❦", nombre: "Wingardium Leviosa", desc: "levantar todo lo que hay en el suelo", corto: "Leviosa" },
     expelliarmus: { runa: "✷", nombre: "Expelliarmus", desc: "el duelo junto al lago", corto: "Duelo" },
     priori: { runa: "❈", nombre: "Priori Incantatem", desc: "que salgan los ecos de lo que ya pasó", corto: "Ecos" },
+    reparo: { runa: "❖", nombre: "Reparo", desc: "pedirle perdón al cielo entero", corto: "Reparo" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -201,7 +202,45 @@ const CONFIG = {
     firma: "Dinosaurios incluidos."
   },
 
-  /* Priori Incantatem: lo primero al pasar la puerta. De la punta de la
+  /* Reparo: el encanto que arregla lo que se rompió. Detrás, el cielo va
+     cambiando con cada lámina —amanecer, noche, estrellas, bosque y oro— y
+     todo se mueve: las nubes pasan, las estrellas titilan, caen hojas. */
+  reparo: {
+    activo: true,
+    entrada: true,
+    antes: [
+      "Reparo sirve para lo que se rompió.",
+      "Casi nunca funciona a la primera, pero se empieza pidiendo perdón."
+    ],
+    boton: "Reparo",
+    botonDesc: "para lo que se rompió",
+    /* Cada lámina: la imagen, lo que dice en español y el cielo que le toca
+       detrás (amanecer, noche, estrellas, bosque, oro). */
+    laminas: [
+      { src: "assets/perdon-1.jpg", cielo: "amanecer",
+        dice: "Perdón, sol: hoy no fuiste tú lo que me despertó." },
+      { src: "assets/perdon-2.jpg", cielo: "noche",
+        dice: "Perdón, luna: no eras tú la que me quitaba el sueño." },
+      { src: "assets/perdon-3.jpg", cielo: "estrellas",
+        dice: "Perdón, estrellas: no eran ustedes las que brillaban." },
+      { src: "assets/perdon-4.jpg", cielo: "bosque",
+        dice: "Perdón, naturaleza: nada de lo tuyo me dejó tan quieto." },
+      { src: "assets/perdon-5.jpg", cielo: "oro",
+        dice: "Sus ojos son más bonitos." }
+    ],
+    entra: 1.3,
+    vive: 3.6,
+    sale: 1.1,
+    despues: [
+      "Al cielo ya le pedí perdón.",
+      "Ahora te toca a ti, que eres la que importa.",
+      "Porque yo no estoy bien si nosotros no estamos bien."
+    ],
+    seguir: "Seguir",
+    seguirDesc: ""
+  },
+
+  /* Priori Incantatem: un encanto más de la fila del árbol. De la punta de la
      varita salen, uno a uno, los ecos de lo que ya pasó. Cada eco es una
      de tus imágenes: entra desde la varita, se queda viva un rato
      respirando y se deshace en luz para dejar sitio a la siguiente. */
@@ -910,6 +949,13 @@ const linguaBtn = document.getElementById('spell-lingua');
 const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
+const reparoFilaBtn = document.getElementById('spell-reparo');
+const reparoEl = document.getElementById('reparo');
+const reparoCanvas = document.getElementById('reparo-lienzo');
+const reparoCtx = reparoCanvas.getContext('2d');
+const reparoLineasEl = document.getElementById('reparo-lineas');
+const reparoBtn = document.getElementById('reparo-btn');
+const reparoSeguirBtn = document.getElementById('reparo-seguir');
 const prioriFilaBtn = document.getElementById('spell-priori');
 const prioriEl = document.getElementById('priori');
 const prioriCanvas = document.getElementById('priori-lienzo');
@@ -1421,6 +1467,10 @@ function resize() {
   if (typeof prioriCanvas !== 'undefined' && priori.activo) {
     prioriCanvas.width = canvas.width;
     prioriCanvas.height = canvas.height;
+  }
+  if (typeof reparoCanvas !== 'undefined' && reparo.activo) {
+    reparoCanvas.width = canvas.width;
+    reparoCanvas.height = canvas.height;
   }
   if (typeof magicCanvas !== 'undefined') resizeMagic();
 
@@ -2425,6 +2475,7 @@ function hechizosFila() {
     { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
+    { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -3534,6 +3585,388 @@ function llegarAlParaiso() {
     void vueloBtn.offsetWidth;
     vueloBtn.classList.add('in');
   }, 'vuelo');
+}
+
+/* =====================================================================
+   REPARO — perdón al cielo, con el cielo cambiando detrás
+   Cada lámina trae su ambiente y el fondo se funde de uno a otro: el
+   amanecer con sus nubes, la noche con la luna, el cielo estrellado, el
+   bosque con sus hojas cayendo y el oro del final. Todo en movimiento.
+   ===================================================================== */
+const reparo = { activo: false, entrada: false, born: 0, lanzado: 0, lamina: -1,
+                 imagenes: [], nubes: [], estrellas: [], hojas: [], motas: [],
+                 cielo: 'noche', cieloAnterior: 'noche', cambio: 0 };
+
+/* Los cinco cielos: arriba, en medio y abajo */
+const CIELOS_REPARO = {
+  amanecer:  [[36, 28, 66], [196, 112, 128], [255, 206, 140]],
+  noche:     [[10, 14, 34], [26, 28, 62], [58, 52, 100]],
+  estrellas: [[8, 12, 38], [22, 40, 92], [40, 66, 128]],
+  bosque:    [[26, 52, 46], [58, 104, 72], [140, 168, 96]],
+  oro:       [[58, 40, 28], [150, 104, 46], [236, 186, 104]]
+};
+
+function sembrarReparo() {
+  reparo.nubes.length = 0;
+  for (let i = 0; i < 7; i++) {
+    reparo.nubes.push({ x: Math.random(), y: 0.1 + Math.random() * 0.5,
+                        rx: 0.12 + Math.random() * 0.16, v: 0.006 + Math.random() * 0.012,
+                        a: 0.14 + Math.random() * 0.18 });
+  }
+  reparo.estrellas.length = 0;
+  for (let i = 0; i < 110; i++) {
+    reparo.estrellas.push({ x: Math.random(), y: Math.random() * 0.8,
+                            r: 0.4 + Math.random() * 1.4, fase: Math.random() * TAU,
+                            v: 0.5 + Math.random() * 1.8 });
+  }
+  reparo.hojas.length = 0;
+  for (let i = 0; i < 26; i++) {
+    reparo.hojas.push({ x: Math.random(), y: Math.random(), v: 0.03 + Math.random() * 0.05,
+                        giro: Math.random() * TAU, vg: (Math.random() - 0.5) * 1.6,
+                        r: 0.008 + Math.random() * 0.009, tono: Math.random() });
+  }
+  reparo.motas.length = 0;
+  for (let i = 0; i < 40; i++) {
+    reparo.motas.push({ x: Math.random(), y: Math.random(), v: 0.015 + Math.random() * 0.035,
+                        r: 0.6 + Math.random() * 2.2, fase: Math.random() * TAU });
+  }
+}
+
+function cargarLaminas() {
+  const R = CONFIG.reparo || {};
+  reparo.imagenes = (R.laminas || []).map(l => {
+    const img = new Image();
+    img.src = l.src;
+    return { img, listo: false, dice: l.dice || '', cielo: l.cielo || 'noche' };
+  });
+  for (const l of reparo.imagenes) l.img.onload = () => { l.listo = true; };
+}
+
+function abrirReparo() {
+  reparoCanvas.width = canvas.width;
+  reparoCanvas.height = canvas.height;
+  sembrarReparo();
+  reparo.born = performance.now();
+  reparo.lanzado = 0;
+  reparo.lamina = -1;
+  reparo.cielo = reparo.cieloAnterior = 'noche';
+  reparo.cambio = 0;
+  reparo.activo = true;
+}
+
+function ponerCieloReparo(nombre) {
+  if (nombre === reparo.cielo) return;
+  reparo.cieloAnterior = reparo.cielo;
+  reparo.cielo = nombre;
+  reparo.cambio = performance.now();
+}
+
+/* Dibuja el fondo: el degradado del cielo y lo que se mueve en él */
+function fondoReparo(g, W, H, t) {
+  const k = reparo.cambio ? Math.min(1, (performance.now() - reparo.cambio) / 1800) : 1;
+  const a = CIELOS_REPARO[reparo.cieloAnterior] || CIELOS_REPARO.noche;
+  const b = CIELOS_REPARO[reparo.cielo] || CIELOS_REPARO.noche;
+  const mez = (i, j) => Math.round(a[i][j] + (b[i][j] - a[i][j]) * k);
+  const cielo = g.createLinearGradient(0, 0, 0, H);
+  cielo.addColorStop(0, `rgb(${mez(0,0)}, ${mez(0,1)}, ${mez(0,2)})`);
+  cielo.addColorStop(0.55, `rgb(${mez(1,0)}, ${mez(1,1)}, ${mez(1,2)})`);
+  cielo.addColorStop(1, `rgb(${mez(2,0)}, ${mez(2,1)}, ${mez(2,2)})`);
+  g.fillStyle = cielo;
+  g.fillRect(0, 0, W, H);
+
+  // cuánto pesa cada ambiente ahora mismo (para fundir lo que se mueve)
+  const peso = nombre => (reparo.cielo === nombre ? k : 0) + (reparo.cieloAnterior === nombre ? 1 - k : 0);
+
+  // --- estrellas ---
+  const pEstrellas = peso('estrellas') + peso('noche') * 0.5;
+  if (pEstrellas > 0.01) {
+    for (const e of reparo.estrellas) {
+      const brillo = (0.3 + 0.7 * Math.abs(Math.sin(t * e.v + e.fase))) * pEstrellas;
+      g.fillStyle = `rgba(255, 248, 226, ${brillo * 0.85})`;
+      g.beginPath();
+      g.arc(e.x * W, e.y * H, e.r * (H / 900) * 1.7, 0, TAU);
+      g.fill();
+    }
+  }
+
+  // --- la luna, de noche ---
+  const pLuna = peso('noche');
+  if (pLuna > 0.02) {
+    const lx = W * 0.76, ly = H * 0.18, lr = Math.min(W, H) * 0.05;
+    const halo = g.createRadialGradient(lx, ly, 0, lx, ly, lr * 5);
+    halo.addColorStop(0, `rgba(255, 244, 198, ${0.3 * pLuna})`);
+    halo.addColorStop(1, 'rgba(255, 244, 198, 0)');
+    g.fillStyle = halo;
+    g.beginPath(); g.arc(lx, ly, lr * 5, 0, TAU); g.fill();
+    g.fillStyle = `rgba(250, 232, 158, ${0.92 * pLuna})`;
+    g.beginPath(); g.arc(lx, ly, lr, 0, TAU); g.fill();
+  }
+
+  // --- el sol del amanecer, con sus rayos girando ---
+  const pSol = peso('amanecer');
+  if (pSol > 0.02) {
+    const sx = W * 0.5, sy = H * 0.84, sr = Math.min(W, H) * 0.07;
+    const halo = g.createRadialGradient(sx, sy, 0, sx, sy, sr * 7);
+    halo.addColorStop(0, `rgba(255, 228, 160, ${0.55 * pSol})`);
+    halo.addColorStop(1, 'rgba(255, 210, 130, 0)');
+    g.fillStyle = halo;
+    g.beginPath(); g.arc(sx, sy, sr * 7, 0, TAU); g.fill();
+    g.save();
+    g.translate(sx, sy);
+    g.rotate(t * 0.06);
+    g.strokeStyle = `rgba(255, 236, 178, ${0.3 * pSol})`;
+    g.lineWidth = Math.max(2, H * 0.004);
+    g.lineCap = 'round';
+    for (let i = 0; i < 12; i++) {
+      g.rotate(TAU / 12);
+      g.beginPath();
+      g.moveTo(sr * 1.35, 0);
+      g.lineTo(sr * (1.9 + 0.35 * Math.sin(t * 1.2 + i)), 0);
+      g.stroke();
+    }
+    g.restore();
+    g.fillStyle = `rgba(255, 242, 196, ${0.95 * pSol})`;
+    g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.fill();
+  }
+
+  // --- nubes: pasan en todos los cielos menos en el estrellado ---
+  const pNubes = peso('amanecer') + peso('noche') * 0.6 + peso('oro') * 0.5;
+  if (pNubes > 0.02) {
+    for (const n of reparo.nubes) {
+      const x = ((n.x + t * n.v) % 1.5 - 0.25) * W;
+      const y = n.y * H;
+      const rx = n.rx * W;
+      g.save();
+      g.translate(x, y);
+      g.scale(1, 0.13);
+      const grad = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+      grad.addColorStop(0, `rgba(255, 226, 196, ${n.a * pNubes})`);
+      grad.addColorStop(1, 'rgba(255, 226, 196, 0)');
+      g.fillStyle = grad;
+      g.beginPath(); g.arc(0, 0, rx, 0, TAU); g.fill();
+      g.restore();
+    }
+  }
+
+  // --- hojas cayendo, en el bosque ---
+  const pHojas = peso('bosque');
+  if (pHojas > 0.02) {
+    for (const h of reparo.hojas) {
+      const y = ((h.y + t * h.v) % 1.2 - 0.1) * H;
+      const x = (h.x + Math.sin(t * 0.6 + h.giro) * 0.03) * W;
+      const r = h.r * Math.min(W, H);
+      g.save();
+      g.translate(x, y);
+      g.rotate(h.giro + t * h.vg);
+      const verde = h.tono < 0.5 ? '116, 158, 74' : '78, 130, 62';
+      g.fillStyle = `rgba(${verde}, ${0.8 * pHojas})`;
+      g.beginPath();
+      g.moveTo(0, -r);
+      g.quadraticCurveTo(r * 0.9, 0, 0, r);
+      g.quadraticCurveTo(-r * 0.9, 0, 0, -r);
+      g.fill();
+      g.restore();
+    }
+  }
+
+  // --- polvo dorado, al final ---
+  const pOro = peso('oro');
+  if (pOro > 0.02) {
+    for (const m of reparo.motas) {
+      const y = ((m.y - t * m.v) % 1 + 1) % 1;
+      const brillo = (0.25 + 0.6 * Math.abs(Math.sin(t * 1.5 + m.fase))) * pOro;
+      g.fillStyle = `rgba(255, 226, 150, ${brillo * 0.6})`;
+      g.beginPath();
+      g.arc(m.x * W, y * H, m.r * (H / 900) * 1.8, 0, TAU);
+      g.fill();
+    }
+  }
+
+  // un velo abajo, para que el texto se lea siempre
+  const velo = g.createLinearGradient(0, H * 0.55, 0, H);
+  velo.addColorStop(0, 'rgba(8, 6, 18, 0)');
+  velo.addColorStop(1, 'rgba(8, 6, 18, 0.45)');
+  g.fillStyle = velo;
+  g.fillRect(0, H * 0.55, W, H * 0.45);
+}
+
+/* Una lámina con su marco y, debajo, lo que dice */
+function dibujarLamina(g, lam, cx, cy, hueco, k, t, fase) {
+  if (!lam || !lam.listo) return;
+  const img = lam.img;
+  const escala = Math.min(hueco / img.naturalWidth, hueco / img.naturalHeight);
+  const w = img.naturalWidth * escala, h = img.naturalHeight * escala;
+  const respira = 1 + Math.sin(t * 0.5 + fase) * 0.012;
+  const deriva = Math.sin(t * 0.36 + fase) * hueco * 0.012;
+
+  g.save();
+  g.translate(cx + deriva, cy + Math.sin(t * 0.44 + fase) * hueco * 0.012);
+  g.scale(k.esc * respira, k.esc * respira);
+  g.globalAlpha = k.alfa;
+  const m = Math.max(3, w * 0.022);
+  g.shadowColor = 'rgba(6, 8, 18, 0.55)';
+  g.shadowBlur = w * 0.09;
+  g.fillStyle = `rgba(250, 244, 230, ${0.97 * k.alfa})`;
+  g.fillRect(-w / 2 - m, -h / 2 - m, w + m * 2, h + m * 2);
+  g.shadowBlur = 0;
+  g.drawImage(img, -w / 2, -h / 2, w, h);
+  g.strokeStyle = `rgba(245, 211, 107, ${0.7 * k.alfa})`;
+  g.lineWidth = Math.max(1.5, w * 0.006);
+  g.strokeRect(-w / 2 - m, -h / 2 - m, w + m * 2, h + m * 2);
+  g.restore();
+
+  if (lam.dice) {
+    g.save();
+    g.globalAlpha = k.alfa;
+    g.fillStyle = 'rgba(255, 250, 238, 0.95)';
+    g.textAlign = 'center';
+    const tam = Math.round(hueco * 0.072);
+    g.font = `italic 600 ${tam}px "Cormorant Garamond", Georgia, serif`;
+    g.shadowColor = 'rgba(6, 8, 18, 0.9)';
+    g.shadowBlur = tam * 0.8;
+    // parte la frase si no cabe de una
+    const maxAncho = Math.min(g.canvas.width * 0.88, hueco * 1.7);
+    const palabras = lam.dice.split(' ');
+    const lineas = [];
+    let actual = '';
+    for (const p of palabras) {
+      const prueba = actual ? actual + ' ' + p : p;
+      if (g.measureText(prueba).width > maxAncho && actual) { lineas.push(actual); actual = p; }
+      else actual = prueba;
+    }
+    if (actual) lineas.push(actual);
+    const y0 = cy + (h / 2 + m) * k.esc + tam * 1.5;
+    lineas.forEach((l, i) => g.fillText(l, cx, y0 + i * tam * 1.15));
+    g.restore();
+  }
+}
+
+function dibujarReparo(now) {
+  if (!reparo.activo) return;
+  const g = reparoCtx;
+  const W = reparoCanvas.width, H = reparoCanvas.height;
+  if (!W || !H) return;
+  const R = CONFIG.reparo || {};
+  const t = (now - reparo.born) / 1000;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+  fondoReparo(g, W, H, t);
+
+  if (!reparo.lanzado) return;
+
+  const entra = R.entra || 1.3, vive = R.vive || 3.6, sale = R.sale || 1.1;
+  const ciclo = entra + vive + sale;
+  const pasado = (now - reparo.lanzado) / 1000;
+  const cual = Math.floor(pasado / ciclo);
+  const dentro = pasado - cual * ciclo;
+  const lam = reparo.imagenes[cual];
+
+  if (cual !== reparo.lamina && lam) {
+    reparo.lamina = cual;
+    ponerCieloReparo(lam.cielo);
+  }
+  if (!lam) return;
+
+  const cx = W * 0.5, cy = H * 0.44;
+  const hueco = Math.min(W * 0.62, H * 0.38);
+  let k;
+  if (dentro < entra) {
+    const u = 1 - Math.pow(1 - dentro / entra, 3);
+    k = { esc: 0.82 + 0.18 * u, alfa: Math.min(1, u * 1.5) };
+  } else if (dentro < entra + vive) {
+    k = { esc: 1, alfa: 1 };
+  } else {
+    const u = (dentro - entra - vive) / sale;
+    k = { esc: 1 + u * 0.08, alfa: 1 - u };
+  }
+  dibujarLamina(g, lam, cx, cy, hueco, k, t, cual * 1.7);
+}
+
+/* La escena */
+function mostrarReparo(deEntrada) {
+  const R = CONFIG.reparo;
+  if (!R || !R.activo || reparo.activo) return false;
+  reparo.entrada = deEntrada === true;
+  document.body.classList.add('reparando');
+  cargarLaminas();
+  abrirReparo();
+  reparoLineasEl.replaceChildren();
+  reparoBtn.hidden = reparoSeguirBtn.hidden = true;
+  reparoBtn.classList.remove('in');
+  reparoSeguirBtn.classList.remove('in');
+  fillPlate(reparoBtn, { runa: "❖", nombre: R.boton || 'Reparo', desc: R.botonDesc || '' });
+  fillPlate(reparoSeguirBtn, { runa: "❧", nombre: R.seguir || 'Seguir', desc: R.seguirDesc || '' });
+  reparoEl.hidden = false;
+  reparoEl.classList.remove('out');
+  void reparoEl.offsetWidth;
+  reparoEl.classList.add('show');
+
+  let t = 900;
+  for (const texto of (R.antes || [])) {
+    later(t, () => escribirLineaReparo(texto), 'rep');
+    t += 520 + graphemes(texto).length * 40;
+  }
+  later(t + 400, () => {
+    reparoBtn.hidden = false;
+    void reparoBtn.offsetWidth;
+    reparoBtn.classList.add('in');
+  }, 'rep');
+  return true;
+}
+
+function escribirLineaReparo(texto) {
+  const p = el('p', 'v-line');
+  graphemes(texto).forEach((ch, i) => {
+    const span = el('span', 'ch', ch);
+    span.style.setProperty('--i', i);
+    p.appendChild(span);
+  });
+  reparoLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+function lanzarReparo() {
+  if (!reparo.activo || reparo.lanzado) return;
+  const R = CONFIG.reparo || {};
+  reparo.lanzado = performance.now();
+  castFxAt(reparoBtn, { sparks: 30, r1: 280, dur: 1000, waves: true });
+  reparoBtn.classList.remove('in');
+  later(500, () => { reparoBtn.hidden = true; }, 'rep');
+  for (const linea of reparoLineasEl.children) linea.classList.add('out');
+  later(1200, () => reparoLineasEl.replaceChildren(), 'rep');
+
+  const ciclo = (R.entra || 1.3) + (R.vive || 3.6) + (R.sale || 1.1);
+  let t = ciclo * 1000 * (R.laminas || []).length + 500;
+  for (const texto of (R.despues || [])) {
+    later(t, () => escribirLineaReparo(texto), 'rep');
+    t += 520 + graphemes(texto).length * 40;
+  }
+  later(t + 600, () => {
+    reparoSeguirBtn.hidden = false;
+    void reparoSeguirBtn.offsetWidth;
+    reparoSeguirBtn.classList.add('in');
+  }, 'rep');
+}
+
+function cerrarReparo() {
+  if (!reparo.activo) return;
+  cancelTasks('rep');
+  const eraEntrada = reparo.entrada;
+  reparo.entrada = false;
+  reparoSeguirBtn.classList.remove('in');
+  reparoEl.classList.remove('show');
+  reparoEl.classList.add('out');
+  later(950, () => {
+    reparo.activo = false;
+    reparoEl.hidden = true;
+    reparoEl.classList.remove('out');
+    reparoLineasEl.replaceChildren();
+    reparoBtn.hidden = reparoSeguirBtn.hidden = true;
+    document.body.classList.remove('reparando');
+    if (eraEntrada) seguirTrasElMapa();
+  }, 'rep');
 }
 
 /* =====================================================================
@@ -5275,6 +5708,7 @@ function cerrarVuelo() {
 
 /* Lo primero que se encuentra al pasar la puerta encantada */
 function entrada() {
+  if (CONFIG.reparo && CONFIG.reparo.entrada && mostrarReparo(true)) return;
   if (CONFIG.priori && CONFIG.priori.entrada && mostrarPriori(true)) return;
   if (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada && mostrarExpel(true)) return;
   if (CONFIG.leviosa && CONFIG.leviosa.entrada && mostrarWingardium(true)) return;
@@ -6145,6 +6579,7 @@ function buildExtras() {
   fillRune(wingardiumFilaBtn, HX.wingardium);
   fillRune(expelFilaBtn, HX.expelliarmus);
   fillRune(prioriFilaBtn, HX.priori);
+  fillRune(reparoFilaBtn, HX.reparo);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -6185,6 +6620,9 @@ function bindExtras() {
   wingardiumFilaBtn.addEventListener('click', () => mostrarWingardium());
   expelFilaBtn.addEventListener('click', () => mostrarExpel());
   prioriFilaBtn.addEventListener('click', () => mostrarPriori());
+  reparoBtn.addEventListener('click', lanzarReparo);
+  reparoSeguirBtn.addEventListener('click', cerrarReparo);
+  reparoFilaBtn.addEventListener('click', () => mostrarReparo());
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
@@ -6447,7 +6885,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -6464,6 +6902,11 @@ function resetExtras() {
   cancelTasks('lev');
   cancelTasks('expel');
   cancelTasks('priori');
+  cancelTasks('rep');
+  reparo.activo = reparo.entrada = false;
+  reparoEl.hidden = true;
+  reparoEl.classList.remove('show', 'out');
+  document.body.classList.remove('reparando');
   priori.activo = priori.entrada = false;
   prioriEl.hidden = true;
   prioriEl.classList.remove('show', 'out');
@@ -7287,6 +7730,7 @@ function frame(now) {
   dibujarWingardium(now);
   dibujarExpel(now);
   dibujarPriori(now);
+  dibujarReparo(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;
 
@@ -7468,7 +7912,8 @@ function init() {
     introEl.hidden = true;
     magicEl.hidden = true;
     buildGate();
-  } else if (MAGIC.enabled || (CONFIG.priori && CONFIG.priori.entrada) ||
+  } else if (MAGIC.enabled || (CONFIG.reparo && CONFIG.reparo.entrada) ||
+             (CONFIG.priori && CONFIG.priori.entrada) ||
              (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
              (CONFIG.leviosa && CONFIG.leviosa.entrada) ||
              (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
