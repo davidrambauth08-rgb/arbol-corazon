@@ -1,6 +1,6 @@
 # Árbol de corazones ❤️ — edición acertijo
 
-Página web estática, sin backend. Al abrir el enlace aparece **"Karen Trujillo ❤️"**; tras la puerta y el Lumos el árbol crece solo. Las **3 pruebas** viven ahora en el hechizo **✠ Pruebas** de la fila del árbol: se abren sobre el árbol ya crecido, la carta se aparta mientras tanto y vuelve al terminar. Las frases de paso son `CONFIG.pruebasIntro`. Con `CONFIG.pruebasEntrada: true` vuelven a ir antes del árbol y cada acierto desbloquea una parte de la animación:
+Página web estática, sin backend. Al abrir el enlace aparece **"Karen Trujillo ❤️"**; tras la puerta y el Lumos, **ella elige** entre dos hechizos (`CONFIG.eleccion`): **✦ Ver el árbol**, que lo hace crecer directo, sin preguntas, o **✠ Las tres pruebas**, donde cada acierto hace crecer una parte del árbol. Además, las pruebas siguen en el hechizo **✠ Pruebas** de la fila: se abren sobre el árbol ya crecido, la carta se aparta mientras tanto y vuelve al terminar (frases de paso en `CONFIG.pruebasIntro`). `CONFIG.pruebasEntrada` decide esto: `"elegir"` (la elección), `false` (árbol directo y pruebas sólo en la fila) o `true` (pruebas siempre antes del árbol). Lo que desbloquea cada acierto:
 
 1. **¿Cuándo empezó esta historia?** → la semilla cae al suelo.
 2. **¿Quién quiere más a quién?** → crecen el tronco y las ramas.
@@ -75,7 +75,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 
 **Intro mágica** (justo después de la puerta)
 - Aparece un cielo nocturno con partículas de luz y frases que se enfocan poco a poco. Tocar la pantalla adelanta el texto, pero el hechizo hay que elegirlo.
-- Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso al árbol. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
+- Hechizos: **Lumos ❤️** traza una estela de luz, ilumina la pantalla y da paso a la elección: el árbol directo o las tres pruebas. **Avada Kedavra 💀** muestra una respuesta divertida y solo se puede probar una vez.
 - Secreto: tocar 3 veces seguidas la estrella de arriba a la derecha muestra un mensaje.
 - Todo se configura en `CONFIG.introMagic` y `CONFIG.magicSound`. Con `introMagic.enabled: false` se usa la pantalla de inicio sencilla.
 

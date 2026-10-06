@@ -133,9 +133,20 @@ const CONFIG = {
 
   // false: sin pruebas, el botón de inicio lanza la animación directamente
   modoAcertijo: true,
-  /* false: el árbol crece solo al entrar y las pruebas pasan a ser un hechizo
-     de la fila (✠ Pruebas); true: vuelven a ir antes del árbol, como al principio */
-  pruebasEntrada: false,
+  /* Qué pasa tras el Lumos:
+     "elegir" → ella escoge entre ir directo al árbol o hacer las pruebas
+                (cada acierto hace crecer el árbol); además siguen en la fila (✠ Pruebas)
+     false    → el árbol crece solo y las pruebas sólo están en la fila
+     true     → las pruebas van siempre antes del árbol, como al principio */
+  pruebasEntrada: "elegir",
+  // La tarjeta de la elección (sólo con pruebasEntrada: "elegir")
+  eleccion: {
+    etiqueta: "Elige tu hechizo",
+    pregunta: "Hay dos caminos.",
+    detalle: "Puedes ir directo al árbol o ganártelo con tres pruebas.",
+    arbol: { runa: "✦", nombre: "Ver el árbol", desc: "directo, sin preguntas" },
+    pruebas: { runa: "✠", nombre: "Las tres pruebas", desc: "cada acierto hace crecer el árbol" }
+  },
   // Frases de paso al abrir las pruebas desde la fila (tocar la tarjeta las salta)
   pruebasIntro: [
     "Tres pequeñas pruebas.",
@@ -1068,7 +1079,7 @@ let tasks = [];
 const later = (ms, fn, tag) => tasks.push({ at: performance.now() + ms, fn, tag });
 const cancelTasks = tag => { tasks = tasks.filter(task => task.tag !== tag); };
 
-const quiz = { step: -1, wrong: 0, locked: false, done: !CONFIG.modoAcertijo, waitNext: null, suelto: false };
+const quiz = { step: -1, wrong: 0, locked: false, done: !CONFIG.modoAcertijo, waitNext: null, suelto: false, eligiendo: false, introLines: null };
 const secret = { shown: false, started: false, glowAt: Infinity };
 const spells = { hintShown: false, sonorus: false, sonorusPend: false, revelio: false, casting: false, juegoShown: false, firma: '' };
 
@@ -1410,6 +1421,47 @@ function processQuiz(now) {
   if (w.step >= CONFIG.pruebas.length) { quizEl.hidden = true; quiz.done = true; cerrarPruebas(); return; }
   quizCard.classList.add('out');
   later(380, () => showQuizStep(w.step));
+}
+
+/* La elección tras el Lumos: directo al árbol o las tres pruebas.
+   La escena espera quieta (limitT) hasta que ella escoja. */
+function showEleccion() {
+  const E = CONFIG.eleccion || {};
+  quiz.eligiendo = true;
+  quizEl.hidden = false;
+  quizCard.replaceChildren();
+  quizCard.classList.remove('out', 'in');
+  if (E.etiqueta) quizCard.append(el('p', 'quiz-count', E.etiqueta));
+  quizCard.append(el('h2', 'quiz-q', E.pregunta || ''));
+  if (E.detalle) quizCard.append(el('p', 'quiz-detail', E.detalle));
+  const caminos = el('div', 'eleccion');
+  const arbolBtn = el('button', 'plate primary');
+  const pruebasBtn = el('button', 'plate');
+  arbolBtn.type = pruebasBtn.type = 'button';
+  fillPlate(arbolBtn, E.arbol || { runa: "✦", nombre: "Ver el árbol" });
+  fillPlate(pruebasBtn, E.pruebas || { runa: "✠", nombre: "Las tres pruebas" });
+  arbolBtn.addEventListener('click', () => elegirCamino('arbol', arbolBtn));
+  pruebasBtn.addEventListener('click', () => elegirCamino('pruebas', pruebasBtn));
+  caminos.append(arbolBtn, pruebasBtn);
+  quizCard.append(caminos);
+  fitQuiz();
+  void quizCard.offsetWidth;
+  quizCard.classList.add('in');
+  later(350, () => arbolBtn.classList.add('in'));
+  later(550, () => pruebasBtn.classList.add('in'));
+}
+
+function elegirCamino(cual, btn) {
+  if (!quiz.eligiendo) return;
+  quiz.eligiendo = false;
+  castFxAt(btn, { sparks: 18, r1: 180, dur: 700 });
+  quizCard.classList.add('out');
+  if (cual === 'arbol') {
+    later(450, () => { quizEl.hidden = true; quiz.done = true; limitT = Infinity; });
+  } else {
+    const lineas = quiz.introLines;
+    later(450, () => (lineas && lineas.length ? showQuizIntro(lineas) : showQuizStep(0)));
+  }
 }
 
 /* Las pruebas como hechizo de la fila: la carta y los hechizos se apartan,
@@ -2505,7 +2557,7 @@ function hechizosFila() {
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
     { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
-    { btn: pruebasFilaBtn, activo: () => !!(CONFIG.modoAcertijo && CONFIG.pruebasEntrada === false && CONFIG.pruebas && CONFIG.pruebas.length) },
+    { btn: pruebasFilaBtn, activo: () => !!(CONFIG.modoAcertijo && CONFIG.pruebasEntrada !== true && CONFIG.pruebas && CONFIG.pruebas.length) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -7535,6 +7587,7 @@ function resetForMagic() {
   resetExtras();
   quiz.waitNext = null;
   quiz.introActive = false;
+  quiz.eligiendo = false;
   quizEl.hidden = true;
   cerrarPruebas();
   secretBtn.classList.remove('show');
@@ -7839,13 +7892,17 @@ function restart(withQuiz, introLines) {
   resetExtras();
   quiz.waitNext = null;
   quizEl.hidden = true;
+  quiz.eligiendo = false;
   cerrarPruebas();
 
-  if (withQuiz && CONFIG.modoAcertijo && CONFIG.pruebasEntrada !== false) {
+  const entrada = CONFIG.pruebasEntrada;
+  if (withQuiz && CONFIG.modoAcertijo && entrada !== false) {
     quiz.done = false;
     limitT = TIMELINE.holds[0];
     quiz.introActive = false;
-    later(900, () => (introLines && introLines.length ? showQuizIntro(introLines) : showQuizStep(0)));
+    quiz.introLines = introLines || null;
+    if (entrada === 'elegir') later(900, showEleccion);
+    else later(900, () => (introLines && introLines.length ? showQuizIntro(introLines) : showQuizStep(0)));
   } else {
     quiz.done = true;
     limitT = Infinity;
