@@ -1625,7 +1625,10 @@ body.evocando #music,
 body.reparando #letter,
 body.reparando #spellbook,
 body.reparando #clock,
-body.reparando #music {
+body.reparando #music,
+body.probando #letter,
+body.probando #spellbook,
+body.probando #clock {
   opacity: 0 !important;      /* el contador lleva opacidad en línea: hay que ganarle */
   pointer-events: none;
   transition: opacity 0.9s ease;

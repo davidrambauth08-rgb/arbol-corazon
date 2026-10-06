@@ -133,6 +133,14 @@ const CONFIG = {
 
   // false: sin pruebas, el botón de inicio lanza la animación directamente
   modoAcertijo: true,
+  /* false: el árbol crece solo al entrar y las pruebas pasan a ser un hechizo
+     de la fila (✠ Pruebas); true: vuelven a ir antes del árbol, como al principio */
+  pruebasEntrada: false,
+  // Frases de paso al abrir las pruebas desde la fila (tocar la tarjeta las salta)
+  pruebasIntro: [
+    "Tres pequeñas pruebas.",
+    "Porque no te lo iba a poner tan fácil."
+  ],
   etiquetaPrueba: "Prueba {n} de {total}",
 
   /* Pruebas. Cada respuesta correcta desbloquea una parte del árbol:
@@ -190,6 +198,7 @@ const CONFIG = {
     expelliarmus: { runa: "✷", nombre: "Expelliarmus", desc: "el duelo junto al lago", corto: "Duelo" },
     priori: { runa: "❈", nombre: "Priori Incantatem", desc: "que salgan los ecos de lo que ya pasó", corto: "Ecos" },
     reparo: { runa: "❖", nombre: "Reparo", desc: "pedirle perdón al cielo entero", corto: "Reparo" },
+    pruebas: { runa: "✠", nombre: "Las tres pruebas", desc: "a ver si te lo sabes", corto: "Pruebas" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -207,7 +216,7 @@ const CONFIG = {
      todo se mueve: las nubes pasan, las estrellas titilan, caen hojas. */
   reparo: {
     activo: true,
-    entrada: true,
+    entrada: false,         // true = es lo primero al pasar la puerta
     antes: [
       "Reparo sirve para lo que se rompió.",
       "Casi nunca funciona a la primera, pero se empieza pidiendo perdón."
@@ -950,6 +959,7 @@ const dracarysBtn = document.getElementById('spell-dracarys');
 const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
 const reparoFilaBtn = document.getElementById('spell-reparo');
+const pruebasFilaBtn = document.getElementById('spell-pruebas');
 const reparoEl = document.getElementById('reparo');
 const reparoCanvas = document.getElementById('reparo-lienzo');
 const reparoCtx = reparoCanvas.getContext('2d');
@@ -1058,7 +1068,7 @@ let tasks = [];
 const later = (ms, fn, tag) => tasks.push({ at: performance.now() + ms, fn, tag });
 const cancelTasks = tag => { tasks = tasks.filter(task => task.tag !== tag); };
 
-const quiz = { step: -1, wrong: 0, locked: false, done: !CONFIG.modoAcertijo, waitNext: null };
+const quiz = { step: -1, wrong: 0, locked: false, done: !CONFIG.modoAcertijo, waitNext: null, suelto: false };
 const secret = { shown: false, started: false, glowAt: Infinity };
 const spells = { hintShown: false, sonorus: false, sonorusPend: false, revelio: false, casting: false, juegoShown: false, firma: '' };
 
@@ -1368,7 +1378,8 @@ function setFeedback(node, text, kind) {
 
 function unlockNext() {
   const next = quiz.step + 1;
-  limitT = next < TIMELINE.holds.length ? TIMELINE.holds[next] : Infinity;
+  // abiertas desde la fila, el árbol ya está entero: no hay tramo que desbloquear
+  if (!quiz.suelto) limitT = next < TIMELINE.holds.length ? TIMELINE.holds[next] : Infinity;
   // la siguiente prueba aparece cuando termina el tramo de animación desbloqueado
   quiz.waitNext = { minAt: performance.now() + 1800, step: next };
 }
@@ -1388,17 +1399,35 @@ function revealAnswer(p, btn, feedback) {
     quizCard.classList.add('out');
     limitT = Infinity;
     quiz.done = true;
-    later(500, () => { quizEl.hidden = true; });
+    later(500, () => { quizEl.hidden = true; cerrarPruebas(); });
   });
 }
 
 function processQuiz(now) {
   const w = quiz.waitNext;
-  if (!w || now < w.minAt || playT < limitT - 1e-3) return;
+  if (!w || now < w.minAt || (!quiz.suelto && playT < limitT - 1e-3)) return;
   quiz.waitNext = null;
-  if (w.step >= CONFIG.pruebas.length) { quizEl.hidden = true; quiz.done = true; return; }
+  if (w.step >= CONFIG.pruebas.length) { quizEl.hidden = true; quiz.done = true; cerrarPruebas(); return; }
   quizCard.classList.add('out');
   later(380, () => showQuizStep(w.step));
+}
+
+/* Las pruebas como hechizo de la fila: la carta y los hechizos se apartan,
+   la tarjeta sale sobre el árbol ya crecido y al acabar todo vuelve. */
+function mostrarPruebas() {
+  if (quiz.suelto || !CONFIG.pruebas || !CONFIG.pruebas.length) return;
+  quiz.suelto = true;
+  quiz.waitNext = null;
+  quiz.introActive = false;
+  document.body.classList.add('probando');
+  const lineas = CONFIG.pruebasIntro || [];
+  later(700, () => (lineas.length ? showQuizIntro(lineas) : showQuizStep(0)), 'pruebas');
+}
+
+function cerrarPruebas() {
+  if (!quiz.suelto) return;
+  quiz.suelto = false;
+  document.body.classList.remove('probando');
 }
 
 /* Reduce la tarjeta si no cabe (pantallas bajas o textos largos) */
@@ -2476,6 +2505,7 @@ function hechizosFila() {
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
     { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
+    { btn: pruebasFilaBtn, activo: () => !!(CONFIG.modoAcertijo && CONFIG.pruebasEntrada === false && CONFIG.pruebas && CONFIG.pruebas.length) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
   ];
 }
@@ -6580,6 +6610,7 @@ function buildExtras() {
   fillRune(expelFilaBtn, HX.expelliarmus);
   fillRune(prioriFilaBtn, HX.priori);
   fillRune(reparoFilaBtn, HX.reparo);
+  fillRune(pruebasFilaBtn, HX.pruebas);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -6623,6 +6654,7 @@ function bindExtras() {
   reparoBtn.addEventListener('click', lanzarReparo);
   reparoSeguirBtn.addEventListener('click', cerrarReparo);
   reparoFilaBtn.addEventListener('click', () => mostrarReparo());
+  pruebasFilaBtn.addEventListener('click', () => mostrarPruebas());
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
@@ -6885,7 +6917,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -7504,6 +7536,7 @@ function resetForMagic() {
   quiz.waitNext = null;
   quiz.introActive = false;
   quizEl.hidden = true;
+  cerrarPruebas();
   secretBtn.classList.remove('show');
   clearTyping();
   clockEl.style.opacity = '0';
@@ -7806,8 +7839,9 @@ function restart(withQuiz, introLines) {
   resetExtras();
   quiz.waitNext = null;
   quizEl.hidden = true;
+  cerrarPruebas();
 
-  if (withQuiz && CONFIG.modoAcertijo) {
+  if (withQuiz && CONFIG.modoAcertijo && CONFIG.pruebasEntrada !== false) {
     quiz.done = false;
     limitT = TIMELINE.holds[0];
     quiz.introActive = false;
