@@ -2673,7 +2673,7 @@ body.probando #clock {
   padding: calc(max(22px, env(safe-area-inset-top)) + 16px) 22px 0;
   text-align: center;
 }
-#oesed-lineas { display: flex; flex-direction: column; gap: 5px; }
+#oesed-lineas { position: relative; display: flex; flex-direction: column; gap: 5px; }
 #oesed-lineas .v-line {
   margin: 0;
   font-family: var(--serif);
@@ -2696,11 +2696,32 @@ body.probando #clock {
 #oesed-lineas .palabra { display: inline-block; white-space: nowrap; }
 #oesed-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
 #oesed-lineas .v-line.out {
+  /* la que se va deja de ocupar sitio: así nada empuja el espejo */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
   opacity: 0;
   filter: blur(8px);
   transform: translateY(-8px);
   transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
 }
+#oesed-pista {
+  margin: 4px 0 0;
+  font-family: var(--serif);
+  font-size: clamp(15px, 4vw, 19px);
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: var(--warm-gold);
+  text-shadow: 0 0 18px rgba(245, 211, 107, 0.6);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+#oesed-pista.in { opacity: 1; animation: pista-late 1.8s ease-in-out infinite; }
+@keyframes pista-late { 50% { opacity: 0.45; } }
+#oesed-lienzo { cursor: pointer; touch-action: manipulation; }
+/* las chispas de los toques, por encima del espejo mientras está abierto */
+body.reflejando #fx { z-index: 19; }
 #oesed-btn, #oesed-seguir { width: auto; justify-content: center; }
 #oesed-btn .plate-text, #oesed-seguir .plate-text { align-items: center; }
 

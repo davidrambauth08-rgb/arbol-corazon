@@ -244,6 +244,14 @@ const CONFIG = {
     ],
     boton: "Mirar en el espejo",
     botonDesc: "a ver qué sale",
+    // Lo misterioso: al mirar, llueve dentro del espejo y aparece un paraguas
+    // amarillo cerrado. Hasta que ella no lo toca, no se ve la foto.
+    misterio: [
+      "El espejo se nubla.",
+      "Dentro está lloviendo, y alguien ha dejado algo para ti."
+    ],
+    pistaParaguas: "toca el paraguas",
+    pistaFoto: "toca la foto",
     despues: [
       "Me pongo delante y no sale ningún castillo.",
       "Sales tú.",
@@ -1013,6 +1021,7 @@ const oesedCtx = oesedCanvas.getContext('2d');
 const oesedLineasEl = document.getElementById('oesed-lineas');
 const oesedBtn = document.getElementById('oesed-btn');
 const oesedSeguirBtn = document.getElementById('oesed-seguir');
+const oesedPistaEl = document.getElementById('oesed-pista');
 const reparoEl = document.getElementById('reparo');
 const reparoCanvas = document.getElementById('reparo-lienzo');
 const reparoCtx = reparoCanvas.getContext('2d');
@@ -4631,8 +4640,93 @@ function cerrarPriori() {
    inclinan una hacia la otra, el cristal se calienta, sube un corazón y
    se escapan chispas del espejo.
    ===================================================================== */
-const oesed = { activo: false, born: 0, lanzado: 0, ultimo: 0, polvo: [], velas: [], niebla: [], brillos: [],
-                chispas: [], corazones: [], capa: null, reflejo: null, foto: null, fotoLista: false };
+const oesed = { activo: false, born: 0, lanzado: 0, revelado: 0, ultimo: 0, polvo: [], velas: [], niebla: [], brillos: [],
+                chispas: [], corazones: [], paraguitas: [], petalos: [], toques: [], floresBorde: [], cuentaToques: 0,
+                paraguasHit: null, vidrio: null, capa: null, reflejo: null, foto: null, fotoLista: false };
+
+/* El paraguas amarillo. "ap" va de 0 (cerrado, enrollado) a 1 (abierto).
+   (x, y) es el centro: la tela queda arriba y el mango en J abajo. */
+function paraguasOesed(g, x, y, tam, ap) {
+  const arriba = y - tam * 0.5;
+  const w = lerp(0.075, 0.56, ap) * tam;
+  const h = lerp(0.64, 0.3, ap) * tam;
+  const yb = arriba + h;
+  // el palo y el mango
+  g.strokeStyle = '#5b3a1c';
+  g.lineCap = 'round';
+  g.lineWidth = Math.max(1, tam * 0.03);
+  g.beginPath();
+  g.moveTo(x, arriba - tam * 0.06);
+  g.lineTo(x, y + tam * 0.42);
+  g.stroke();
+  g.lineWidth = Math.max(1.2, tam * 0.045);
+  g.beginPath();
+  g.arc(x - tam * 0.065, y + tam * 0.42, tam * 0.065, 0, Math.PI, false);
+  g.stroke();
+  // la tela
+  const tela = g.createLinearGradient(x - w, arriba, x + w, yb);
+  tela.addColorStop(0, '#fff09a');
+  tela.addColorStop(0.45, '#ffd23f');
+  tela.addColorStop(1, '#e9a400');
+  g.fillStyle = tela;
+  const n = 5, paso = (2 * w) / n;
+  g.beginPath();
+  g.moveTo(x - w, yb);
+  g.quadraticCurveTo(x - w, arriba + h * 0.08, x, arriba);
+  g.quadraticCurveTo(x + w, arriba + h * 0.08, x + w, yb);
+  for (let i = 0; i < n; i++) {
+    g.quadraticCurveTo(x + w - (i + 0.5) * paso, yb - h * 0.2 * ap, x + w - (i + 1) * paso, yb);
+  }
+  g.closePath();
+  g.fill();
+  // varillas
+  g.strokeStyle = 'rgba(150, 96, 0, 0.45)';
+  g.lineWidth = Math.max(0.8, tam * 0.008);
+  for (let i = 1; i < n; i++) {
+    const px = x + w - i * paso;
+    g.beginPath();
+    g.moveTo(x, arriba);
+    g.quadraticCurveTo(lerp(x, px, 0.55), arriba + h * 0.25, px, yb);
+    g.stroke();
+  }
+  // brillo en la tela y, cerrado, la cinta que lo sujeta
+  g.fillStyle = 'rgba(255, 255, 255, 0.28)';
+  g.beginPath();
+  g.ellipse(x - w * 0.45, arriba + h * 0.45, w * 0.18, h * 0.22, -0.4, 0, TAU);
+  g.fill();
+  if (ap < 0.3) {
+    g.fillStyle = `rgba(150, 90, 0, ${0.7 * (1 - ap / 0.3)})`;
+    g.fillRect(x - w * 1.1, arriba + h * 0.62, w * 2.2, tam * 0.03);
+  }
+}
+
+/* Al tocar el espejo: con la lluvia, el paraguas abre la foto; con la foto
+   ya fuera, cada toque hace brotar una flor, un paraguas o un corazón. */
+function tocarOesed(e) {
+  if (!oesed.activo || !oesed.lanzado) return;
+  const r = oesedCanvas.getBoundingClientRect();
+  const px = (e.clientX - r.left) * (oesedCanvas.width / r.width);
+  const py = (e.clientY - r.top) * (oesedCanvas.height / r.height);
+  if (!oesed.revelado) {
+    const p = oesed.paraguasHit;
+    if (p && Math.hypot(px - p.x, py - p.y) < p.r) {
+      fxBurst(e.clientX, e.clientY, 26, 150);
+      revelarOesed();
+    }
+    return;
+  }
+  const v = oesed.vidrio;
+  if (v && Math.abs(px - v.cx) < v.iw / 2 && py > v.ia && py < v.ib) {
+    const tipos = ['flor', 'paraguas', 'flor', 'corazon'];
+    const flores = ['margarita', 'girasol', 'rosa', 'nomeolvides', 'camelia'];
+    oesed.toques.push({ x: px, y: py, tipo: tipos[oesed.cuentaToques % tipos.length], nace: performance.now(),
+                        flor: flores[oesed.cuentaToques % flores.length], fase: Math.random() * TAU, giro: (Math.random() - 0.5) * 0.6 });
+    oesed.cuentaToques++;
+    if (oesed.toques.length > 24) oesed.toques.shift();
+    oesedPistaEl.classList.remove('in');
+  }
+  fxBurst(e.clientX, e.clientY, 14, 90);
+}
 
 function cargarFotoOesed() {
   const src = CONFIG.oesed && CONFIG.oesed.foto;
@@ -4683,6 +4777,18 @@ function abrirOesed() {
   }
   oesed.chispas.length = 0;
   oesed.corazones.length = 0;
+  oesed.paraguitas.length = 0;
+  oesed.petalos.length = 0;
+  oesed.toques.length = 0;
+  oesed.cuentaToques = 0;
+  oesed.revelado = 0;
+  oesed.paraguasHit = null;
+  oesed.floresBorde.length = 0;
+  const tiposBorde = ['margarita', 'rosa', 'girasol', 'nomeolvides', 'camelia', 'margarita', 'rosa'];
+  for (let i = 0; i < tiposBorde.length; i++) {
+    oesed.floresBorde.push({ x: 0.06 + (i / (tiposBorde.length - 1)) * 0.88, tipo: tiposBorde[i],
+                             tam: 0.8 + Math.random() * 0.4, fase: Math.random() * TAU, retraso: i * 0.25 });
+  }
   cargarFotoOesed();
   oesed.activo = true;
 }
@@ -5034,7 +5140,11 @@ function dibujarOesed(now) {
   const E = { cx, arriba, ancho, abajo, marco, suelo };
   const entra = clamp(t / 1.6);
   const ahora = k < 0 ? 0 : k;
-  const calor = clamp((ahora - 1.6) / 2.2);   // el cristal se calienta al aparecer ella
+  // todo lo de la foto cuenta desde que ella toca el paraguas
+  const rv = oesed.revelado ? (now - oesed.revelado) / 1000 : -1;
+  const ahoraR = rv < 0 ? 0 : rv;
+  const calor = rv < 0 ? 0 : clamp((ahoraR - 1.0) / 2.2);   // el cristal se calienta al aparecer la foto
+  const lluvia = k < 0 ? 0 : clamp(k / 1.2) * (rv < 0 ? 1 : 1 - clamp(rv / 1.2));
 
   // --- ventanales al fondo con luz de luna (sólo en pantalla ancha) ---
   if (!vertical) {
@@ -5197,8 +5307,8 @@ function dibujarOesed(now) {
   // las figuras
   const pie = ib - iw * 0.05;
   const figura = (ib - ia) * 0.5;
-  const ellaA = clamp((ahora - 1.3) / 1.8);
-  const juntos = clamp((ahora - 2.4) / 1.6);
+  const ellaA = rv < 0 ? 0 : clamp((ahoraR - 0.8) / 1.8);
+  const juntos = rv < 0 ? 0 : clamp((ahoraR - 1.8) / 1.6);
   const flota = Math.sin(t * 1.1) * figura * 0.008;
   const elX = cx + iw * 0.24;           // apartado a un lado: el hueco es el de ella
   const ellaX = cx - iw * 0.24;
@@ -5224,7 +5334,7 @@ function dibujarOesed(now) {
   if (fotoA > 0) {
     const img = oesed.foto;
     const gw = iw, gh = ib - ia;
-    const zoom = 1.02 + 0.05 * clamp(ahora / 24);
+    const zoom = 1.02 + 0.05 * clamp(ahoraR / 24);
     const esc = Math.max(gw / img.naturalWidth, gh / img.naturalHeight) * zoom;
     const fw = img.naturalWidth * esc, fh = img.naturalHeight * esc;
     const foco = O.foco || { x: 0.5, y: 0.5 };
@@ -5259,7 +5369,7 @@ function dibujarOesed(now) {
     const late = 0.75 + 0.25 * Math.sin(t * 2.6);
     const r = manosFoto.tam * (2.2 + 0.5 * late);
     const luz = g.createRadialGradient(manosFoto.x, manosFoto.y, 0, manosFoto.x, manosFoto.y, r);
-    luz.addColorStop(0, `rgba(255, 236, 190, ${0.75 * manosFoto.a * late})`);
+    luz.addColorStop(0, `rgba(255, 236, 190, ${0.5 * manosFoto.a * late})`);
     luz.addColorStop(0.35, `rgba(255, 190, 150, ${0.35 * manosFoto.a * late})`);
     luz.addColorStop(1, 'rgba(255, 190, 150, 0)');
     g.save();
@@ -5275,7 +5385,7 @@ function dibujarOesed(now) {
   }
 
   // el corazón de luz que sube entre los dos (sólo con los dibujos)
-  const sube = conFoto ? 0 : clamp((ahora - 3.6) / 2.2);
+  const sube = conFoto ? 0 : clamp((ahoraR - 3) / 2.2);
   if (sube > 0) {
     const hx = cx, hy = pie - figura * (1.08 + 0.28 * sube) + Math.sin(t * 1.4) * figura * 0.01;
     const late = 1 + Math.sin(t * 3.2) * 0.07;
@@ -5317,7 +5427,8 @@ function dibujarOesed(now) {
   }
 
   // la niebla: sube al mirar, gira y se va abriendo
-  const niebla = k < 0 ? 0 : Math.sin(clamp(k / 3) * Math.PI);
+  // sube al mirar y se queda, espesa, hasta que se abre el paraguas
+  const niebla = k < 0 ? 0 : clamp(k / 1.5) * 0.6 * (rv < 0 ? 1 : 1 - clamp(rv / 1.4));
   if (niebla > 0.01) {
     for (const n of oesed.niebla) {
       const ang = n.a + k * n.v;
@@ -5332,6 +5443,105 @@ function dibujarOesed(now) {
     }
   }
 
+  // la lluvia dentro del espejo, con algún relámpago lejano
+  if (lluvia > 0.01) {
+    g.fillStyle = `rgba(6, 6, 18, ${0.35 * lluvia})`;
+    g.fillRect(cx - iw / 2, ia, iw, ib - ia);
+    const gh = ib - ia;
+    g.strokeStyle = `rgba(190, 205, 255, ${0.45 * lluvia})`;
+    g.lineWidth = Math.max(1, u * 0.12);
+    g.beginPath();
+    for (let i = 0; i < 70; i++) {
+      const lx = cx - iw / 2 + (((i * 0.6180339) % 1) + t * 0.03) % 1 * iw;
+      const ly = ia + (((i * 0.3819) % 1) + t * (1.2 + (i % 5) * 0.12)) % 1 * gh;
+      g.moveTo(lx, ly);
+      g.lineTo(lx - gh * 0.012, ly + gh * 0.05);
+    }
+    g.stroke();
+    const rayo = (t % 7) < 0.14 || ((t + 0.3) % 7) < 0.07;
+    if (rayo) {
+      g.fillStyle = `rgba(220, 225, 255, ${0.22 * lluvia})`;
+      g.fillRect(cx - iw / 2, ia, iw, gh);
+    }
+  }
+
+  // con la foto ya fuera: paraguas pequeños que bajan flotando, pétalos y
+  // flores que brotan en el borde de abajo
+  if (fotoA > 0.3 && !REDUCED) {
+    if (oesed.paraguitas.length < 6 && Math.random() < 0.012) {
+      oesed.paraguitas.push({ x: cx - iw * 0.4 + Math.random() * iw * 0.8, y: ia - u * 4, vy: u * (2 + Math.random() * 2),
+                              tam: u * (2.6 + Math.random() * 1.6), fase: Math.random() * TAU });
+    }
+    if (oesed.petalos.length < 26 && Math.random() < 0.15) {
+      oesed.petalos.push({ x: cx - iw / 2 + Math.random() * iw, y: ia - u * 2, vy: u * (3 + Math.random() * 3),
+                           fase: Math.random() * TAU, tam: u * (0.5 + Math.random() * 0.5), rosa: Math.random() < 0.6 });
+    }
+  }
+  for (let i = oesed.paraguitas.length - 1; i >= 0; i--) {
+    const p = oesed.paraguitas[i];
+    p.y += p.vy * dt;
+    if (p.y > ib + p.tam) { oesed.paraguitas.splice(i, 1); continue; }
+    g.save();
+    g.globalAlpha = 0.9 * fotoA;
+    g.translate(p.x + Math.sin(t * 0.9 + p.fase) * u * 2, p.y);
+    g.rotate(Math.sin(t * 1.2 + p.fase) * 0.3);
+    paraguasOesed(g, 0, 0, p.tam, 1);
+    g.restore();
+  }
+  for (let i = oesed.petalos.length - 1; i >= 0; i--) {
+    const p = oesed.petalos[i];
+    p.y += p.vy * dt;
+    if (p.y > ib) { oesed.petalos.splice(i, 1); continue; }
+    g.save();
+    g.globalAlpha = 0.85 * fotoA;
+    g.translate(p.x + Math.sin(t * 1.5 + p.fase) * u * 1.5, p.y);
+    g.rotate(t * 1.4 + p.fase);
+    g.fillStyle = p.rosa ? '#ffb7c8' : '#fff6e6';
+    g.beginPath();
+    g.ellipse(0, 0, p.tam, p.tam * 0.55, 0, 0, TAU);
+    g.fill();
+    g.restore();
+  }
+  if (fotoA > 0) {
+    for (const f of oesed.floresBorde) {
+      const brota = clamp((ahoraR - 1.6 - f.retraso) / 1.2);
+      if (brota <= 0) continue;
+      const crece = 1 - Math.pow(1 - brota, 3);
+      dibujarFlor(g, cx - iw / 2 + f.x * iw, ib - iw * 0.04, iw * 0.062 * f.tam * crece, f.tipo, 0, t, f.fase, fotoA);
+    }
+  }
+
+  // lo que brota donde ella toca la foto
+  const nowT = performance.now();
+  for (let i = oesed.toques.length - 1; i >= 0; i--) {
+    const q = oesed.toques[i];
+    const e = (nowT - q.nace) / 1000;
+    if (e > 5) { oesed.toques.splice(i, 1); continue; }
+    const s1 = clamp(e / 0.5);
+    const crece = 1 + 2.70158 * Math.pow(s1 - 1, 3) + 1.70158 * Math.pow(s1 - 1, 2);   // con un pequeño rebote
+    const alfa = 1 - clamp((e - 3.8) / 1.2);
+    const y = q.y - e * u * 1.6;
+    if (q.tipo === 'flor') {
+      dibujarFlor(g, q.x, y, iw * 0.07 * crece, q.flor, q.giro, t, q.fase, alfa);
+    } else if (q.tipo === 'paraguas') {
+      g.save();
+      g.globalAlpha = alfa;
+      g.translate(q.x, y);
+      g.rotate(q.giro + Math.sin(t * 2 + q.fase) * 0.15);
+      paraguasOesed(g, 0, 0, iw * 0.16 * crece, clamp(e / 0.7));
+      g.restore();
+    } else {
+      g.save();
+      g.globalAlpha = alfa;
+      g.shadowColor = 'rgba(255, 140, 170, 0.9)';
+      g.shadowBlur = u * 2;
+      g.fillStyle = '#ff7f9f';
+      corazonOesed(g, q.x, y, iw * 0.05 * crece);
+      g.fill();
+      g.restore();
+    }
+  }
+
   // viñeta y sombra del marco sobre el cristal: le dan hondura
   const vin = g.createRadialGradient(cx, (ia + ib) / 2, iw * 0.3, cx, (ia + ib) / 2, (ib - ia) * 0.62);
   vin.addColorStop(0, 'rgba(0, 0, 0, 0)');
@@ -5339,6 +5549,48 @@ function dibujarOesed(now) {
   g.fillStyle = vin;
   g.fillRect(cx - iw / 2, ia, iw, ib - ia);
   g.restore();   // fin del recorte del cristal
+  oesed.vidrio = { cx, ia, ib, iw };
+
+  // --- el paraguas amarillo: aparece entre la lluvia y espera a que lo toquen ---
+  const aparece = k < 0 ? 0 : clamp((k - 0.9) / 1.3);
+  const vaSe = rv < 0 ? 0 : clamp((rv - 1.6) / 1.2);
+  if (aparece > 0 && vaSe < 1) {
+    const tamP = Math.min(iw * 0.56, (ib - ia) * 0.46);
+    let px = cx, py = ia + (ib - ia) * 0.52 + (1 - aparece) * tamP * 0.3 + Math.sin(t * 1.6) * tamP * 0.03;
+    let giro = Math.sin(t * 1.1) * 0.06, esc = 1, ap = 0;
+    if (rv >= 0) {
+      ap = 1 - Math.pow(1 - clamp(rv / 0.8), 3);
+      const vuela = Math.max(0, rv - 0.8);
+      py -= vuela * vuela * H * 0.22;
+      px += vuela * vuela * W * 0.04;
+      giro += vuela * 1.4;
+      esc = 1 - 0.35 * clamp(vuela / 2);
+    }
+    const late = 0.6 + 0.4 * Math.sin(t * 3);
+    g.save();
+    g.globalAlpha = aparece * (1 - vaSe);
+    // su luz: late mientras espera
+    const halo = g.createRadialGradient(px, py, 0, px, py, tamP * 0.9);
+    halo.addColorStop(0, `rgba(255, 214, 80, ${(rv < 0 ? 0.35 * late : 0.3)})`);
+    halo.addColorStop(1, 'rgba(255, 214, 80, 0)');
+    g.fillStyle = halo;
+    g.fillRect(px - tamP, py - tamP, tamP * 2, tamP * 2);
+    if (rv < 0) {
+      // un anillo que se abre cada poco, invitando a tocarlo
+      const anillo = (t % 2) / 2;
+      g.strokeStyle = `rgba(255, 230, 140, ${0.5 * (1 - anillo)})`;
+      g.lineWidth = Math.max(1, u * 0.3);
+      g.beginPath();
+      g.arc(px, py, tamP * (0.35 + anillo * 0.5), 0, TAU);
+      g.stroke();
+    }
+    g.translate(px, py);
+    g.rotate(giro);
+    g.scale(esc, esc);
+    paraguasOesed(g, 0, 0, tamP, ap);
+    g.restore();
+    oesed.paraguasHit = rv < 0 && aparece > 0.6 ? { x: px, y: py, r: tamP * 0.7 } : null;
+  }
 
   // --- las chispas que se escapan del espejo cuando ya están juntos ---
   if (calor > 0.4 && !REDUCED && oesed.chispas.length < 60 && Math.random() < 0.5) {
@@ -5477,6 +5729,8 @@ function mostrarOesed() {
   abrirOesed();
   oesedLineasEl.replaceChildren();
   oesedBtn.hidden = oesedSeguirBtn.hidden = true;
+  oesedPistaEl.hidden = true;
+  oesedPistaEl.classList.remove('in');
   oesedBtn.classList.remove('in');
   oesedSeguirBtn.classList.remove('in');
   fillPlate(oesedBtn, { runa: "❂", nombre: O.boton || 'Mirar en el espejo', desc: O.botonDesc || '' });
@@ -5510,11 +5764,37 @@ function lanzarOesed() {
   for (const linea of oesedLineasEl.children) linea.classList.add('out');
   later(1200, () => oesedLineasEl.replaceChildren(), 'oesed');
 
-  let t = 4200;
+  let t = 1500;
+  for (const texto of (O.misterio || [])) {
+    later(t, () => escribirLineaOesed(texto), 'oesed');
+    t += 700 + graphemes(texto).length * 46;
+  }
+  later(Math.max(2600, t), () => mostrarPistaOesed(O.pistaParaguas), 'oesed');
+}
+
+function mostrarPistaOesed(texto) {
+  if (!texto) return;
+  oesedPistaEl.textContent = '✦ ' + texto + ' ✦';
+  oesedPistaEl.hidden = false;
+  oesedPistaEl.classList.remove('in');
+  void oesedPistaEl.offsetWidth;
+  oesedPistaEl.classList.add('in');
+}
+
+/* Ella toca el paraguas: se abre, sale volando y deja ver la foto */
+function revelarOesed() {
+  if (!oesed.activo || oesed.revelado) return;
+  const O = CONFIG.oesed || {};
+  oesed.revelado = performance.now();
+  oesedPistaEl.classList.remove('in');
+  for (const linea of oesedLineasEl.children) linea.classList.add('out');
+  later(900, () => oesedLineasEl.replaceChildren(), 'oesed');
+  let t = 2600;
   for (const texto of (O.despues || [])) {
     later(t, () => escribirLineaOesed(texto), 'oesed');
     t += 900 + graphemes(texto).length * 46;
   }
+  later(4200, () => { if (!oesed.cuentaToques) mostrarPistaOesed(O.pistaFoto); }, 'oesed');
   later(t + 600, () => {
     oesedSeguirBtn.hidden = false;
     void oesedSeguirBtn.offsetWidth;
@@ -5534,6 +5814,8 @@ function cerrarOesed() {
     oesedEl.classList.remove('out');
     oesedLineasEl.replaceChildren();
     oesedBtn.hidden = oesedSeguirBtn.hidden = true;
+    oesedPistaEl.hidden = true;
+    oesedPistaEl.classList.remove('in');
     document.body.classList.remove('reflejando');
   }, 'oesed');
 }
@@ -7677,6 +7959,7 @@ function bindExtras() {
   oesedFilaBtn.addEventListener('click', () => mostrarOesed());
   oesedBtn.addEventListener('click', lanzarOesed);
   oesedSeguirBtn.addEventListener('click', cerrarOesed);
+  oesedCanvas.addEventListener('pointerdown', tocarOesed);
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
