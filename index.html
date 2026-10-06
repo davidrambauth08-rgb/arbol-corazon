@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -64,6 +64,7 @@
       <button id="spell-priori" class="rune-btn" type="button" hidden></button>
       <button id="spell-reparo" class="rune-btn" type="button" hidden></button>
       <button id="spell-pruebas" class="rune-btn" type="button" hidden></button>
+      <button id="spell-oesed" class="rune-btn" type="button" hidden></button>
       <button id="spell-tempus" class="rune-btn" type="button" hidden></button>
     </div>
   </div>
@@ -87,6 +88,16 @@
   </div>
 
   <!-- Priori Incantatem: los ecos salen de la varita (CONFIG.priori) -->
+  <!-- Espejo de Oesed: lo que más desea el corazón (CONFIG.oesed) -->
+  <div id="oesed" hidden>
+    <canvas id="oesed-lienzo" aria-hidden="true"></canvas>
+    <div id="oesed-texto">
+      <div id="oesed-lineas" aria-live="polite"></div>
+      <button id="oesed-btn" class="plate primary" type="button" hidden></button>
+      <button id="oesed-seguir" class="plate quiet" type="button" hidden></button>
+    </div>
+  </div>
+
   <div id="priori" hidden>
     <canvas id="priori-lienzo" aria-hidden="true"></canvas>
     <div id="priori-texto">
@@ -265,6 +276,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=25"></script>
+  <script src="script.js?v=26"></script>
 </body>
 </html>

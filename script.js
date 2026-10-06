@@ -210,6 +210,7 @@ const CONFIG = {
     priori: { runa: "❈", nombre: "Priori Incantatem", desc: "que salgan los ecos de lo que ya pasó", corto: "Ecos" },
     reparo: { runa: "❖", nombre: "Reparo", desc: "pedirle perdón al cielo entero", corto: "Reparo" },
     pruebas: { runa: "✠", nombre: "Las tres pruebas", desc: "a ver si te lo sabes", corto: "Pruebas" },
+    oesed: { runa: "❂", nombre: "Espejo de Oesed", desc: "ver lo que más desea el corazón", corto: "Espejo" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -220,6 +221,32 @@ const CONFIG = {
     titulo: "¿Nos vamos a Australia?",
     linea: "Tú, yo, el otro lado del mundo.",
     firma: "Dinosaurios incluidos."
+  },
+
+  /* Espejo de Oesed: el espejo que no enseña tu cara, sino lo que más desea
+     tu corazón. Al principio sólo está él; al mirar, el cristal se empaña y
+     aparece ella a su lado. Las frases de "despues" salen de tres en tres
+     como mucho, para no tapar el espejo. */
+  oesed: {
+    activo: true,
+    // la inscripción del marco, al revés como en el libro: «esto no es tu cara sino de tu corazón el deseo»
+    inscripcion: "Oesed lenoz aro cut edon isara cut se onotse",
+    antes: [
+      "Dumbledore decía que este espejo no enseña tu cara,",
+      "sino lo que más desea tu corazón."
+    ],
+    boton: "Mirar en el espejo",
+    botonDesc: "a ver qué sale",
+    despues: [
+      "Me pongo delante y no sale ningún castillo.",
+      "Sales tú.",
+      "Te extraño en las cosas pequeñas:",
+      "en tu voz, en tu risa, en los ratos en los que no pasa nada.",
+      "Dumbledore también dijo que no conviene vivir de sueños.",
+      "Por eso no me quedo mirando el espejo: voy a buscarte."
+    ],
+    seguir: "Seguir",
+    seguirDesc: "volver al árbol"
   },
 
   /* Reparo: el encanto que arregla lo que se rompió. Detrás, el cielo va
@@ -971,6 +998,13 @@ const australisBtn = document.getElementById('spell-australis');
 const orchideousBtn = document.getElementById('spell-orchideous');
 const reparoFilaBtn = document.getElementById('spell-reparo');
 const pruebasFilaBtn = document.getElementById('spell-pruebas');
+const oesedFilaBtn = document.getElementById('spell-oesed');
+const oesedEl = document.getElementById('oesed');
+const oesedCanvas = document.getElementById('oesed-lienzo');
+const oesedCtx = oesedCanvas.getContext('2d');
+const oesedLineasEl = document.getElementById('oesed-lineas');
+const oesedBtn = document.getElementById('oesed-btn');
+const oesedSeguirBtn = document.getElementById('oesed-seguir');
 const reparoEl = document.getElementById('reparo');
 const reparoCanvas = document.getElementById('reparo-lienzo');
 const reparoCtx = reparoCanvas.getContext('2d');
@@ -1548,6 +1582,10 @@ function resize() {
   if (typeof prioriCanvas !== 'undefined' && priori.activo) {
     prioriCanvas.width = canvas.width;
     prioriCanvas.height = canvas.height;
+  }
+  if (typeof oesedCanvas !== 'undefined' && oesed.activo) {
+    oesedCanvas.width = canvas.width;
+    oesedCanvas.height = canvas.height;
   }
   if (typeof reparoCanvas !== 'undefined' && reparo.activo) {
     reparoCanvas.width = canvas.width;
@@ -2556,6 +2594,7 @@ function hechizosFila() {
     { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
+    { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
     { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
     { btn: pruebasFilaBtn, activo: () => !!(CONFIG.modoAcertijo && CONFIG.pruebasEntrada !== true && CONFIG.pruebas && CONFIG.pruebas.length) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
@@ -4571,6 +4610,451 @@ function cerrarPriori() {
     document.body.classList.remove('evocando');
     if (eraEntrada) seguirTrasElMapa();
   }, 'priori');
+}
+
+/* =====================================================================
+   ESPEJO DE OESED — lo que más desea el corazón
+   Un espejo alto con marco dorado en una sala a oscuras, con velas
+   flotando. Al principio sólo se ve a él, pálido y apartado a un lado.
+   Al mirar, el cristal se empaña y, cuando se aclara, ella está a su lado:
+   se dan la mano, el cristal se calienta y sube un corazón de luz.
+   ===================================================================== */
+const oesed = { activo: false, born: 0, lanzado: 0, polvo: [], velas: [], niebla: [], brillos: [], capa: null };
+
+/* Cada figura se pinta opaca en una capa aparte y luego se pega con su
+   transparencia: así brazos y cuerpo no se ven como piezas superpuestas */
+function figuraEnCapa(g, x, suelo, alto, color, alfa, ella, mano, brillo) {
+  const lado = Math.ceil(alto * 1.2);
+  if (!oesed.capa) oesed.capa = document.createElement('canvas');
+  const c = oesed.capa;
+  if (c.width < lado || c.height < lado) { c.width = c.height = lado; }
+  const cg = c.getContext('2d');
+  cg.setTransform(1, 0, 0, 1, 0, 0);
+  cg.clearRect(0, 0, c.width, c.height);
+  figuraOesed(cg, lado / 2, lado - alto * 0.05, alto, color, ella, mano);
+  g.save();
+  g.globalAlpha = alfa;
+  g.shadowColor = brillo;
+  g.shadowBlur = alto * 0.08;
+  g.drawImage(c, 0, 0, lado, lado, x - lado / 2, suelo - lado + alto * 0.05, lado, lado);
+  g.restore();
+}
+
+function abrirOesed() {
+  oesedCanvas.width = canvas.width;
+  oesedCanvas.height = canvas.height;
+  oesed.born = performance.now();
+  oesed.lanzado = 0;
+  oesed.polvo.length = 0;
+  for (let i = 0; i < (REDUCED ? 14 : 38); i++) {
+    oesed.polvo.push({ x: Math.random(), y: Math.random(), v: 0.012 + Math.random() * 0.03,
+                       r: 0.5 + Math.random() * 1.5, fase: Math.random() * TAU });
+  }
+  oesed.velas.length = 0;
+  const vertical = oesedCanvas.width / oesedCanvas.height < 0.9;
+  for (let i = 0; i < (vertical ? 6 : 9); i++) {
+    let x, y;
+    if (vertical) {
+      // en el móvil el texto ocupa todo el ancho: las velas, a los lados
+      const izq = i % 2 === 0;
+      x = izq ? 0.04 + Math.random() * 0.1 : 0.86 + Math.random() * 0.1;
+      y = 0.06 + (Math.floor(i / 2) / 3) * 0.36 + Math.random() * 0.05;
+    } else {
+      x = (i + 0.5) / 9 + (Math.random() - 0.5) * 0.06;
+      // las del centro van más abajo, para no quedar detrás del texto
+      y = Math.abs(x - 0.5) < 0.22 ? 0.27 + Math.random() * 0.05 : 0.06 + Math.random() * 0.22;
+    }
+    oesed.velas.push({ x, y,
+                       alto: 0.7 + Math.random() * 0.6, fase: Math.random() * TAU });
+  }
+  oesed.niebla.length = 0;
+  for (let i = 0; i < 14; i++) {
+    oesed.niebla.push({ a: Math.random() * TAU, r: 0.1 + Math.random() * 0.35, v: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5),
+                        tam: 0.25 + Math.random() * 0.3, y: 0.25 + Math.random() * 0.55 });
+  }
+  oesed.brillos.length = 0;
+  for (let i = 0; i < 26; i++) {
+    oesed.brillos.push({ x: 0.1 + Math.random() * 0.8, y: 0.15 + Math.random() * 0.75, fase: Math.random() * TAU, v: 1 + Math.random() * 2 });
+  }
+  oesed.activo = true;
+}
+
+/* Una persona de pie, de frente, hecha de luz. "ella" le pone pelo largo y
+   vestido; "mano" (-1 o 1) levanta un poco ese brazo hacia el otro. */
+function figuraOesed(g, x, suelo, alto, color, ella, mano) {
+  const a = alto;
+  g.fillStyle = color;
+  g.strokeStyle = color;
+  g.lineCap = 'round';
+
+  // piernas
+  g.lineWidth = a * 0.07;
+  for (const lado of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(x + lado * a * 0.06, suelo - a * 0.44);
+    g.lineTo(x + lado * a * 0.075, suelo - a * 0.02);
+    g.stroke();
+  }
+
+  // cuerpo: hombros, cintura y, en ella, la falda que se abre
+  g.beginPath();
+  g.moveTo(x - a * 0.17, suelo - a * 0.76);
+  g.quadraticCurveTo(x - a * 0.19, suelo - a * 0.62, x - a * 0.12, suelo - a * 0.5);
+  if (ella) {
+    g.quadraticCurveTo(x - a * 0.17, suelo - a * 0.34, x - a * 0.22, suelo - a * 0.22);
+    g.lineTo(x + a * 0.22, suelo - a * 0.22);
+    g.quadraticCurveTo(x + a * 0.17, suelo - a * 0.34, x + a * 0.12, suelo - a * 0.5);
+  } else {
+    g.lineTo(x - a * 0.13, suelo - a * 0.42);
+    g.lineTo(x + a * 0.13, suelo - a * 0.42);
+    g.lineTo(x + a * 0.12, suelo - a * 0.5);
+  }
+  g.quadraticCurveTo(x + a * 0.19, suelo - a * 0.62, x + a * 0.17, suelo - a * 0.76);
+  g.quadraticCurveTo(x, suelo - a * 0.81, x - a * 0.17, suelo - a * 0.76);
+  g.closePath();
+  g.fill();
+
+  // brazos: el de fuera cuelga; el de dentro se va hacia el otro
+  g.lineWidth = a * 0.055;
+  for (const lado of [-1, 1]) {
+    const haciaOtro = lado === mano;
+    g.beginPath();
+    g.moveTo(x + lado * a * 0.16, suelo - a * 0.74);
+    if (haciaOtro) g.quadraticCurveTo(x + lado * a * 0.24, suelo - a * 0.6, x + lado * a * 0.32, suelo - a * 0.5);
+    else g.quadraticCurveTo(x + lado * a * 0.22, suelo - a * 0.6, x + lado * a * 0.21, suelo - a * 0.44);
+    g.stroke();
+  }
+
+  // cuello y cabeza
+  g.beginPath();
+  g.rect(x - a * 0.035, suelo - a * 0.86, a * 0.07, a * 0.08);
+  g.fill();
+  g.beginPath();
+  g.arc(x, suelo - a * 0.92, a * 0.085, 0, TAU);
+  g.fill();
+
+  // el pelo de ella, largo hasta los hombros
+  if (ella) {
+    g.beginPath();
+    g.moveTo(x - a * 0.09, suelo - a * 0.95);
+    g.quadraticCurveTo(x - a * 0.14, suelo - a * 0.8, x - a * 0.12, suelo - a * 0.7);
+    g.lineTo(x + a * 0.12, suelo - a * 0.7);
+    g.quadraticCurveTo(x + a * 0.14, suelo - a * 0.8, x + a * 0.09, suelo - a * 0.95);
+    g.closePath();
+    g.fill();
+  }
+}
+
+/* El marco del espejo: un arco de medio punto, como el de la película */
+function trazarArco(g, cx, arriba, ancho, abajo) {
+  const r = ancho / 2;
+  g.beginPath();
+  g.moveTo(cx - r, abajo);
+  g.lineTo(cx - r, arriba + r);
+  g.arc(cx, arriba + r, r, Math.PI, 0);
+  g.lineTo(cx + r, abajo);
+  g.closePath();
+}
+
+function dibujarOesed(now) {
+  if (!oesed.activo) return;
+  const g = oesedCtx;
+  const W = oesedCanvas.width, H = oesedCanvas.height;
+  if (!W || !H) return;
+  const O = CONFIG.oesed || {};
+  const t = (now - oesed.born) / 1000;
+  const k = oesed.lanzado ? (now - oesed.lanzado) / 1000 : -1;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  // --- las velas que flotan en lo alto, como en el Gran Comedor ---
+  const u = Math.min(W, H) / 100;
+  for (const v of oesed.velas) {
+    const x = v.x * W, y = v.y * H + Math.sin(t * 0.7 + v.fase) * u * 0.8;
+    const alto = u * 3.2 * v.alto;
+    const halo = g.createRadialGradient(x, y - alto * 0.2, 0, x, y - alto * 0.2, u * 6);
+    halo.addColorStop(0, 'rgba(255, 214, 140, 0.28)');
+    halo.addColorStop(1, 'rgba(255, 214, 140, 0)');
+    g.fillStyle = halo;
+    g.fillRect(x - u * 6, y - alto * 0.2 - u * 6, u * 12, u * 12);
+    g.fillStyle = 'rgba(240, 228, 205, 0.75)';
+    g.fillRect(x - u * 0.45, y, u * 0.9, alto);
+    const llama = 1 + Math.sin(t * 9 + v.fase) * 0.12;
+    g.fillStyle = 'rgba(255, 220, 140, 0.95)';
+    g.beginPath();
+    g.ellipse(x, y - u * 0.7 * llama, u * 0.35, u * 0.75 * llama, 0, 0, TAU);
+    g.fill();
+  }
+
+  // --- polvo de luz ---
+  for (const m of oesed.polvo) {
+    const y = ((m.y - t * m.v) % 1 + 1) % 1;
+    const brillo = 0.2 + 0.5 * Math.abs(Math.sin(t * 1.3 + m.fase));
+    g.fillStyle = `rgba(245, 211, 107, ${brillo * 0.4})`;
+    g.beginPath();
+    g.arc(m.x * W, y * H, m.r * (H / 900) * 1.7, 0, TAU);
+    g.fill();
+  }
+
+  // --- el espejo: debajo del texto, apoyado en el suelo ---
+  const abajo = H * 0.95;
+  const alto = Math.min(H * 0.56, (W * 0.86) / 0.62);
+  const ancho = alto * 0.62;
+  const cx = W / 2, arriba = abajo - alto;
+  const marco = ancho * 0.085;
+  const entra = clamp(t / 1.6);   // el espejo aparece al abrir
+
+  g.save();
+  g.globalAlpha = entra;
+
+  // la luz del suelo delante del espejo
+  const suelo = g.createRadialGradient(cx, abajo, 0, cx, abajo, ancho * 1.2);
+  suelo.addColorStop(0, 'rgba(245, 211, 107, 0.22)');
+  suelo.addColorStop(1, 'rgba(245, 211, 107, 0)');
+  g.fillStyle = suelo;
+  g.save();
+  g.translate(cx, abajo);
+  g.scale(1, 0.18);
+  g.beginPath();
+  g.arc(0, 0, ancho * 1.2, 0, TAU);
+  g.fill();
+  g.restore();
+
+  // las patas en garra
+  g.fillStyle = '#8a6a2e';
+  for (const lado of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + lado * ancho * 0.42, abajo + marco * 0.15, marco * 0.9, marco * 0.45, 0, 0, TAU);
+    g.fill();
+  }
+
+  // el marco dorado
+  const oro = g.createLinearGradient(cx - ancho / 2, 0, cx + ancho / 2, 0);
+  oro.addColorStop(0, '#7a5a22');
+  oro.addColorStop(0.25, '#e9c46a');
+  oro.addColorStop(0.5, '#a07a32');
+  oro.addColorStop(0.75, '#f5d36b');
+  oro.addColorStop(1, '#6e4f1c');
+  g.fillStyle = oro;
+  g.shadowColor = 'rgba(245, 211, 107, 0.35)';
+  g.shadowBlur = u * 4;
+  trazarArco(g, cx, arriba, ancho, abajo);
+  g.fill();
+  g.shadowBlur = 0;
+
+  // un filete fino por dentro del marco
+  g.strokeStyle = 'rgba(255, 240, 200, 0.55)';
+  g.lineWidth = Math.max(1, marco * 0.08);
+  trazarArco(g, cx, arriba + marco * 0.55, ancho - marco * 1.1, abajo - marco * 0.55);
+  g.stroke();
+
+  // la inscripción, al revés, siguiendo el arco
+  const inscripcion = (O.inscripcion || '').toUpperCase();
+  if (inscripcion) {
+    const r = ancho / 2 - marco * 0.5;
+    const letra = marco * 0.5;
+    g.font = `600 ${letra}px "Cormorant Garamond", serif`;
+    g.fillStyle = 'rgba(60, 38, 14, 0.9)';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    const chars = [...inscripcion];
+    const paso = (letra * 0.66) / r;
+    const total = paso * (chars.length - 1);
+    chars.forEach((ch, i) => {
+      const ang = -Math.PI / 2 - total / 2 + i * paso;
+      g.save();
+      g.translate(cx + Math.cos(ang) * r, arriba + ancho / 2 + Math.sin(ang) * r);
+      g.rotate(ang + Math.PI / 2);
+      g.fillText(ch, 0, 0);
+      g.restore();
+    });
+  }
+
+  // --- el cristal ---
+  const ia = arriba + marco, ib = abajo - marco * 0.6, iw = ancho - marco * 2;
+  g.save();
+  trazarArco(g, cx, ia, iw, ib);
+  g.clip();
+
+  const ahora = k < 0 ? 0 : k;
+  const calor = clamp((ahora - 1.6) / 2.2);   // el cristal se calienta al aparecer ella
+  const cristal = g.createLinearGradient(0, ia, 0, ib);
+  cristal.addColorStop(0, rgbStr(mixRGB([28, 26, 52], [92, 52, 70], calor)));
+  cristal.addColorStop(1, rgbStr(mixRGB([12, 11, 26], [58, 32, 44], calor)));
+  g.fillStyle = cristal;
+  g.fillRect(cx - iw / 2, ia, iw, ib - ia);
+
+  // un brillo que cruza el cristal en diagonal
+  const barrido = ((t * 0.08) % 1.6) - 0.3;
+  const reflejo = g.createLinearGradient(cx - iw / 2, ia, cx + iw / 2, ib);
+  reflejo.addColorStop(clamp(barrido - 0.12), 'rgba(255, 255, 255, 0)');
+  reflejo.addColorStop(clamp(barrido), 'rgba(255, 255, 255, 0.07)');
+  reflejo.addColorStop(clamp(barrido + 0.12), 'rgba(255, 255, 255, 0)');
+  g.fillStyle = reflejo;
+  g.fillRect(cx - iw / 2, ia, iw, ib - ia);
+
+  // las figuras dentro del cristal
+  const pie = ib - iw * 0.06;
+  const figura = (ib - ia) * 0.5;
+  const ellaA = clamp((ahora - 1.3) / 1.8);
+  const juntos = clamp((ahora - 2.6) / 1.2);
+  const flota = Math.sin(t * 1.1) * figura * 0.008;
+  // él está apartado a un lado desde el principio: el hueco es el de ella
+  const elX = cx + iw * 0.26;
+  const ellaX = cx - iw * 0.26;
+
+  const colorEl = rgbStr(mixRGB([196, 204, 232], [246, 224, 200], calor));
+  figuraEnCapa(g, elX, pie + flota, figura, colorEl, 0.45 + 0.35 * calor, false, juntos > 0.5 ? -1 : 0, 'rgba(200, 210, 255, 0.5)');
+  if (ellaA > 0) {
+    figuraEnCapa(g, ellaX, pie - flota, figura * 0.94, 'rgb(255, 214, 196)', 0.82 * ellaA, true, juntos > 0.5 ? 1 : 0, 'rgba(255, 200, 180, 0.7)');
+  }
+
+  // el corazón de luz que sube entre los dos
+  const sube = clamp((ahora - 3.4) / 2.2);
+  if (sube > 0) {
+    const hx = cx, hy = pie - figura * (1.05 + 0.25 * sube);
+    const late = 1 + Math.sin(t * 3.2) * 0.07;
+    const tam = figura * 0.11 * late * (0.6 + 0.4 * sube);
+    const halo = g.createRadialGradient(hx, hy, 0, hx, hy, tam * 3);
+    halo.addColorStop(0, `rgba(255, 190, 200, ${0.5 * sube})`);
+    halo.addColorStop(1, 'rgba(255, 190, 200, 0)');
+    g.fillStyle = halo;
+    g.fillRect(hx - tam * 3, hy - tam * 3, tam * 6, tam * 6);
+    g.fillStyle = `rgba(255, 120, 140, ${0.9 * sube})`;
+    g.beginPath();
+    g.moveTo(hx, hy + tam * 0.9);
+    g.bezierCurveTo(hx - tam * 1.6, hy - tam * 0.1, hx - tam * 0.7, hy - tam * 1.3, hx, hy - tam * 0.45);
+    g.bezierCurveTo(hx + tam * 0.7, hy - tam * 1.3, hx + tam * 1.6, hy - tam * 0.1, hx, hy + tam * 0.9);
+    g.fill();
+  }
+
+  // destellos dentro del cristal cuando ya están juntos
+  if (calor > 0) {
+    for (const b of oesed.brillos) {
+      const a = calor * (0.3 + 0.7 * Math.abs(Math.sin(t * b.v + b.fase)));
+      g.fillStyle = `rgba(255, 236, 190, ${a * 0.55})`;
+      g.beginPath();
+      g.arc(cx - iw / 2 + b.x * iw, ia + b.y * (ib - ia), u * 0.35, 0, TAU);
+      g.fill();
+    }
+  }
+
+  // la niebla: sube al mirar, gira y se va abriendo
+  const niebla = k < 0 ? 0 : Math.sin(clamp(k / 3) * Math.PI);
+  if (niebla > 0.01) {
+    for (const n of oesed.niebla) {
+      const ang = n.a + k * n.v;
+      const nx = cx + Math.cos(ang) * n.r * iw;
+      const ny = ia + n.y * (ib - ia) + Math.sin(ang) * n.r * iw * 0.4;
+      const nr = n.tam * iw;
+      const gr = g.createRadialGradient(nx, ny, 0, nx, ny, nr);
+      gr.addColorStop(0, `rgba(226, 222, 245, ${0.42 * niebla})`);
+      gr.addColorStop(1, 'rgba(226, 222, 245, 0)');
+      g.fillStyle = gr;
+      g.fillRect(nx - nr, ny - nr, nr * 2, nr * 2);
+    }
+  }
+  g.restore();   // fin del recorte del cristal
+  g.restore();   // fin de la entrada del espejo
+}
+
+function escribirLineaOesed(texto) {
+  // como mucho tres frases a la vez: la más vieja se desvanece para no tapar el espejo
+  const vivas = [...oesedLineasEl.children].filter(p => !p.classList.contains('out'));
+  if (vivas.length >= 3) {
+    const vieja = vivas[0];
+    vieja.classList.add('out');
+    later(700, () => vieja.remove(), 'oesed');
+  }
+  // las letras van agrupadas por palabra para que ninguna se parta al saltar de línea
+  const p = el('p', 'v-line');
+  let i = 0;
+  texto.split(' ').forEach((palabra, n) => {
+    if (n > 0) {
+      const hueco = el('span', 'ch', ' ');
+      hueco.style.setProperty('--i', i++);
+      p.appendChild(hueco);
+    }
+    const caja = el('span', 'palabra');
+    for (const ch of graphemes(palabra)) {
+      const span = el('span', 'ch', ch);
+      span.style.setProperty('--i', i++);
+      caja.appendChild(span);
+    }
+    p.appendChild(caja);
+  });
+  oesedLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+function mostrarOesed() {
+  const O = CONFIG.oesed;
+  if (!O || !O.activo || oesed.activo) return false;
+  document.body.classList.add('reflejando');
+  abrirOesed();
+  oesedLineasEl.replaceChildren();
+  oesedBtn.hidden = oesedSeguirBtn.hidden = true;
+  oesedBtn.classList.remove('in');
+  oesedSeguirBtn.classList.remove('in');
+  fillPlate(oesedBtn, { runa: "❂", nombre: O.boton || 'Mirar en el espejo', desc: O.botonDesc || '' });
+  fillPlate(oesedSeguirBtn, { runa: "❧", nombre: O.seguir || 'Seguir', desc: O.seguirDesc || '' });
+  oesedEl.hidden = false;
+  oesedEl.classList.remove('out');
+  void oesedEl.offsetWidth;
+  oesedEl.classList.add('show');
+
+  let t = 1100;
+  for (const texto of (O.antes || [])) {
+    later(t, () => escribirLineaOesed(texto), 'oesed');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 400, () => {
+    oesedBtn.hidden = false;
+    void oesedBtn.offsetWidth;
+    oesedBtn.classList.add('in');
+  }, 'oesed');
+  return true;
+}
+
+/* Al mirar: se empaña el cristal, aparece ella y llegan las frases */
+function lanzarOesed() {
+  if (!oesed.activo || oesed.lanzado) return;
+  const O = CONFIG.oesed || {};
+  oesed.lanzado = performance.now();
+  castFxAt(oesedBtn, { sparks: 26, r1: 240, dur: 900 });
+  oesedBtn.classList.remove('in');
+  later(500, () => { oesedBtn.hidden = true; }, 'oesed');
+  for (const linea of oesedLineasEl.children) linea.classList.add('out');
+  later(1200, () => oesedLineasEl.replaceChildren(), 'oesed');
+
+  let t = 4200;
+  for (const texto of (O.despues || [])) {
+    later(t, () => escribirLineaOesed(texto), 'oesed');
+    t += 900 + graphemes(texto).length * 46;
+  }
+  later(t + 600, () => {
+    oesedSeguirBtn.hidden = false;
+    void oesedSeguirBtn.offsetWidth;
+    oesedSeguirBtn.classList.add('in');
+  }, 'oesed');
+}
+
+function cerrarOesed() {
+  if (!oesed.activo) return;
+  cancelTasks('oesed');
+  oesedSeguirBtn.classList.remove('in');
+  oesedEl.classList.remove('show');
+  oesedEl.classList.add('out');
+  later(950, () => {
+    oesed.activo = false;
+    oesedEl.hidden = true;
+    oesedEl.classList.remove('out');
+    oesedLineasEl.replaceChildren();
+    oesedBtn.hidden = oesedSeguirBtn.hidden = true;
+    document.body.classList.remove('reflejando');
+  }, 'oesed');
 }
 
 /* =====================================================================
@@ -6663,6 +7147,7 @@ function buildExtras() {
   fillRune(prioriFilaBtn, HX.priori);
   fillRune(reparoFilaBtn, HX.reparo);
   fillRune(pruebasFilaBtn, HX.pruebas);
+  fillRune(oesedFilaBtn, HX.oesed);
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
@@ -6707,6 +7192,9 @@ function bindExtras() {
   reparoSeguirBtn.addEventListener('click', cerrarReparo);
   reparoFilaBtn.addEventListener('click', () => mostrarReparo());
   pruebasFilaBtn.addEventListener('click', () => mostrarPruebas());
+  oesedFilaBtn.addEventListener('click', () => mostrarOesed());
+  oesedBtn.addEventListener('click', lanzarOesed);
+  oesedSeguirBtn.addEventListener('click', cerrarOesed);
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
@@ -6969,7 +7457,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -6987,6 +7475,11 @@ function resetExtras() {
   cancelTasks('expel');
   cancelTasks('priori');
   cancelTasks('rep');
+  cancelTasks('oesed');
+  oesed.activo = false;
+  oesedEl.hidden = true;
+  oesedEl.classList.remove('show', 'out');
+  document.body.classList.remove('reflejando');
   reparo.activo = reparo.entrada = false;
   reparoEl.hidden = true;
   reparoEl.classList.remove('show', 'out');
@@ -7816,6 +8309,7 @@ function frame(now) {
   dibujarWingardium(now);
   dibujarExpel(now);
   dibujarPriori(now);
+  dibujarOesed(now);
   dibujarReparo(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;

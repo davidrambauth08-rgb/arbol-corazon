@@ -1628,6 +1628,10 @@ body.reparando #letter,
 body.reparando #spellbook,
 body.reparando #clock,
 body.reparando #music,
+body.reflejando #letter,
+body.reflejando #spellbook,
+body.reflejando #clock,
+body.reflejando #music,
 body.probando #letter,
 body.probando #spellbook,
 body.probando #clock {
@@ -2637,6 +2641,68 @@ body.probando #clock {
 }
 #priori-btn, #priori-seguir { width: auto; justify-content: center; }
 #priori-btn .plate-text, #priori-seguir .plate-text { align-items: center; }
+
+/* =====================================================================
+   ESPEJO DE OESED — lo que más desea el corazón
+   ===================================================================== */
+#oesed {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  background: radial-gradient(110% 75% at 50% 70%, #241a3a 0%, #120d24 55%, #06050d 100%);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+#oesed[hidden] { display: none; }
+#oesed.show { opacity: 1; }
+#oesed.out { opacity: 0; transition-duration: 0.9s; }
+#oesed-lienzo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#oesed-texto {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 760px;
+  padding: calc(max(22px, env(safe-area-inset-top)) + 16px) 22px 0;
+  text-align: center;
+}
+#oesed-lineas { display: flex; flex-direction: column; gap: 5px; }
+#oesed-lineas .v-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(17px, 4.6vw, 25px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.22;
+  color: var(--magic-white);
+  text-shadow: 0 2px 26px rgba(6, 8, 18, 0.95), 0 0 46px rgba(245, 211, 107, 0.32);
+}
+#oesed-lineas .ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateY(6px);
+  transition: opacity 0.55s ease, filter 0.55s ease, transform 0.55s ease;
+  transition-delay: calc(var(--i) * 42ms);
+}
+#oesed-lineas .palabra { display: inline-block; white-space: nowrap; }
+#oesed-lineas .v-line.in .ch { opacity: 1; filter: blur(0); transform: none; }
+#oesed-lineas .v-line.out {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(-8px);
+  transition: opacity 0.7s ease, filter 0.7s ease, transform 0.7s ease;
+}
+#oesed-btn, #oesed-seguir { width: auto; justify-content: center; }
+#oesed-btn .plate-text, #oesed-seguir .plate-text { align-items: center; }
 
 /* =====================================================================
    REPARO — perdón al cielo, con el fondo cambiando detrás
