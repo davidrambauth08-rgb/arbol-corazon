@@ -243,7 +243,8 @@ const CONFIG = {
       "Te extraño en las cosas pequeñas:",
       "en tu voz, en tu risa, en los ratos en los que no pasa nada.",
       "Dumbledore también dijo que no conviene vivir de sueños.",
-      "Por eso no me quedo mirando el espejo: voy a buscarte."
+      "Por eso no me quedo mirando el espejo:",
+      "ven a buscarme."
     ],
     seguir: "Seguir",
     seguirDesc: "volver al árbol"
@@ -4614,36 +4615,23 @@ function cerrarPriori() {
 
 /* =====================================================================
    ESPEJO DE OESED — lo que más desea el corazón
-   Un espejo alto con marco dorado en una sala a oscuras, con velas
-   flotando. Al principio sólo se ve a él, pálido y apartado a un lado.
-   Al mirar, el cristal se empaña y, cuando se aclara, ella está a su lado:
-   se dan la mano, el cristal se calienta y sube un corazón de luz.
+   Una sala a oscuras con velas flotando, ventanales con luz de luna y un
+   haz de luz que cae sobre el espejo. El espejo tiene marco dorado con
+   relieve, cuentas, un remate con un corazón, columnas a los lados y una
+   peana con garras; el suelo pulido lo refleja. Dentro del cristal sólo
+   está él, apartado a un lado. Al mirar, el cristal se empaña y, cuando
+   se aclara, ella está a su lado: las manos se buscan, las cabezas se
+   inclinan una hacia la otra, el cristal se calienta, sube un corazón y
+   se escapan chispas del espejo.
    ===================================================================== */
-const oesed = { activo: false, born: 0, lanzado: 0, polvo: [], velas: [], niebla: [], brillos: [], capa: null };
-
-/* Cada figura se pinta opaca en una capa aparte y luego se pega con su
-   transparencia: así brazos y cuerpo no se ven como piezas superpuestas */
-function figuraEnCapa(g, x, suelo, alto, color, alfa, ella, mano, brillo) {
-  const lado = Math.ceil(alto * 1.2);
-  if (!oesed.capa) oesed.capa = document.createElement('canvas');
-  const c = oesed.capa;
-  if (c.width < lado || c.height < lado) { c.width = c.height = lado; }
-  const cg = c.getContext('2d');
-  cg.setTransform(1, 0, 0, 1, 0, 0);
-  cg.clearRect(0, 0, c.width, c.height);
-  figuraOesed(cg, lado / 2, lado - alto * 0.05, alto, color, ella, mano);
-  g.save();
-  g.globalAlpha = alfa;
-  g.shadowColor = brillo;
-  g.shadowBlur = alto * 0.08;
-  g.drawImage(c, 0, 0, lado, lado, x - lado / 2, suelo - lado + alto * 0.05, lado, lado);
-  g.restore();
-}
+const oesed = { activo: false, born: 0, lanzado: 0, ultimo: 0, polvo: [], velas: [], niebla: [], brillos: [],
+                chispas: [], capa: null, reflejo: null };
 
 function abrirOesed() {
   oesedCanvas.width = canvas.width;
   oesedCanvas.height = canvas.height;
   oesed.born = performance.now();
+  oesed.ultimo = 0;
   oesed.lanzado = 0;
   oesed.polvo.length = 0;
   for (let i = 0; i < (REDUCED ? 14 : 38); i++) {
@@ -4664,85 +4652,154 @@ function abrirOesed() {
       // las del centro van más abajo, para no quedar detrás del texto
       y = Math.abs(x - 0.5) < 0.22 ? 0.27 + Math.random() * 0.05 : 0.06 + Math.random() * 0.22;
     }
-    oesed.velas.push({ x, y,
-                       alto: 0.7 + Math.random() * 0.6, fase: Math.random() * TAU });
+    oesed.velas.push({ x, y, alto: 0.7 + Math.random() * 0.6, fase: Math.random() * TAU });
   }
   oesed.niebla.length = 0;
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 16; i++) {
     oesed.niebla.push({ a: Math.random() * TAU, r: 0.1 + Math.random() * 0.35, v: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5),
-                        tam: 0.25 + Math.random() * 0.3, y: 0.25 + Math.random() * 0.55 });
+                        tam: 0.25 + Math.random() * 0.3, y: 0.2 + Math.random() * 0.6 });
   }
   oesed.brillos.length = 0;
   for (let i = 0; i < 26; i++) {
     oesed.brillos.push({ x: 0.1 + Math.random() * 0.8, y: 0.15 + Math.random() * 0.75, fase: Math.random() * TAU, v: 1 + Math.random() * 2 });
   }
+  oesed.chispas.length = 0;
   oesed.activo = true;
 }
 
-/* Una persona de pie, de frente, hecha de luz. "ella" le pone pelo largo y
-   vestido; "mano" (-1 o 1) levanta un poco ese brazo hacia el otro. */
-function figuraOesed(g, x, suelo, alto, color, ella, mano) {
-  const a = alto;
-  g.fillStyle = color;
-  g.strokeStyle = color;
-  g.lineCap = 'round';
+/* Una persona de pie, de frente, en silueta. Las coordenadas van en
+   fracciones de su altura "a", con el 0 en los pies y hacia arriba.
+   op.inclina (-1…1) ladea la cabeza; op.mano = { x, y, k } lleva la mano
+   de dentro hasta ese punto (k: cuánto ha llegado); op.t mece pelo y falda. */
+function figuraOesed(g, x, suelo, a, ella, op) {
+  const P = (px, py) => [x + px * a, suelo - py * a];
+  const M = (px, py) => g.moveTo(...P(px, py));
+  const L = (px, py) => g.lineTo(...P(px, py));
+  const Q = (cx, cy, px, py) => g.quadraticCurveTo(...P(cx, cy), ...P(px, py));
+  const t = op.t || 0;
+  const hx = (op.inclina || 0) * 0.025;
 
-  // piernas
-  g.lineWidth = a * 0.07;
-  for (const lado of [-1, 1]) {
-    g.beginPath();
-    g.moveTo(x + lado * a * 0.06, suelo - a * 0.44);
-    g.lineTo(x + lado * a * 0.075, suelo - a * 0.02);
-    g.stroke();
-  }
-
-  // cuerpo: hombros, cintura y, en ella, la falda que se abre
   g.beginPath();
-  g.moveTo(x - a * 0.17, suelo - a * 0.76);
-  g.quadraticCurveTo(x - a * 0.19, suelo - a * 0.62, x - a * 0.12, suelo - a * 0.5);
   if (ella) {
-    g.quadraticCurveTo(x - a * 0.17, suelo - a * 0.34, x - a * 0.22, suelo - a * 0.22);
-    g.lineTo(x + a * 0.22, suelo - a * 0.22);
-    g.quadraticCurveTo(x + a * 0.17, suelo - a * 0.34, x + a * 0.12, suelo - a * 0.5);
-  } else {
-    g.lineTo(x - a * 0.13, suelo - a * 0.42);
-    g.lineTo(x + a * 0.13, suelo - a * 0.42);
-    g.lineTo(x + a * 0.12, suelo - a * 0.5);
-  }
-  g.quadraticCurveTo(x + a * 0.19, suelo - a * 0.62, x + a * 0.17, suelo - a * 0.76);
-  g.quadraticCurveTo(x, suelo - a * 0.81, x - a * 0.17, suelo - a * 0.76);
-  g.closePath();
-  g.fill();
-
-  // brazos: el de fuera cuelga; el de dentro se va hacia el otro
-  g.lineWidth = a * 0.055;
-  for (const lado of [-1, 1]) {
-    const haciaOtro = lado === mano;
-    g.beginPath();
-    g.moveTo(x + lado * a * 0.16, suelo - a * 0.74);
-    if (haciaOtro) g.quadraticCurveTo(x + lado * a * 0.24, suelo - a * 0.6, x + lado * a * 0.32, suelo - a * 0.5);
-    else g.quadraticCurveTo(x + lado * a * 0.22, suelo - a * 0.6, x + lado * a * 0.21, suelo - a * 0.44);
-    g.stroke();
-  }
-
-  // cuello y cabeza
-  g.beginPath();
-  g.rect(x - a * 0.035, suelo - a * 0.86, a * 0.07, a * 0.08);
-  g.fill();
-  g.beginPath();
-  g.arc(x, suelo - a * 0.92, a * 0.085, 0, TAU);
-  g.fill();
-
-  // el pelo de ella, largo hasta los hombros
-  if (ella) {
-    g.beginPath();
-    g.moveTo(x - a * 0.09, suelo - a * 0.95);
-    g.quadraticCurveTo(x - a * 0.14, suelo - a * 0.8, x - a * 0.12, suelo - a * 0.7);
-    g.lineTo(x + a * 0.12, suelo - a * 0.7);
-    g.quadraticCurveTo(x + a * 0.14, suelo - a * 0.8, x + a * 0.09, suelo - a * 0.95);
+    const vuelo = Math.sin(t * 1.3) * 0.012;   // la falda se mece un poco
+    M(-0.028, 0.82); L(-0.028, 0.785);
+    Q(-0.12, 0.785, -0.135, 0.75);
+    Q(-0.125, 0.64, -0.082, 0.56);
+    Q(-0.16 + vuelo, 0.38, -0.235 + vuelo, 0.2);
+    Q(-0.1 + vuelo * 0.5, 0.235, 0, 0.205);
+    Q(0.1 + vuelo * 0.5, 0.175, 0.235 + vuelo, 0.2);
+    Q(0.16 + vuelo, 0.38, 0.082, 0.56);
+    Q(0.125, 0.64, 0.135, 0.75);
+    Q(0.12, 0.785, 0.028, 0.785);
+    L(0.028, 0.82);
     g.closePath();
     g.fill();
+    // piernas y pies bajo la falda
+    g.lineCap = 'round';
+    g.lineWidth = a * 0.042;
+    for (const lado of [-1, 1]) {
+      g.beginPath(); M(lado * 0.052, 0.21); L(lado * 0.046, 0.025); g.stroke();
+      g.beginPath(); g.ellipse(...P(lado * 0.055, 0.012), a * 0.032, a * 0.014, 0, 0, TAU); g.fill();
+    }
+    // el pelo, largo y suelto por detrás de los hombros
+    const mece = Math.sin(t * 0.9) * 0.01;
+    g.beginPath();
+    M(hx - 0.074, 0.92);
+    Q(hx - 0.115, 0.79, hx - 0.105 + mece, 0.655);
+    Q(hx - 0.07, 0.63, hx - 0.045, 0.7);
+    L(hx + 0.045, 0.7);
+    Q(hx + 0.07, 0.63, hx + 0.105 + mece, 0.655);
+    Q(hx + 0.115, 0.79, hx + 0.074, 0.92);
+    Q(hx, 1.03, hx - 0.074, 0.92);
+    g.fill();
+    g.beginPath();
+    g.ellipse(...P(hx, 0.9), a * 0.067, a * 0.08, (op.inclina || 0) * 0.15, 0, TAU);
+    g.fill();
+  } else {
+    M(-0.03, 0.835); L(-0.03, 0.8);
+    Q(-0.15, 0.8, -0.165, 0.765);
+    Q(-0.172, 0.62, -0.13, 0.47);
+    L(-0.135, 0.42);
+    Q(-0.122, 0.2, -0.096, 0.03);
+    Q(-0.1, 0, -0.062, 0);
+    L(-0.034, 0);
+    Q(-0.03, 0.2, -0.012, 0.4);
+    L(0.012, 0.4);
+    Q(0.03, 0.2, 0.034, 0);
+    L(0.062, 0);
+    Q(0.1, 0, 0.096, 0.03);
+    Q(0.122, 0.2, 0.135, 0.42);
+    L(0.13, 0.47);
+    Q(0.172, 0.62, 0.165, 0.765);
+    Q(0.15, 0.8, 0.03, 0.8);
+    L(0.03, 0.835);
+    g.closePath();
+    g.fill();
+    // cabeza con el pelo corto un poco más ancho arriba
+    g.beginPath();
+    g.ellipse(...P(hx, 0.915), a * 0.072, a * 0.086, (op.inclina || 0) * 0.15, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.ellipse(...P(hx, 0.93), a * 0.073, a * 0.07, (op.inclina || 0) * 0.15, Math.PI, TAU);
+    g.fill();
   }
+
+  // brazos: el de fuera cuelga; el de dentro va buscando la mano del otro
+  const hombroY = ella ? 0.745 : 0.76, hombroX = ella ? 0.125 : 0.15;
+  g.lineCap = 'round';
+  for (const lado of [-1, 1]) {
+    const hombro = P(lado * hombroX, hombroY);
+    let codo = P(lado * (hombroX + 0.05), 0.6);
+    let mano = P(lado * (hombroX + 0.045), 0.45);
+    const m = op.mano;
+    if (m && Math.sign(m.x - x) === lado && m.k > 0) {
+      const k = m.k * m.k * (3 - 2 * m.k);
+      mano = [lerp(mano[0], m.x, k), lerp(mano[1], m.y, k)];
+      codo = [lerp(codo[0], (hombro[0] + mano[0]) / 2, k), lerp(codo[1], (hombro[1] + mano[1]) / 2 + a * 0.06, k)];
+    }
+    g.lineWidth = a * (ella ? 0.046 : 0.056);
+    g.beginPath();
+    g.moveTo(...hombro);
+    g.quadraticCurveTo(...codo, ...mano);
+    g.stroke();
+    g.beginPath();
+    g.arc(mano[0], mano[1], a * 0.028, 0, TAU);
+    g.fill();
+  }
+}
+
+/* Cada figura se pinta opaca en una capa aparte, se le da volumen con un
+   degradado y luego se pega con su transparencia y su halo */
+function figuraEnCapa(g, x, suelo, alto, colores, alfa, ella, op, brillo) {
+  const lado = Math.ceil(alto * 1.3);
+  if (!oesed.capa) oesed.capa = document.createElement('canvas');
+  const c = oesed.capa;
+  if (c.width < lado || c.height < lado) { c.width = c.height = lado; }
+  const cg = c.getContext('2d');
+  cg.setTransform(1, 0, 0, 1, 0, 0);
+  cg.globalCompositeOperation = 'source-over';
+  cg.clearRect(0, 0, c.width, c.height);
+  const bx = lado / 2, by = lado - alto * 0.08;
+  const dx = x - bx, dy = suelo - by;
+  const opLocal = Object.assign({}, op, op.mano ? { mano: { x: op.mano.x - dx, y: op.mano.y - dy, k: op.mano.k } } : {});
+  cg.fillStyle = cg.strokeStyle = rgbStr(colores[0]);
+  figuraOesed(cg, bx, by, alto, ella, opLocal);
+  // volumen: más luz arriba (la luz cae desde lo alto) y un tono más hondo abajo
+  cg.globalCompositeOperation = 'source-atop';
+  const vol = cg.createLinearGradient(0, by - alto, 0, by);
+  vol.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+  vol.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+  vol.addColorStop(1, rgbStr(colores[1], 0.55));
+  cg.fillStyle = vol;
+  cg.fillRect(0, 0, lado, lado);
+  cg.globalCompositeOperation = 'source-over';
+
+  g.save();
+  g.globalAlpha = alfa;
+  g.shadowColor = brillo;
+  g.shadowBlur = alto * 0.09;
+  g.drawImage(c, 0, 0, lado, lado, dx, dy, lado, lado);
+  g.restore();
 }
 
 /* El marco del espejo: un arco de medio punto, como el de la película */
@@ -4756,34 +4813,267 @@ function trazarArco(g, cx, arriba, ancho, abajo) {
   g.closePath();
 }
 
+function corazonOesed(g, x, y, tam) {
+  g.beginPath();
+  g.moveTo(x, y + tam * 0.9);
+  g.bezierCurveTo(x - tam * 1.6, y - tam * 0.1, x - tam * 0.7, y - tam * 1.3, x, y - tam * 0.45);
+  g.bezierCurveTo(x + tam * 0.7, y - tam * 1.3, x + tam * 1.6, y - tam * 0.1, x, y + tam * 0.9);
+  g.closePath();
+}
+
+function oroOesed(g, x0, x1) {
+  const oro = g.createLinearGradient(x0, 0, x1, 0);
+  oro.addColorStop(0, '#6e4f1c');
+  oro.addColorStop(0.18, '#e9c46a');
+  oro.addColorStop(0.42, '#9c7530');
+  oro.addColorStop(0.62, '#f7dc85');
+  oro.addColorStop(0.82, '#b88b3a');
+  oro.addColorStop(1, '#5e4216');
+  return oro;
+}
+
+/* El espejo entero (sin el cristal): columnas, peana, garras, marco y remate */
+function marcoOesed(g, E, u) {
+  const { cx, arriba, ancho, abajo, marco, suelo } = E;
+  const r = ancho / 2;
+
+  // columnas a los lados, con su bola en lo alto
+  const colAncho = marco * 0.5;
+  for (const lado of [-1, 1]) {
+    const colX = cx + lado * (r + marco * 0.62);
+    const colArriba = arriba + r * 0.55;
+    g.fillStyle = oroOesed(g, colX - colAncho / 2, colX + colAncho / 2);
+    g.fillRect(colX - colAncho / 2, colArriba, colAncho, abajo - colArriba);
+    g.strokeStyle = 'rgba(60, 40, 10, 0.45)';
+    g.lineWidth = Math.max(1, colAncho * 0.08);
+    g.beginPath();
+    g.moveTo(colX, colArriba + marco * 0.4);
+    g.lineTo(colX, abajo - marco * 0.4);
+    g.stroke();
+    const bola = g.createRadialGradient(colX - colAncho * 0.25, colArriba - colAncho * 0.85, 0, colX, colArriba - colAncho * 0.6, colAncho);
+    bola.addColorStop(0, '#fff1c4');
+    bola.addColorStop(0.5, '#d9ad55');
+    bola.addColorStop(1, '#6e4f1c');
+    g.fillStyle = bola;
+    g.beginPath();
+    g.arc(colX, colArriba - colAncho * 0.6, colAncho * 0.75, 0, TAU);
+    g.fill();
+  }
+
+  // la peana y sus garras
+  const peanaX0 = cx - r - marco * 1.1, peanaX1 = cx + r + marco * 1.1;
+  const peanaH = marco * 0.9;
+  g.fillStyle = oroOesed(g, peanaX0, peanaX1);
+  g.fillRect(peanaX0, abajo, peanaX1 - peanaX0, peanaH);
+  g.fillStyle = 'rgba(255, 240, 200, 0.45)';
+  g.fillRect(peanaX0, abajo, peanaX1 - peanaX0, Math.max(1, peanaH * 0.12));
+  g.fillStyle = 'rgba(40, 26, 8, 0.4)';
+  g.fillRect(peanaX0, abajo + peanaH * 0.88, peanaX1 - peanaX0, peanaH * 0.12);
+  // garras: un tobillo que baja de la peana y tres dedos abiertos en el suelo
+  const gm = marco * 1.35;
+  for (const lado of [-1, 1]) {
+    const gx = lado < 0 ? peanaX0 + gm * 0.45 : peanaX1 - gm * 0.45;
+    g.fillStyle = oroOesed(g, gx - gm * 0.7, gx + gm * 0.7);
+    g.beginPath();
+    g.moveTo(gx - gm * 0.3, abajo + peanaH);
+    g.quadraticCurveTo(gx - gm * 0.42, suelo - gm * 0.15, gx - gm * 0.62, suelo);
+    for (let d = 0; d < 3; d++) {
+      const dx = gx - gm * 0.62 + d * gm * 0.413;
+      g.quadraticCurveTo(dx + gm * 0.2, suelo - gm * 0.3, dx + gm * 0.413, suelo);
+    }
+    g.quadraticCurveTo(gx + gm * 0.42, suelo - gm * 0.15, gx + gm * 0.3, abajo + peanaH);
+    g.closePath();
+    g.fill();
+    g.fillStyle = 'rgba(255, 240, 200, 0.4)';
+    g.beginPath();
+    g.ellipse(gx - gm * 0.1, abajo + peanaH + gm * 0.08, gm * 0.08, gm * 0.12, 0, 0, TAU);
+    g.fill();
+  }
+
+  // el marco: oro con relieve
+  g.save();
+  g.shadowColor = 'rgba(245, 211, 107, 0.4)';
+  g.shadowBlur = u * 4;
+  g.fillStyle = oroOesed(g, cx - r, cx + r);
+  trazarArco(g, cx, arriba, ancho, abajo);
+  g.fill();
+  g.restore();
+  // luz de arriba sobre el oro
+  g.save();
+  trazarArco(g, cx, arriba, ancho, abajo);
+  g.clip();
+  const luz = g.createLinearGradient(0, arriba, 0, abajo);
+  luz.addColorStop(0, 'rgba(255, 244, 210, 0.35)');
+  luz.addColorStop(0.45, 'rgba(255, 244, 210, 0)');
+  luz.addColorStop(1, 'rgba(40, 24, 6, 0.3)');
+  g.fillStyle = luz;
+  g.fillRect(cx - r, arriba, ancho, abajo - arriba);
+  g.restore();
+  // filos: oscuro por fuera, brillo justo dentro, sombra hacia el cristal
+  g.lineWidth = Math.max(1, marco * 0.1);
+  g.strokeStyle = 'rgba(50, 32, 8, 0.7)';
+  trazarArco(g, cx, arriba, ancho, abajo);
+  g.stroke();
+  g.lineWidth = Math.max(1, marco * 0.06);
+  g.strokeStyle = 'rgba(255, 242, 205, 0.65)';
+  trazarArco(g, cx, arriba + marco * 0.12, ancho - marco * 0.24, abajo);
+  g.stroke();
+  g.strokeStyle = 'rgba(255, 240, 200, 0.5)';
+  g.lineWidth = Math.max(1, marco * 0.05);
+  trazarArco(g, cx, arriba + marco * 0.78, ancho - marco * 1.56, abajo);
+  g.stroke();
+
+  // cuentas doradas a lo largo del borde de fuera
+  const rc = r - marco * 0.16;
+  const cuenta = Math.max(1.2, marco * 0.075);
+  const pinta = (px, py) => {
+    g.fillStyle = 'rgba(70, 46, 12, 0.6)';
+    g.beginPath(); g.arc(px + cuenta * 0.3, py + cuenta * 0.3, cuenta, 0, TAU); g.fill();
+    g.fillStyle = '#ffe8a8';
+    g.beginPath(); g.arc(px, py, cuenta, 0, TAU); g.fill();
+  };
+  const nArco = Math.max(10, Math.round((Math.PI * rc) / (cuenta * 4.2)));
+  for (let i = 0; i <= nArco; i++) {
+    const ang = Math.PI + (i / nArco) * Math.PI;
+    pinta(cx + Math.cos(ang) * rc, arriba + r + Math.sin(ang) * rc);
+  }
+  const nLado = Math.max(4, Math.round((abajo - arriba - r) / (cuenta * 4.2)));
+  for (let i = 1; i <= nLado; i++) {
+    const py = arriba + r + (i / nLado) * (abajo - arriba - r - cuenta * 2);
+    pinta(cx - rc, py);
+    pinta(cx + rc, py);
+  }
+
+  // la inscripción, al revés, siguiendo el arco
+  const O = CONFIG.oesed || {};
+  const inscripcion = (O.inscripcion || '').toUpperCase();
+  if (inscripcion) {
+    const ri = r - marco * 0.5;
+    const letra = marco * 0.4;
+    g.font = `700 ${letra}px "Cormorant Garamond", serif`;
+    g.fillStyle = 'rgba(58, 36, 12, 0.92)';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    const chars = [...inscripcion];
+    const paso = (letra * 0.62) / ri;
+    const total = paso * (chars.length - 1);
+    chars.forEach((ch, i) => {
+      const ang = -Math.PI / 2 - total / 2 + i * paso;
+      g.save();
+      g.translate(cx + Math.cos(ang) * ri, arriba + r + Math.sin(ang) * ri);
+      g.rotate(ang + Math.PI / 2);
+      g.fillText(ch, 0, 0);
+      g.restore();
+    });
+  }
+
+  // el remate: dos volutas y un corazón dorado encima del arco
+  const ry = arriba - marco * 0.15;
+  g.strokeStyle = oroOesed(g, cx - marco * 2, cx + marco * 2);
+  g.lineWidth = Math.max(1.5, marco * 0.16);
+  g.lineCap = 'round';
+  for (const lado of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx, ry + marco * 0.1);
+    g.bezierCurveTo(cx + lado * marco * 0.9, ry + marco * 0.25, cx + lado * marco * 1.7, ry - marco * 0.2, cx + lado * marco * 1.35, ry - marco * 0.55);
+    g.bezierCurveTo(cx + lado * marco * 1.15, ry - marco * 0.8, cx + lado * marco * 0.85, ry - marco * 0.5, cx + lado * marco * 1.05, ry - marco * 0.35);
+    g.stroke();
+  }
+  const ch = g.createLinearGradient(cx, ry - marco, cx, ry);
+  ch.addColorStop(0, '#fff0c0');
+  ch.addColorStop(1, '#b8892e');
+  g.fillStyle = ch;
+  corazonOesed(g, cx, ry - marco * 0.55, marco * 0.5);
+  g.fill();
+}
+
 function dibujarOesed(now) {
   if (!oesed.activo) return;
   const g = oesedCtx;
   const W = oesedCanvas.width, H = oesedCanvas.height;
   if (!W || !H) return;
-  const O = CONFIG.oesed || {};
   const t = (now - oesed.born) / 1000;
   const k = oesed.lanzado ? (now - oesed.lanzado) / 1000 : -1;
+  const dt = oesed.ultimo ? clamp((now - oesed.ultimo) / 1000, 0, 0.05) : 0;
+  oesed.ultimo = now;
+  const vertical = W / H < 0.9;
 
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, W, H);
+  const u = Math.min(W, H) / 100;
+
+  // --- medidas del espejo: debajo del texto, apoyado en el suelo ---
+  const suelo = H * 0.95;
+  const alto = Math.min(H * 0.5, (W * 0.74) / 0.62);
+  const ancho = alto * 0.62;
+  const marco = ancho * 0.1;
+  const abajo = suelo - marco * 1.15;     // base del marco, encima de la peana
+  const arriba = abajo - alto;
+  const cx = W / 2;
+  const E = { cx, arriba, ancho, abajo, marco, suelo };
+  const entra = clamp(t / 1.6);
+  const ahora = k < 0 ? 0 : k;
+  const calor = clamp((ahora - 1.6) / 2.2);   // el cristal se calienta al aparecer ella
+
+  // --- ventanales al fondo con luz de luna (sólo en pantalla ancha) ---
+  if (!vertical) {
+    for (const lado of [-1, 1]) {
+      const vx = cx + lado * W * 0.31, vw = W * 0.07, vTop = H * 0.12, vBot = H * 0.62;
+      g.save();
+      trazarArco(g, vx, vTop, vw, vBot);
+      const luna = g.createLinearGradient(0, vTop, 0, vBot);
+      luna.addColorStop(0, 'rgba(120, 140, 220, 0.12)');
+      luna.addColorStop(1, 'rgba(120, 140, 220, 0.03)');
+      g.fillStyle = luna;
+      g.fill();
+      g.strokeStyle = 'rgba(150, 160, 220, 0.12)';
+      g.lineWidth = Math.max(1, u * 0.25);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(vx, vTop + vw * 0.2); g.lineTo(vx, vBot);
+      g.moveTo(vx - vw / 2, vTop + (vBot - vTop) * 0.55); g.lineTo(vx + vw / 2, vTop + (vBot - vTop) * 0.55);
+      g.stroke();
+      g.restore();
+    }
+  }
+
+  // --- el haz de luz que cae sobre el espejo ---
+  const haz = g.createLinearGradient(0, 0, 0, suelo);
+  haz.addColorStop(0, 'rgba(255, 228, 170, 0)');
+  haz.addColorStop(0.6, `rgba(255, 228, 170, ${0.05 + 0.05 * calor})`);
+  haz.addColorStop(1, `rgba(255, 228, 170, ${0.09 + 0.06 * calor})`);
+  g.fillStyle = haz;
+  g.beginPath();
+  g.moveTo(cx - ancho * 0.25, 0);
+  g.lineTo(cx + ancho * 0.25, 0);
+  g.lineTo(cx + ancho * 1.1, suelo);
+  g.lineTo(cx - ancho * 1.1, suelo);
+  g.closePath();
+  g.fill();
 
   // --- las velas que flotan en lo alto, como en el Gran Comedor ---
-  const u = Math.min(W, H) / 100;
   for (const v of oesed.velas) {
     const x = v.x * W, y = v.y * H + Math.sin(t * 0.7 + v.fase) * u * 0.8;
-    const alto = u * 3.2 * v.alto;
-    const halo = g.createRadialGradient(x, y - alto * 0.2, 0, x, y - alto * 0.2, u * 6);
+    const altoV = u * 3.2 * v.alto;
+    const halo = g.createRadialGradient(x, y - altoV * 0.2, 0, x, y - altoV * 0.2, u * 6);
     halo.addColorStop(0, 'rgba(255, 214, 140, 0.28)');
     halo.addColorStop(1, 'rgba(255, 214, 140, 0)');
     g.fillStyle = halo;
-    g.fillRect(x - u * 6, y - alto * 0.2 - u * 6, u * 12, u * 12);
-    g.fillStyle = 'rgba(240, 228, 205, 0.75)';
-    g.fillRect(x - u * 0.45, y, u * 0.9, alto);
+    g.fillRect(x - u * 6, y - altoV * 0.2 - u * 6, u * 12, u * 12);
+    const cera = g.createLinearGradient(x - u * 0.45, 0, x + u * 0.45, 0);
+    cera.addColorStop(0, 'rgba(200, 186, 160, 0.8)');
+    cera.addColorStop(0.5, 'rgba(250, 240, 220, 0.85)');
+    cera.addColorStop(1, 'rgba(190, 176, 150, 0.8)');
+    g.fillStyle = cera;
+    g.fillRect(x - u * 0.45, y, u * 0.9, altoV);
     const llama = 1 + Math.sin(t * 9 + v.fase) * 0.12;
-    g.fillStyle = 'rgba(255, 220, 140, 0.95)';
+    g.fillStyle = 'rgba(255, 236, 170, 0.95)';
     g.beginPath();
-    g.ellipse(x, y - u * 0.7 * llama, u * 0.35, u * 0.75 * llama, 0, 0, TAU);
+    g.ellipse(x, y - u * 0.7 * llama, u * 0.35, u * 0.75 * llama, Math.sin(t * 3 + v.fase) * 0.08, 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(255, 255, 240, 0.9)';
+    g.beginPath();
+    g.ellipse(x, y - u * 0.55 * llama, u * 0.14, u * 0.32 * llama, 0, 0, TAU);
     g.fill();
   }
 
@@ -4797,136 +5087,129 @@ function dibujarOesed(now) {
     g.fill();
   }
 
-  // --- el espejo: debajo del texto, apoyado en el suelo ---
-  const abajo = H * 0.95;
-  const alto = Math.min(H * 0.56, (W * 0.86) / 0.62);
-  const ancho = alto * 0.62;
-  const cx = W / 2, arriba = abajo - alto;
-  const marco = ancho * 0.085;
-  const entra = clamp(t / 1.6);   // el espejo aparece al abrir
-
   g.save();
   g.globalAlpha = entra;
 
-  // la luz del suelo delante del espejo
-  const suelo = g.createRadialGradient(cx, abajo, 0, cx, abajo, ancho * 1.2);
-  suelo.addColorStop(0, 'rgba(245, 211, 107, 0.22)');
-  suelo.addColorStop(1, 'rgba(245, 211, 107, 0)');
-  g.fillStyle = suelo;
+  // --- el suelo pulido y la luz que deja el espejo en él ---
+  const pulido = g.createLinearGradient(0, suelo, 0, H);
+  pulido.addColorStop(0, 'rgba(40, 30, 60, 0.6)');
+  pulido.addColorStop(1, 'rgba(10, 8, 20, 0.2)');
+  g.fillStyle = pulido;
+  g.fillRect(0, suelo, W, H - suelo);
+  const charco = g.createRadialGradient(cx, suelo, 0, cx, suelo, ancho * 1.3);
+  charco.addColorStop(0, `rgba(245, 211, 107, ${0.22 + 0.12 * calor})`);
+  charco.addColorStop(1, 'rgba(245, 211, 107, 0)');
+  g.fillStyle = charco;
   g.save();
-  g.translate(cx, abajo);
-  g.scale(1, 0.18);
+  g.translate(cx, suelo);
+  g.scale(1, 0.16);
   g.beginPath();
-  g.arc(0, 0, ancho * 1.2, 0, TAU);
+  g.arc(0, 0, ancho * 1.3, 0, TAU);
   g.fill();
   g.restore();
 
-  // las patas en garra
-  g.fillStyle = '#8a6a2e';
-  for (const lado of [-1, 1]) {
-    g.beginPath();
-    g.ellipse(cx + lado * ancho * 0.42, abajo + marco * 0.15, marco * 0.9, marco * 0.45, 0, 0, TAU);
-    g.fill();
-  }
-
-  // el marco dorado
-  const oro = g.createLinearGradient(cx - ancho / 2, 0, cx + ancho / 2, 0);
-  oro.addColorStop(0, '#7a5a22');
-  oro.addColorStop(0.25, '#e9c46a');
-  oro.addColorStop(0.5, '#a07a32');
-  oro.addColorStop(0.75, '#f5d36b');
-  oro.addColorStop(1, '#6e4f1c');
-  g.fillStyle = oro;
-  g.shadowColor = 'rgba(245, 211, 107, 0.35)';
-  g.shadowBlur = u * 4;
-  trazarArco(g, cx, arriba, ancho, abajo);
-  g.fill();
-  g.shadowBlur = 0;
-
-  // un filete fino por dentro del marco
-  g.strokeStyle = 'rgba(255, 240, 200, 0.55)';
-  g.lineWidth = Math.max(1, marco * 0.08);
-  trazarArco(g, cx, arriba + marco * 0.55, ancho - marco * 1.1, abajo - marco * 0.55);
-  g.stroke();
-
-  // la inscripción, al revés, siguiendo el arco
-  const inscripcion = (O.inscripcion || '').toUpperCase();
-  if (inscripcion) {
-    const r = ancho / 2 - marco * 0.5;
-    const letra = marco * 0.5;
-    g.font = `600 ${letra}px "Cormorant Garamond", serif`;
-    g.fillStyle = 'rgba(60, 38, 14, 0.9)';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    const chars = [...inscripcion];
-    const paso = (letra * 0.66) / r;
-    const total = paso * (chars.length - 1);
-    chars.forEach((ch, i) => {
-      const ang = -Math.PI / 2 - total / 2 + i * paso;
-      g.save();
-      g.translate(cx + Math.cos(ang) * r, arriba + ancho / 2 + Math.sin(ang) * r);
-      g.rotate(ang + Math.PI / 2);
-      g.fillText(ch, 0, 0);
-      g.restore();
-    });
-  }
+  // --- el espejo ---
+  marcoOesed(g, E, u);
 
   // --- el cristal ---
-  const ia = arriba + marco, ib = abajo - marco * 0.6, iw = ancho - marco * 2;
+  const ia = arriba + marco, ib = abajo - marco * 0.15, iw = ancho - marco * 2;
   g.save();
   trazarArco(g, cx, ia, iw, ib);
   g.clip();
 
-  const ahora = k < 0 ? 0 : k;
-  const calor = clamp((ahora - 1.6) / 2.2);   // el cristal se calienta al aparecer ella
   const cristal = g.createLinearGradient(0, ia, 0, ib);
-  cristal.addColorStop(0, rgbStr(mixRGB([28, 26, 52], [92, 52, 70], calor)));
-  cristal.addColorStop(1, rgbStr(mixRGB([12, 11, 26], [58, 32, 44], calor)));
+  cristal.addColorStop(0, rgbStr(mixRGB([30, 28, 58], [104, 58, 78], calor)));
+  cristal.addColorStop(0.6, rgbStr(mixRGB([18, 16, 38], [72, 40, 58], calor)));
+  cristal.addColorStop(1, rgbStr(mixRGB([10, 9, 22], [52, 28, 42], calor)));
   g.fillStyle = cristal;
   g.fillRect(cx - iw / 2, ia, iw, ib - ia);
+
+  // un resplandor cálido detrás de ellos, que crece cuando ya están juntos
+  const tras = g.createRadialGradient(cx, ib - (ib - ia) * 0.35, 0, cx, ib - (ib - ia) * 0.35, iw * 0.8);
+  tras.addColorStop(0, `rgba(255, 200, 170, ${0.06 + 0.22 * calor})`);
+  tras.addColorStop(1, 'rgba(255, 200, 170, 0)');
+  g.fillStyle = tras;
+  g.fillRect(cx - iw / 2, ia, iw, ib - ia);
+
+  // las velas reflejadas, borrosas, al fondo del cristal
+  for (let i = 0; i < 3; i++) {
+    const rx = cx + (i - 1) * iw * 0.3, ry = ia + (ib - ia) * (0.18 + 0.05 * (i % 2));
+    const parpadeo = 0.6 + 0.4 * Math.sin(t * 5 + i * 2);
+    const rv = g.createRadialGradient(rx, ry, 0, rx, ry, u * 2.2);
+    rv.addColorStop(0, `rgba(255, 220, 150, ${0.22 * parpadeo})`);
+    rv.addColorStop(1, 'rgba(255, 220, 150, 0)');
+    g.fillStyle = rv;
+    g.fillRect(rx - u * 2.2, ry - u * 2.2, u * 4.4, u * 4.4);
+  }
 
   // un brillo que cruza el cristal en diagonal
   const barrido = ((t * 0.08) % 1.6) - 0.3;
   const reflejo = g.createLinearGradient(cx - iw / 2, ia, cx + iw / 2, ib);
   reflejo.addColorStop(clamp(barrido - 0.12), 'rgba(255, 255, 255, 0)');
-  reflejo.addColorStop(clamp(barrido), 'rgba(255, 255, 255, 0.07)');
+  reflejo.addColorStop(clamp(barrido), 'rgba(255, 255, 255, 0.08)');
   reflejo.addColorStop(clamp(barrido + 0.12), 'rgba(255, 255, 255, 0)');
   g.fillStyle = reflejo;
   g.fillRect(cx - iw / 2, ia, iw, ib - ia);
 
-  // las figuras dentro del cristal
-  const pie = ib - iw * 0.06;
+  // las figuras
+  const pie = ib - iw * 0.05;
   const figura = (ib - ia) * 0.5;
   const ellaA = clamp((ahora - 1.3) / 1.8);
-  const juntos = clamp((ahora - 2.6) / 1.2);
+  const juntos = clamp((ahora - 2.4) / 1.6);
   const flota = Math.sin(t * 1.1) * figura * 0.008;
-  // él está apartado a un lado desde el principio: el hueco es el de ella
-  const elX = cx + iw * 0.26;
-  const ellaX = cx - iw * 0.26;
+  const elX = cx + iw * 0.24;           // apartado a un lado: el hueco es el de ella
+  const ellaX = cx - iw * 0.24;
+  const manos = { x: cx, y: pie - figura * 0.47, k: juntos };
 
-  const colorEl = rgbStr(mixRGB([196, 204, 232], [246, 224, 200], calor));
-  figuraEnCapa(g, elX, pie + flota, figura, colorEl, 0.45 + 0.35 * calor, false, juntos > 0.5 ? -1 : 0, 'rgba(200, 210, 255, 0.5)');
+  // su sombra en el suelo del espejo
+  for (const [sx, a] of [[elX, 1], [ellaX, ellaA]]) {
+    if (a <= 0) continue;
+    const so = g.createRadialGradient(sx, pie, 0, sx, pie, figura * 0.25);
+    so.addColorStop(0, `rgba(0, 0, 0, ${0.35 * a})`);
+    so.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = so;
+    g.save(); g.translate(sx, pie); g.scale(1, 0.2); g.translate(-sx, -pie);
+    g.beginPath(); g.arc(sx, pie, figura * 0.25, 0, TAU); g.fill();
+    g.restore();
+  }
+
+  const colorEl = [mixRGB([200, 208, 238], [255, 236, 214], calor), mixRGB([110, 118, 170], [190, 120, 120], calor)];
+  figuraEnCapa(g, elX, pie + flota, figura, colorEl, 0.5 + 0.38 * calor, false,
+               { t, inclina: -juntos, mano: juntos > 0 ? manos : null }, 'rgba(200, 210, 255, 0.55)');
   if (ellaA > 0) {
-    figuraEnCapa(g, ellaX, pie - flota, figura * 0.94, 'rgb(255, 214, 196)', 0.82 * ellaA, true, juntos > 0.5 ? 1 : 0, 'rgba(255, 200, 180, 0.7)');
+    figuraEnCapa(g, ellaX, pie - flota, figura * 0.94, [[255, 222, 208], [214, 120, 130]], 0.9 * ellaA, true,
+                 { t, inclina: juntos, mano: juntos > 0 ? manos : null }, 'rgba(255, 196, 180, 0.75)');
   }
 
   // el corazón de luz que sube entre los dos
-  const sube = clamp((ahora - 3.4) / 2.2);
+  const sube = clamp((ahora - 3.6) / 2.2);
   if (sube > 0) {
-    const hx = cx, hy = pie - figura * (1.05 + 0.25 * sube);
+    const hx = cx, hy = pie - figura * (1.08 + 0.28 * sube) + Math.sin(t * 1.4) * figura * 0.01;
     const late = 1 + Math.sin(t * 3.2) * 0.07;
-    const tam = figura * 0.11 * late * (0.6 + 0.4 * sube);
-    const halo = g.createRadialGradient(hx, hy, 0, hx, hy, tam * 3);
-    halo.addColorStop(0, `rgba(255, 190, 200, ${0.5 * sube})`);
+    const tam = figura * 0.1 * late * (0.6 + 0.4 * sube);
+    const halo = g.createRadialGradient(hx, hy, 0, hx, hy, tam * 3.4);
+    halo.addColorStop(0, `rgba(255, 190, 200, ${0.55 * sube})`);
     halo.addColorStop(1, 'rgba(255, 190, 200, 0)');
     g.fillStyle = halo;
-    g.fillRect(hx - tam * 3, hy - tam * 3, tam * 6, tam * 6);
-    g.fillStyle = `rgba(255, 120, 140, ${0.9 * sube})`;
-    g.beginPath();
-    g.moveTo(hx, hy + tam * 0.9);
-    g.bezierCurveTo(hx - tam * 1.6, hy - tam * 0.1, hx - tam * 0.7, hy - tam * 1.3, hx, hy - tam * 0.45);
-    g.bezierCurveTo(hx + tam * 0.7, hy - tam * 1.3, hx + tam * 1.6, hy - tam * 0.1, hx, hy + tam * 0.9);
+    g.fillRect(hx - tam * 3.4, hy - tam * 3.4, tam * 6.8, tam * 6.8);
+    const relleno = g.createLinearGradient(hx - tam, hy - tam, hx + tam, hy + tam);
+    relleno.addColorStop(0, `rgba(255, 176, 190, ${sube})`);
+    relleno.addColorStop(1, `rgba(214, 48, 86, ${sube})`);
+    g.fillStyle = relleno;
+    corazonOesed(g, hx, hy, tam);
     g.fill();
+    g.fillStyle = `rgba(255, 255, 255, ${0.55 * sube})`;
+    g.beginPath();
+    g.ellipse(hx - tam * 0.48, hy - tam * 0.5, tam * 0.2, tam * 0.12, -0.6, 0, TAU);
+    g.fill();
+    // tres motas que giran alrededor
+    for (let i = 0; i < 3; i++) {
+      const ang = t * 1.6 + (i * TAU) / 3;
+      g.fillStyle = `rgba(255, 236, 190, ${0.8 * sube})`;
+      g.beginPath();
+      g.arc(hx + Math.cos(ang) * tam * 2, hy + Math.sin(ang) * tam * 0.8, tam * 0.12, 0, TAU);
+      g.fill();
+    }
   }
 
   // destellos dentro del cristal cuando ya están juntos
@@ -4935,7 +5218,7 @@ function dibujarOesed(now) {
       const a = calor * (0.3 + 0.7 * Math.abs(Math.sin(t * b.v + b.fase)));
       g.fillStyle = `rgba(255, 236, 190, ${a * 0.55})`;
       g.beginPath();
-      g.arc(cx - iw / 2 + b.x * iw, ia + b.y * (ib - ia), u * 0.35, 0, TAU);
+      g.arc(cx - iw / 2 + b.x * iw, ia + b.y * (ib - ia), u * 0.32, 0, TAU);
       g.fill();
     }
   }
@@ -4949,13 +5232,65 @@ function dibujarOesed(now) {
       const ny = ia + n.y * (ib - ia) + Math.sin(ang) * n.r * iw * 0.4;
       const nr = n.tam * iw;
       const gr = g.createRadialGradient(nx, ny, 0, nx, ny, nr);
-      gr.addColorStop(0, `rgba(226, 222, 245, ${0.42 * niebla})`);
-      gr.addColorStop(1, 'rgba(226, 222, 245, 0)');
+      gr.addColorStop(0, `rgba(230, 226, 248, ${0.45 * niebla})`);
+      gr.addColorStop(1, 'rgba(230, 226, 248, 0)');
       g.fillStyle = gr;
       g.fillRect(nx - nr, ny - nr, nr * 2, nr * 2);
     }
   }
+
+  // viñeta y sombra del marco sobre el cristal: le dan hondura
+  const vin = g.createRadialGradient(cx, (ia + ib) / 2, iw * 0.3, cx, (ia + ib) / 2, (ib - ia) * 0.62);
+  vin.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vin.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+  g.fillStyle = vin;
+  g.fillRect(cx - iw / 2, ia, iw, ib - ia);
   g.restore();   // fin del recorte del cristal
+
+  // --- las chispas que se escapan del espejo cuando ya están juntos ---
+  if (calor > 0.4 && !REDUCED && oesed.chispas.length < 60 && Math.random() < 0.5) {
+    oesed.chispas.push({ x: cx + (Math.random() - 0.5) * iw * 0.8, y: ia + (ib - ia) * (0.2 + Math.random() * 0.4),
+                         vx: (Math.random() - 0.5) * u * 1.5, vy: -(u * 2 + Math.random() * u * 4),
+                         vida: 0, dura: 2.5 + Math.random() * 2.5, fase: Math.random() * TAU, rosa: Math.random() < 0.35 });
+  }
+  for (let i = oesed.chispas.length - 1; i >= 0; i--) {
+    const c = oesed.chispas[i];
+    c.vida += dt;
+    if (c.vida >= c.dura) { oesed.chispas.splice(i, 1); continue; }
+    c.x += (c.vx + Math.sin(t * 2 + c.fase) * u * 0.6) * dt;
+    c.y += c.vy * dt;
+    const a = Math.sin((c.vida / c.dura) * Math.PI) * (0.6 + 0.4 * Math.sin(t * 7 + c.fase));
+    g.fillStyle = c.rosa ? `rgba(255, 190, 205, ${a})` : `rgba(255, 232, 170, ${a})`;
+    g.beginPath();
+    g.arc(c.x, c.y, u * 0.28, 0, TAU);
+    g.fill();
+  }
+
+  // --- el reflejo del espejo en el suelo pulido ---
+  const reflAlto = Math.min(H - suelo, alto * 0.3);
+  if (reflAlto > 2) {
+    if (!oesed.reflejo) oesed.reflejo = document.createElement('canvas');
+    const rc = oesed.reflejo;
+    const rw = Math.ceil(ancho + marco * 3), rh = Math.ceil(reflAlto);
+    if (rc.width !== rw || rc.height !== rh) { rc.width = rw; rc.height = rh; }
+    const rg = rc.getContext('2d');
+    rg.setTransform(1, 0, 0, 1, 0, 0);
+    rg.globalCompositeOperation = 'source-over';
+    rg.clearRect(0, 0, rw, rh);
+    rg.save();
+    rg.translate(0, rh);
+    rg.scale(1, -1);
+    rg.drawImage(oesedCanvas, cx - rw / 2, suelo - rh, rw, rh, 0, 0, rw, rh);
+    rg.restore();
+    rg.globalCompositeOperation = 'destination-out';
+    const borra = rg.createLinearGradient(0, 0, 0, rh);
+    borra.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+    borra.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    rg.fillStyle = borra;
+    rg.fillRect(0, 0, rw, rh);
+    g.globalAlpha = entra * 0.5;
+    g.drawImage(rc, cx - rw / 2, suelo);
+  }
   g.restore();   // fin de la entrada del espejo
 }
 
