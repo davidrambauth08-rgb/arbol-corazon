@@ -8,6 +8,7 @@ Pon aquí estos dos archivos, con estos nombres exactos:
 - `foto-final.jpg`: la foto de la tarjeta final. Cualquier orientación: se ajusta sin recortarse ni deformarse.
 - `eco-1.jpg` … `eco-6.jpg`: las ilustraciones que salen de la varita en el Priori Incantatem, en ese orden. Se listan en `CONFIG.priori.ecos`; puedes poner más o menos.
 - `perdon-1.jpg` … `perdon-5.jpg`: las láminas del Reparo (sol, luna, estrellas, naturaleza y los ojos), en ese orden. Se listan en `CONFIG.reparo.laminas`.
+- `oesed.jpg`: la foto que aparece dentro del Espejo de Oesed cuando se va la niebla. Se recorta al arco del espejo; `CONFIG.oesed.foco` dice qué punto queda en el centro y `CONFIG.oesed.manos` dónde late la luz del corazón de las manos.
 - `volar.jpg`: la imagen de apertura ("Quiero volar"). Llena toda la pantalla, así que conviene **vertical** y sin nada importante en la parte de abajo, que es donde va la frase.
 
 Si faltan, la página funciona igual: sin música ni controles de sonido, y con un marcador bonito en lugar de la foto.

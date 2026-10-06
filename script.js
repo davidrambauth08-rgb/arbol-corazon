@@ -231,6 +231,13 @@ const CONFIG = {
     activo: true,
     // la inscripción del marco, al revés como en el libro: «esto no es tu cara sino de tu corazón el deseo»
     inscripcion: "Oesed lenoz aro cut edon isara cut se onotse",
+    /* La foto que aparece en el cristal cuando se va la niebla.
+       foco: el punto de la foto que queda en el centro del cristal;
+       manos: dónde está el corazón que hacen con las manos (ahí late la luz).
+       Si no carga, salen los dos dibujados como antes. */
+    foto: "assets/oesed.jpg",
+    foco: { x: 0.555, y: 0.5 },
+    manos: { x: 0.527, y: 0.487 },
     antes: [
       "Dumbledore decía que este espejo no enseña tu cara,",
       "sino lo que más desea tu corazón."
@@ -4625,7 +4632,17 @@ function cerrarPriori() {
    se escapan chispas del espejo.
    ===================================================================== */
 const oesed = { activo: false, born: 0, lanzado: 0, ultimo: 0, polvo: [], velas: [], niebla: [], brillos: [],
-                chispas: [], capa: null, reflejo: null };
+                chispas: [], corazones: [], capa: null, reflejo: null, foto: null, fotoLista: false };
+
+function cargarFotoOesed() {
+  const src = CONFIG.oesed && CONFIG.oesed.foto;
+  if (!src || oesed.foto) return;
+  const img = new Image();
+  img.decoding = 'async';
+  img.onload = () => { oesed.fotoLista = true; };
+  img.src = src;
+  oesed.foto = img;
+}
 
 function abrirOesed() {
   oesedCanvas.width = canvas.width;
@@ -4646,7 +4663,8 @@ function abrirOesed() {
       // en el móvil el texto ocupa todo el ancho: las velas, a los lados
       const izq = i % 2 === 0;
       x = izq ? 0.04 + Math.random() * 0.1 : 0.86 + Math.random() * 0.1;
-      y = 0.06 + (Math.floor(i / 2) / 3) * 0.36 + Math.random() * 0.05;
+      // por debajo del texto, que en el móvil ocupa el tercio de arriba
+      y = 0.34 + (Math.floor(i / 2) / 3) * 0.3 + Math.random() * 0.04;
     } else {
       x = (i + 0.5) / 9 + (Math.random() - 0.5) * 0.06;
       // las del centro van más abajo, para no quedar detrás del texto
@@ -4664,6 +4682,8 @@ function abrirOesed() {
     oesed.brillos.push({ x: 0.1 + Math.random() * 0.8, y: 0.15 + Math.random() * 0.75, fase: Math.random() * TAU, v: 1 + Math.random() * 2 });
   }
   oesed.chispas.length = 0;
+  oesed.corazones.length = 0;
+  cargarFotoOesed();
   oesed.activo = true;
 }
 
@@ -5004,8 +5024,9 @@ function dibujarOesed(now) {
 
   // --- medidas del espejo: debajo del texto, apoyado en el suelo ---
   const suelo = H * 0.95;
-  const alto = Math.min(H * 0.5, (W * 0.74) / 0.62);
-  const ancho = alto * 0.62;
+  // más ancho que el de la película, para que quepa la foto de los dos
+  const alto = Math.min(H * 0.5, (W * 0.7) / 0.8);
+  const ancho = alto * 0.8;
   const marco = ancho * 0.1;
   const abajo = suelo - marco * 1.15;     // base del marco, encima de la peana
   const arriba = abajo - alto;
@@ -5108,6 +5129,28 @@ function dibujarOesed(now) {
   g.fill();
   g.restore();
 
+  // --- rayos de luz que giran despacio detrás del espejo cuando ya están juntos ---
+  if (calor > 0) {
+    const ry = arriba + alto * 0.45;
+    const largo = Math.max(W, H) * 0.7;
+    g.save();
+    g.translate(cx, ry);
+    g.rotate(t * 0.05);
+    for (let i = 0; i < 14; i++) {
+      const ang = (i / 14) * TAU;
+      const rayo = g.createLinearGradient(0, 0, Math.cos(ang) * largo, Math.sin(ang) * largo);
+      rayo.addColorStop(0, `rgba(255, 220, 160, ${0.09 * calor})`);
+      rayo.addColorStop(1, 'rgba(255, 220, 160, 0)');
+      g.fillStyle = rayo;
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.arc(0, 0, largo, ang - 0.07, ang + 0.07);
+      g.closePath();
+      g.fill();
+    }
+    g.restore();
+  }
+
   // --- el espejo ---
   marcoOesed(g, E, u);
 
@@ -5173,16 +5216,66 @@ function dibujarOesed(now) {
     g.restore();
   }
 
+  // la foto: aparece desde la niebla en lugar de los dibujos, con un zoom muy lento
+  const O = CONFIG.oesed || {};
+  const conFoto = oesed.fotoLista && oesed.foto.naturalWidth > 0;
+  const fotoA = conFoto ? ellaA : 0;
+  let manosFoto = null;
+  if (fotoA > 0) {
+    const img = oesed.foto;
+    const gw = iw, gh = ib - ia;
+    const zoom = 1.02 + 0.05 * clamp(ahora / 24);
+    const esc = Math.max(gw / img.naturalWidth, gh / img.naturalHeight) * zoom;
+    const fw = img.naturalWidth * esc, fh = img.naturalHeight * esc;
+    const foco = O.foco || { x: 0.5, y: 0.5 };
+    let fx = cx - foco.x * fw, fy = (ia + gh / 2) - foco.y * fh;
+    fx = Math.min(cx - gw / 2, Math.max(cx + gw / 2 - fw, fx));
+    fy = Math.min(ia, Math.max(ib - fh, fy));
+    g.save();
+    g.globalAlpha = fotoA;
+    g.drawImage(img, fx, fy, fw, fh);
+    // un velo cálido muy suave, para que la foto parezca dentro del espejo
+    g.globalAlpha = fotoA * 0.18;
+    g.fillStyle = 'rgb(255, 196, 160)';
+    g.fillRect(cx - gw / 2, ia, gw, gh);
+    g.restore();
+    const mn = O.manos || { x: 0.5, y: 0.5 };
+    manosFoto = { x: fx + mn.x * fw, y: fy + mn.y * fh, a: fotoA, tam: fw * 0.05 };
+  }
+
   const colorEl = [mixRGB([200, 208, 238], [255, 236, 214], calor), mixRGB([110, 118, 170], [190, 120, 120], calor)];
-  figuraEnCapa(g, elX, pie + flota, figura, colorEl, 0.5 + 0.38 * calor, false,
-               { t, inclina: -juntos, mano: juntos > 0 ? manos : null }, 'rgba(200, 210, 255, 0.55)');
-  if (ellaA > 0) {
+  if (fotoA < 1) {
+    figuraEnCapa(g, elX, pie + flota, figura, colorEl, (0.5 + 0.38 * calor) * (1 - fotoA), false,
+                 { t, inclina: -juntos, mano: juntos > 0 ? manos : null }, 'rgba(200, 210, 255, 0.55)');
+  }
+  if (ellaA > 0 && !conFoto) {
     figuraEnCapa(g, ellaX, pie - flota, figura * 0.94, [[255, 222, 208], [214, 120, 130]], 0.9 * ellaA, true,
                  { t, inclina: juntos, mano: juntos > 0 ? manos : null }, 'rgba(255, 196, 180, 0.75)');
   }
 
-  // el corazón de luz que sube entre los dos
-  const sube = clamp((ahora - 3.6) / 2.2);
+  // con la foto: el sol dentro del corazón de sus manos late con luz,
+  // y de ahí suben corazoncitos
+  if (manosFoto) {
+    const late = 0.75 + 0.25 * Math.sin(t * 2.6);
+    const r = manosFoto.tam * (2.2 + 0.5 * late);
+    const luz = g.createRadialGradient(manosFoto.x, manosFoto.y, 0, manosFoto.x, manosFoto.y, r);
+    luz.addColorStop(0, `rgba(255, 236, 190, ${0.75 * manosFoto.a * late})`);
+    luz.addColorStop(0.35, `rgba(255, 190, 150, ${0.35 * manosFoto.a * late})`);
+    luz.addColorStop(1, 'rgba(255, 190, 150, 0)');
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.fillStyle = luz;
+    g.fillRect(manosFoto.x - r, manosFoto.y - r, r * 2, r * 2);
+    g.restore();
+    if (!REDUCED && Math.random() < 0.1 * manosFoto.a && oesed.corazones.length < 40) {
+      oesed.corazones.push({ x: manosFoto.x, y: manosFoto.y, vx: (Math.random() - 0.5) * u * 2.4, vy: -(u * 3 + Math.random() * u * 3),
+                             vida: 0, dura: 2.6 + Math.random() * 1.6, tam: u * (0.6 + Math.random() * 0.6),
+                             fase: Math.random() * TAU, dentro: true });
+    }
+  }
+
+  // el corazón de luz que sube entre los dos (sólo con los dibujos)
+  const sube = conFoto ? 0 : clamp((ahora - 3.6) / 2.2);
   if (sube > 0) {
     const hx = cx, hy = pie - figura * (1.08 + 0.28 * sube) + Math.sin(t * 1.4) * figura * 0.01;
     const late = 1 + Math.sin(t * 3.2) * 0.07;
@@ -5264,6 +5357,59 @@ function dibujarOesed(now) {
     g.beginPath();
     g.arc(c.x, c.y, u * 0.28, 0, TAU);
     g.fill();
+  }
+
+  // --- corazones que suben por los lados del espejo (y los que salen de sus manos) ---
+  if (calor > 0.3 && !REDUCED && oesed.corazones.length < 40 && Math.random() < 0.12) {
+    const lado = Math.random() < 0.5 ? -1 : 1;
+    const sep = ancho / 2 + marco * 1.6 + Math.random() * Math.min(W * 0.18, ancho * 0.6);
+    oesed.corazones.push({ x: cx + lado * sep, y: suelo - Math.random() * alto * 0.3, vx: lado * u * 0.4, vy: -(u * 7 + Math.random() * u * 6),
+                           vida: 0, dura: 4 + Math.random() * 3, tam: u * (1.1 + Math.random() * 1.3),
+                           fase: Math.random() * TAU, dentro: false });
+  }
+  for (let i = oesed.corazones.length - 1; i >= 0; i--) {
+    const c = oesed.corazones[i];
+    c.vida += dt;
+    if (c.vida >= c.dura) { oesed.corazones.splice(i, 1); continue; }
+    c.x += (c.vx + Math.sin(t * 1.8 + c.fase) * u * 1.2) * dt;
+    c.y += c.vy * dt;
+    const a = Math.sin((c.vida / c.dura) * Math.PI);
+    g.save();
+    if (c.dentro) { trazarArco(g, cx, ia, iw, ib); g.clip(); }
+    g.translate(c.x, c.y);
+    g.rotate(Math.sin(t * 2 + c.fase) * 0.25);
+    g.shadowColor = 'rgba(255, 150, 170, 0.8)';
+    g.shadowBlur = c.tam * 1.5;
+    g.fillStyle = c.fase > Math.PI ? `rgba(255, 140, 165, ${0.85 * a})` : `rgba(255, 214, 150, ${0.85 * a})`;
+    corazonOesed(g, 0, 0, c.tam);
+    g.fill();
+    g.restore();
+  }
+
+  // --- estrellitas que dan la vuelta al marco ---
+  if (calor > 0) {
+    const r = ancho / 2 + marco * 0.35;
+    const recta = abajo - (arriba + ancho / 2);
+    const total = Math.PI * r + recta * 2;
+    for (let i = 0; i < 10; i++) {
+      let d = ((t * u * 6 + (i / 10) * total) % total);
+      let px, py;
+      if (d < recta) { px = cx - r; py = abajo - d; }
+      else if (d < recta + Math.PI * r) {
+        const ang = Math.PI + (d - recta) / r;
+        px = cx + Math.cos(ang) * r; py = arriba + ancho / 2 + Math.sin(ang) * r;
+      } else { px = cx + r; py = arriba + ancho / 2 + (d - recta - Math.PI * r); }
+      const tam = u * (0.7 + 0.3 * Math.sin(t * 6 + i));
+      g.fillStyle = `rgba(255, 244, 210, ${0.9 * calor})`;
+      g.beginPath();
+      for (let p = 0; p < 8; p++) {
+        const rr = p % 2 === 0 ? tam : tam * 0.3;
+        const ang = (p / 8) * TAU + t;
+        g.lineTo(px + Math.cos(ang) * rr, py + Math.sin(ang) * rr);
+      }
+      g.closePath();
+      g.fill();
+    }
   }
 
   // --- el reflejo del espejo en el suelo pulido ---
@@ -7483,6 +7629,7 @@ function buildExtras() {
   fillRune(reparoFilaBtn, HX.reparo);
   fillRune(pruebasFilaBtn, HX.pruebas);
   fillRune(oesedFilaBtn, HX.oesed);
+  cargarFotoOesed();   // se baja desde ya, para que esté lista al mirar en el espejo
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
   if (musicTitleEl) musicTitleEl.textContent = (CONFIG.music && CONFIG.music.title) || '';
