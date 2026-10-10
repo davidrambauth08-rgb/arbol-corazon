@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=29">
+  <link rel="stylesheet" href="style.css?v=30">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -65,6 +65,7 @@
       <button id="spell-reparo" class="rune-btn" type="button" hidden></button>
       <button id="spell-pruebas" class="rune-btn" type="button" hidden></button>
       <button id="spell-oesed" class="rune-btn" type="button" hidden></button>
+      <button id="spell-snitch" class="rune-btn" type="button" hidden></button>
       <button id="spell-tempus" class="rune-btn" type="button" hidden></button>
     </div>
   </div>
@@ -88,6 +89,20 @@
   </div>
 
   <!-- Priori Incantatem: los ecos salen de la varita (CONFIG.priori) -->
+  <!-- Me abro al cierre: la Snitch dorada y su mensaje (CONFIG.snitch) -->
+  <div id="snitch" hidden>
+    <canvas id="snitch-lienzo" aria-hidden="true"></canvas>
+    <div id="snitch-texto">
+      <div id="snitch-lineas" aria-live="polite"></div>
+      <p id="snitch-pista" hidden></p>
+      <button id="snitch-btn" class="plate primary" type="button" hidden></button>
+    </div>
+    <div id="snitch-nota" hidden>
+      <div id="snitch-nota-texto" aria-live="polite"></div>
+      <button id="snitch-seguir" class="plate quiet" type="button" hidden></button>
+    </div>
+  </div>
+
   <!-- Espejo de Oesed: lo que más desea el corazón (CONFIG.oesed) -->
   <div id="oesed" hidden>
     <canvas id="oesed-lienzo" aria-hidden="true"></canvas>
@@ -277,6 +292,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=29"></script>
+  <script src="script.js?v=30"></script>
 </body>
 </html>

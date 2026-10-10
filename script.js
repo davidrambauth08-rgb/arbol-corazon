@@ -211,6 +211,7 @@ const CONFIG = {
     reparo: { runa: "❖", nombre: "Reparo", desc: "pedirle perdón al cielo entero", corto: "Reparo" },
     pruebas: { runa: "✠", nombre: "Las tres pruebas", desc: "a ver si te lo sabes", corto: "Pruebas" },
     oesed: { runa: "❂", nombre: "Espejo de Oesed", desc: "ver lo que más desea el corazón", corto: "Espejo" },
+    snitch: { runa: "◉", nombre: "Me abro al cierre", desc: "atrapar la Snitch dorada", corto: "Snitch" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -221,6 +222,35 @@ const CONFIG = {
     titulo: "¿Nos vamos a Australia?",
     linea: "Tú, yo, el otro lado del mundo.",
     firma: "Dinosaurios incluidos."
+  },
+
+  /* Me abro al cierre: una Snitch dorada revolotea sobre el campo de
+     quidditch y hay que atraparla tocándola (las primeras "escapes" veces
+     se escapa). Al cogerla se ve la inscripción; al tocarla otra vez se abre
+     y sale una nota con el mensaje, que se escribe frase a frase.
+     En "inscripcion", la | parte la línea. */
+  snitch: {
+    activo: true,
+    antes: [
+      "En su primer partido, Harry atrapó la Snitch con la boca.",
+      "Años después, Dumbledore le dejó una con un mensaje: «Me abro al cierre»."
+    ],
+    boton: "Atrapar la Snitch",
+    botonDesc: "si puedes",
+    pistaCaza: "atrápala",
+    escapes: 2,
+    escapa: ["¡casi!", "es rápida… otra vez"],
+    atrapada: ["La atrapaste.", "Tiene algo grabado."],
+    inscripcion: "Me abro|al cierre",
+    pistaAbrir: "tócala para abrirla",
+    // el mensaje de dentro: cada elemento es un párrafo
+    mensaje: [
+      "Oye, yo quiero estar bien contigo. Me haces falta. Quiero poder llamarte y contarte mis cosas sin que te enojes. Quiero sentirte cerca de mí, poder contar contigo y que tú también puedas contar conmigo. Quiero amarte en vez de pelear contigo.",
+      "Sí, sé que he fallado en algunas cosas, aunque nunca te he faltado al respeto. Déjame cuidarte, que yo también me dejo cuidar por ti."
+    ],
+    firma: "",
+    seguir: "Seguir",
+    seguirDesc: "volver al árbol"
   },
 
   /* Espejo de Oesed: el espejo que no enseña tu cara, sino lo que más desea
@@ -1015,6 +1045,16 @@ const orchideousBtn = document.getElementById('spell-orchideous');
 const reparoFilaBtn = document.getElementById('spell-reparo');
 const pruebasFilaBtn = document.getElementById('spell-pruebas');
 const oesedFilaBtn = document.getElementById('spell-oesed');
+const snitchFilaBtn = document.getElementById('spell-snitch');
+const snitchEl = document.getElementById('snitch');
+const snitchCanvas = document.getElementById('snitch-lienzo');
+const snitchCtx = snitchCanvas.getContext('2d');
+const snitchLineasEl = document.getElementById('snitch-lineas');
+const snitchPistaEl = document.getElementById('snitch-pista');
+const snitchBtn = document.getElementById('snitch-btn');
+const snitchNotaEl = document.getElementById('snitch-nota');
+const snitchNotaTextoEl = document.getElementById('snitch-nota-texto');
+const snitchSeguirBtn = document.getElementById('snitch-seguir');
 const oesedEl = document.getElementById('oesed');
 const oesedCanvas = document.getElementById('oesed-lienzo');
 const oesedCtx = oesedCanvas.getContext('2d');
@@ -1599,6 +1639,10 @@ function resize() {
   if (typeof prioriCanvas !== 'undefined' && priori.activo) {
     prioriCanvas.width = canvas.width;
     prioriCanvas.height = canvas.height;
+  }
+  if (typeof snitchCanvas !== 'undefined' && snitch.activo) {
+    snitchCanvas.width = canvas.width;
+    snitchCanvas.height = canvas.height;
   }
   if (typeof oesedCanvas !== 'undefined' && oesed.activo) {
     oesedCanvas.width = canvas.width;
@@ -2612,6 +2656,7 @@ function hechizosFila() {
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
     { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
+    { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) },
     { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
     { btn: pruebasFilaBtn, activo: () => !!(CONFIG.modoAcertijo && CONFIG.pruebasEntrada !== true && CONFIG.pruebas && CONFIG.pruebas.length) },
     { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
@@ -4627,6 +4672,517 @@ function cerrarPriori() {
     document.body.classList.remove('evocando');
     if (eraEntrada) seguirTrasElMapa();
   }, 'priori');
+}
+
+/* =====================================================================
+   ME ABRO AL CIERRE — la Snitch dorada
+   Un campo de quidditch de noche, con los aros, las gradas y focos. La
+   Snitch revolotea y hay que atraparla tocándola: las primeras veces se
+   escapa. Al cogerla vuela al centro, crece y deja ver la inscripción
+   «Me abro al cierre». Al tocarla otra vez se abre como en el libro y de
+   dentro sale una nota con el mensaje, que se escribe frase a frase.
+   ===================================================================== */
+const snitch = { activo: false, fase: '', born: 0, ultimo: 0, x: 0.5, y: 0.6, vx: 0, vy: 0, objetivo: null, cambia: 0,
+                 escapes: 0, cazaDesde: 0, atrapada: 0, abierta: 0, estela: [], estrellas: [], focos: [], hit: null };
+
+function abrirSnitchLienzo() {
+  snitchCanvas.width = canvas.width;
+  snitchCanvas.height = canvas.height;
+  snitch.born = performance.now();
+  snitch.ultimo = 0;
+  snitch.fase = 'espera';
+  snitch.x = 0.5; snitch.y = 0.62; snitch.vx = snitch.vy = 0;
+  snitch.objetivo = null;
+  snitch.escapes = 0;
+  snitch.atrapada = snitch.abierta = snitch.cazaDesde = 0;
+  snitch.estela.length = 0;
+  snitch.hit = null;
+  snitch.estrellas.length = 0;
+  for (let i = 0; i < (REDUCED ? 40 : 110); i++) {
+    snitch.estrellas.push({ x: Math.random(), y: Math.random() * 0.62, r: 0.4 + Math.random() * 1.3, fase: Math.random() * TAU });
+  }
+  snitch.focos.length = 0;
+  for (const x of [0.12, 0.88]) snitch.focos.push({ x, fase: Math.random() * TAU });
+  snitch.activo = true;
+}
+
+/* La Snitch: bola dorada con sus surcos y dos alas de plata que baten.
+   "abre" (0…1) levanta la mitad de arriba sobre una bisagra; "letras"
+   (0…1) hace aparecer la inscripción grabada. */
+function pintarSnitch(g, x, y, R, t, abre, letras, alas) {
+  // las alas, detrás de la bola
+  if (alas > 0.01) {
+    const bate = Math.sin(t * 38) * 0.5 + 0.5;
+    for (const lado of [-1, 1]) {
+      g.save();
+      g.translate(x + lado * R * 0.8, y - R * 0.15);
+      g.rotate(lado * (-0.35 - 0.55 * bate));
+      g.globalAlpha *= alas;
+      for (let p = 0; p < 6; p++) {
+        const largo = R * (2.5 - p * 0.28), ancho = R * 0.32;
+        g.fillStyle = `rgba(250, 246, 236, ${0.85 - p * 0.08})`;
+        g.beginPath();
+        g.ellipse(lado * largo * 0.5, p * R * 0.12, largo * 0.5, ancho * (1 - p * 0.08), lado * p * 0.06, 0, TAU);
+        g.fill();
+        g.strokeStyle = 'rgba(190, 180, 160, 0.5)';
+        g.lineWidth = Math.max(0.6, R * 0.02);
+        g.stroke();
+      }
+      g.restore();
+    }
+  }
+
+  const oro = (cx, cy, r) => {
+    const gr = g.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.05, cx, cy, r);
+    gr.addColorStop(0, '#fff6c8');
+    gr.addColorStop(0.35, '#f5d36b');
+    gr.addColorStop(0.75, '#c99a2e');
+    gr.addColorStop(1, '#7a5617');
+    return gr;
+  };
+
+  // la mitad de abajo (o la bola entera si está cerrada)
+  g.save();
+  g.fillStyle = oro(x, y, R);
+  g.beginPath();
+  if (abre > 0) g.arc(x, y, R, 0, Math.PI);
+  else g.arc(x, y, R, 0, TAU);
+  g.closePath();
+  g.fill();
+  g.clip();   // los surcos no se salen de la bola
+  // los surcos grabados
+  g.strokeStyle = 'rgba(110, 76, 18, 0.55)';
+  g.lineWidth = Math.max(0.8, R * 0.035);
+  g.beginPath();
+  g.ellipse(x, y, R * 0.98, R * 0.22, 0, abre > 0 ? 0 : 0, abre > 0 ? Math.PI : TAU);
+  g.stroke();
+  for (const lado of [-1, 1]) {
+    g.beginPath();
+    g.arc(x + lado * R * 0.42, y, R * 0.75, lado < 0 ? Math.PI * 0.62 : -Math.PI * 0.38, lado < 0 ? Math.PI * 1.38 : Math.PI * 0.38);
+    g.stroke();
+  }
+  g.restore();
+
+  if (abre > 0) {
+    // por dentro: hueco oscuro y la luz que sale
+    g.fillStyle = '#3a2508';
+    g.beginPath();
+    g.ellipse(x, y, R * 0.96, R * 0.24, 0, 0, TAU);
+    g.fill();
+    const luz = g.createRadialGradient(x, y, 0, x, y, R * 2.4);
+    luz.addColorStop(0, `rgba(255, 246, 210, ${0.9 * abre})`);
+    luz.addColorStop(1, 'rgba(255, 246, 210, 0)');
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.fillStyle = luz;
+    g.fillRect(x - R * 2.4, y - R * 2.4, R * 4.8, R * 4.8);
+    g.restore();
+    // la tapa: gira sobre la bisagra de la izquierda
+    g.save();
+    g.translate(x - R, y);
+    g.rotate(-abre * 1.9);
+    g.translate(-(x - R), -y);
+    g.fillStyle = oro(x, y, R);
+    g.beginPath();
+    g.arc(x, y, R, Math.PI, TAU);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(110, 76, 18, 0.55)';
+    g.lineWidth = Math.max(0.8, R * 0.035);
+    g.beginPath();
+    g.ellipse(x, y, R * 0.98, R * 0.22, 0, Math.PI, TAU);
+    g.stroke();
+    g.restore();
+  } else if (letras > 0) {
+    // «Me abro al cierre», grabado, con un brillo que lo recorre
+    const brilla = 0.75 + 0.25 * Math.sin(t * 2.4);
+    g.save();
+    g.globalAlpha *= letras;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = `italic 600 ${R * 0.24}px "Cormorant Garamond", serif`;
+    const lineas = String(CONFIG.snitch && CONFIG.snitch.inscripcion || 'Me abro al cierre').split('|');
+    lineas.forEach((ln, i) => {
+      const ly = y + (i - (lineas.length - 1) / 2) * R * 0.3;
+      g.fillStyle = 'rgba(255, 248, 220, 0.6)';
+      g.fillText(ln, x + R * 0.012, ly + R * 0.012);
+      g.fillStyle = `rgba(92, 58, 10, ${0.92 * brilla})`;
+      g.fillText(ln, x, ly);
+    });
+    g.restore();
+  }
+}
+
+function dibujarSnitch(now) {
+  if (!snitch.activo) return;
+  const g = snitchCtx;
+  const W = snitchCanvas.width, H = snitchCanvas.height;
+  if (!W || !H) return;
+  const t = (now - snitch.born) / 1000;
+  const dt = snitch.ultimo ? clamp((now - snitch.ultimo) / 1000, 0, 0.05) : 0;
+  snitch.ultimo = now;
+  const u = Math.min(W, H) / 100;
+  const vertical = W / H < 0.9;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  // --- el cielo: estrellas y dos focos que barren despacio ---
+  for (const e of snitch.estrellas) {
+    const a = 0.35 + 0.45 * Math.abs(Math.sin(t * 0.9 + e.fase));
+    g.fillStyle = `rgba(255, 250, 235, ${a})`;
+    g.beginPath();
+    g.arc(e.x * W, e.y * H, e.r * (H / 900) * 1.4, 0, TAU);
+    g.fill();
+  }
+  for (const f of snitch.focos) {
+    const ang = -Math.PI / 2 + Math.sin(t * 0.25 + f.fase) * 0.35 + (f.x < 0.5 ? 0.25 : -0.25);
+    const fx = f.x * W, fy = H * 0.86, largo = H * 1.1;
+    const haz = g.createLinearGradient(fx, fy, fx + Math.cos(ang) * largo, fy + Math.sin(ang) * largo);
+    haz.addColorStop(0, 'rgba(255, 236, 190, 0.16)');
+    haz.addColorStop(1, 'rgba(255, 236, 190, 0)');
+    g.fillStyle = haz;
+    g.beginPath();
+    g.moveTo(fx, fy);
+    g.arc(fx, fy, largo, ang - 0.09, ang + 0.09);
+    g.closePath();
+    g.fill();
+  }
+
+  // --- el campo: gradas a los lados, césped y los tres aros de cada portería ---
+  const suelo = H * 0.88;
+  g.fillStyle = '#0d1a17';
+  g.fillRect(0, suelo, W, H - suelo);
+  const cesped = g.createLinearGradient(0, suelo, 0, H);
+  cesped.addColorStop(0, 'rgba(45, 91, 73, 0.55)');
+  cesped.addColorStop(1, 'rgba(10, 20, 18, 0)');
+  g.fillStyle = cesped;
+  g.fillRect(0, suelo, W, H - suelo);
+  for (const lado of [-1, 1]) {
+    // gradas: torres con sus banderines de colores de las casas
+    const colores = ['#7a1f2b', '#1f4f7a', '#c9a34a', '#2d5b49'];
+    for (let i = 0; i < 3; i++) {
+      const bx = lado < 0 ? W * (0.02 + i * 0.07) : W * (0.98 - i * 0.07);
+      const bw = W * 0.055, bh = H * (0.16 + (i % 2) * 0.05);
+      g.fillStyle = 'rgba(14, 12, 28, 0.95)';
+      g.fillRect(bx - bw / 2, suelo - bh, bw, bh);
+      g.fillStyle = colores[(i + (lado > 0 ? 2 : 0)) % 4];
+      g.beginPath();
+      g.moveTo(bx - bw / 2, suelo - bh);
+      g.lineTo(bx + bw / 2, suelo - bh);
+      g.lineTo(bx, suelo - bh - bw * 0.7);
+      g.closePath();
+      g.fill();
+      const ondea = Math.sin(t * 3 + i + lado) * bw * 0.15;
+      g.beginPath();
+      g.moveTo(bx, suelo - bh - bw * 0.7);
+      g.lineTo(bx, suelo - bh - bw * 1.3);
+      g.lineTo(bx + bw * 0.45 + ondea, suelo - bh - bw * 1.15);
+      g.lineTo(bx, suelo - bh - bw);
+      g.fill();
+    }
+    // los aros
+    if (!vertical || true) {
+      const base = lado < 0 ? W * 0.27 : W * 0.73;
+      for (let i = 0; i < 3; i++) {
+        const ax = base + (i - 1) * W * (vertical ? 0.05 : 0.035);
+        const alto = H * (0.2 + (i === 1 ? 0.08 : 0));
+        const ar = Math.max(u * 1.6, W * 0.014);
+        g.strokeStyle = 'rgba(201, 163, 74, 0.55)';
+        g.lineWidth = Math.max(1, u * 0.35);
+        g.beginPath();
+        g.moveTo(ax, suelo);
+        g.lineTo(ax, suelo - alto + ar);
+        g.stroke();
+        g.beginPath();
+        g.arc(ax, suelo - alto, ar, 0, TAU);
+        g.stroke();
+      }
+    }
+  }
+  // niebla baja sobre el campo
+  const niebla = g.createLinearGradient(0, suelo - H * 0.12, 0, suelo + H * 0.04);
+  niebla.addColorStop(0, 'rgba(200, 200, 230, 0)');
+  niebla.addColorStop(0.7, 'rgba(200, 200, 230, 0.08)');
+  niebla.addColorStop(1, 'rgba(200, 200, 230, 0)');
+  g.fillStyle = niebla;
+  g.fillRect(0, suelo - H * 0.12, W, H * 0.16);
+
+  // --- la Snitch ---
+  const Rpeq = Math.max(u * 1.6, 9 * (H / 900) * 2);
+  const centroY = vertical ? 0.5 : 0.52;
+  let R = Rpeq, px, py, alas = 1, letras = 0, abre = 0;
+
+  if (snitch.fase === 'espera' || snitch.fase === 'caza') {
+    // vuela hacia un punto que cambia cada poco; en la caza, más rápida
+    const caza = snitch.fase === 'caza';
+    const cansada = caza ? clamp((performance.now() - snitch.cazaDesde) / 1000 / 18) : 0;   // con el tiempo se cansa
+    if (!snitch.objetivo || now > snitch.cambia || Math.hypot(snitch.objetivo.x - snitch.x, (snitch.objetivo.y - snitch.y) * H / W) < 0.03) {
+      snitch.objetivo = { x: 0.12 + Math.random() * 0.76, y: (caza ? 0.34 : 0.45) + Math.random() * (caza ? 0.44 : 0.25) };
+      snitch.cambia = now + (caza ? 600 + Math.random() * 900 : 1400 + Math.random() * 1400);
+    }
+    const fuerza = caza ? lerp(9, 3, cansada) : 2.2;
+    const freno = caza ? 2.6 : 2;
+    snitch.vx += ((snitch.objetivo.x - snitch.x) * fuerza - snitch.vx * freno) * dt;
+    snitch.vy += ((snitch.objetivo.y - snitch.y) * fuerza - snitch.vy * freno) * dt;
+    snitch.x += snitch.vx * dt;
+    snitch.y += snitch.vy * dt;
+    px = snitch.x * W + Math.sin(t * 7) * u * 0.6;
+    py = snitch.y * H + Math.cos(t * 9) * u * 0.5;
+    snitch.hit = caza ? { x: px, y: py } : null;
+  } else {
+    // atrapada: va al centro y crece; abierta: sube un poco para dejar sitio a la nota
+    const ka = clamp((performance.now() - snitch.atrapada) / 1000 / 1.2);
+    const e = 1 - Math.pow(1 - ka, 3);
+    const Rg = Math.min(W, H) * (vertical ? 0.2 : 0.15);
+    const ko = snitch.abierta ? clamp((performance.now() - snitch.abierta) / 1000 / 1.6) : 0;
+    const eo = ko * ko * (3 - 2 * ko);
+    const fx = snitch.x * W, fy = snitch.y * H;
+    px = lerp(fx, W / 2, e);
+    py = lerp(fy, H * centroY, e) - eo * H * (vertical ? 0.3 : 0.28) + Math.sin(t * 1.6) * u * 0.5;
+    R = lerp(Rpeq, Rg, e) * (1 - 0.45 * eo);
+    alas = 1 - clamp(ka * 1.4);
+    letras = snitch.abierta ? 0 : clamp((performance.now() - snitch.atrapada) / 1000 / 1.2 - 1);
+    abre = snitch.abierta ? 1 - Math.pow(1 - clamp((performance.now() - snitch.abierta) / 1000 / 0.9), 3) : 0;
+    snitch.hit = !snitch.abierta && letras > 0.5 ? { x: px, y: py, r: R * 1.2 } : null;
+  }
+
+  // la estela dorada
+  snitch.estela.push({ x: px, y: py });
+  if (snitch.estela.length > 16) snitch.estela.shift();
+  if (snitch.fase !== 'atrapada') {
+    snitch.estela.forEach((p, i) => {
+      const a = (i / snitch.estela.length) * 0.5;
+      g.fillStyle = `rgba(245, 211, 107, ${a})`;
+      g.beginPath();
+      g.arc(p.x, p.y, R * 0.5 * (i / snitch.estela.length), 0, TAU);
+      g.fill();
+    });
+  }
+  // su halo
+  const halo = g.createRadialGradient(px, py, 0, px, py, R * 3.2);
+  halo.addColorStop(0, 'rgba(255, 220, 120, 0.4)');
+  halo.addColorStop(1, 'rgba(255, 220, 120, 0)');
+  g.fillStyle = halo;
+  g.fillRect(px - R * 3.2, py - R * 3.2, R * 6.4, R * 6.4);
+  if (snitch.fase === 'atrapada' && !snitch.abierta && letras > 0.5) {
+    // un anillo que invita a tocarla
+    const an = (t % 2) / 2;
+    g.strokeStyle = `rgba(255, 230, 150, ${0.5 * (1 - an)})`;
+    g.lineWidth = Math.max(1, u * 0.3);
+    g.beginPath();
+    g.arc(px, py, R * (1.15 + an * 0.6), 0, TAU);
+    g.stroke();
+  }
+  g.save();
+  pintarSnitch(g, px, py, R, t, abre, letras, alas);
+  g.restore();
+  if (snitch.fase === 'caza' && !REDUCED && Math.random() < 0.3) {
+    const r = snitchCanvas.getBoundingClientRect();
+    fxSpark(r.left + px * (r.width / W), r.top + py * (r.height / H), 26, 0.5);
+  }
+}
+
+function escribirLineaSnitch(texto, destino) {
+  const p = el('p', 'v-line');
+  let i = 0;
+  texto.split(' ').forEach((palabra, n) => {
+    if (n > 0) {
+      const hueco = el('span', 'ch', ' ');
+      hueco.style.setProperty('--i', i++);
+      p.appendChild(hueco);
+    }
+    const caja = el('span', 'palabra');
+    for (const ch of graphemes(palabra)) {
+      const span = el('span', 'ch', ch);
+      span.style.setProperty('--i', i++);
+      caja.appendChild(span);
+    }
+    p.appendChild(caja);
+  });
+  (destino || snitchLineasEl).appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+  return p;
+}
+
+function pistaSnitch(texto) {
+  if (!texto) { snitchPistaEl.classList.remove('in'); return; }
+  snitchPistaEl.textContent = '✦ ' + texto + ' ✦';
+  snitchPistaEl.hidden = false;
+  snitchPistaEl.classList.remove('in');
+  void snitchPistaEl.offsetWidth;
+  snitchPistaEl.classList.add('in');
+}
+
+function mostrarSnitchEscena() {
+  const S = CONFIG.snitch;
+  if (!S || !S.activo || snitch.activo) return false;
+  document.body.classList.add('cazando');
+  abrirSnitchLienzo();
+  snitchLineasEl.replaceChildren();
+  snitchNotaTextoEl.replaceChildren();
+  snitchNotaEl.hidden = true;
+  snitchNotaEl.classList.remove('in');
+  snitchPistaEl.hidden = true;
+  snitchPistaEl.classList.remove('in');
+  snitchBtn.hidden = snitchSeguirBtn.hidden = true;
+  snitchBtn.classList.remove('in');
+  snitchSeguirBtn.classList.remove('in');
+  fillPlate(snitchBtn, { runa: "◉", nombre: S.boton || 'Atrapar la Snitch', desc: S.botonDesc || '' });
+  fillPlate(snitchSeguirBtn, { runa: "❧", nombre: S.seguir || 'Seguir', desc: S.seguirDesc || '' });
+  snitchEl.hidden = false;
+  snitchEl.classList.remove('out');
+  void snitchEl.offsetWidth;
+  snitchEl.classList.add('show');
+  let t = 1000;
+  for (const texto of (S.antes || [])) {
+    later(t, () => escribirLineaSnitch(texto), 'snitch');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(t + 400, () => {
+    if (snitch.fase !== 'espera') return;
+    snitchBtn.hidden = false;
+    void snitchBtn.offsetWidth;
+    snitchBtn.classList.add('in');
+  }, 'snitch');
+  return true;
+}
+
+/* Empieza la caza */
+function lanzarSnitch() {
+  if (!snitch.activo || snitch.fase !== 'espera') return;
+  const S = CONFIG.snitch || {};
+  snitch.fase = 'caza';
+  snitch.cazaDesde = performance.now();
+  snitch.objetivo = null;
+  castFxAt(snitchBtn, { sparks: 24, r1: 220, dur: 800 });
+  snitchBtn.classList.remove('in');
+  later(500, () => { snitchBtn.hidden = true; }, 'snitch');
+  for (const linea of snitchLineasEl.children) linea.classList.add('out');
+  later(900, () => snitchLineasEl.replaceChildren(), 'snitch');
+  later(700, () => pistaSnitch(S.pistaCaza), 'snitch');
+}
+
+function tocarSnitch(e) {
+  if (!snitch.activo) return;
+  const S = CONFIG.snitch || {};
+  const r = snitchCanvas.getBoundingClientRect();
+  const k = snitchCanvas.width / r.width;
+  const px = (e.clientX - r.left) * k, py = (e.clientY - r.top) * k;
+  const h = snitch.hit;
+  if (snitch.fase === 'caza' && h) {
+    const d = Math.hypot(px - h.x, py - h.y) / k;   // en píxeles de pantalla
+    const escapes = S.escapes == null ? 2 : S.escapes;
+    if (d < 70 && snitch.escapes < escapes) {
+      // se escapa: sale disparada al otro lado
+      snitch.escapes++;
+      snitch.objetivo = { x: snitch.x < 0.5 ? 0.7 + Math.random() * 0.2 : 0.1 + Math.random() * 0.2, y: 0.35 + Math.random() * 0.4 };
+      snitch.vx += (snitch.objetivo.x - snitch.x) * 4;
+      snitch.vy += (snitch.objetivo.y - snitch.y) * 4;
+      snitch.cambia = performance.now() + 900;
+      const frases = S.escapa || [];
+      pistaSnitch(frases[(snitch.escapes - 1) % Math.max(1, frases.length)] || '');
+      fxBurst(e.clientX, e.clientY, 10, 80);
+    } else if (d < 60) {
+      atraparSnitch(e);
+    } else {
+      fxBurst(e.clientX, e.clientY, 6, 60);
+    }
+    return;
+  }
+  if (snitch.fase === 'atrapada' && h && h.r && Math.hypot(px - h.x, py - h.y) < h.r) abrirSnitch();
+}
+
+function atraparSnitch(e) {
+  const S = CONFIG.snitch || {};
+  snitch.fase = 'atrapada';
+  snitch.atrapada = performance.now();
+  snitch.estela.length = 0;
+  fxBurst(e.clientX, e.clientY, 36, 170);
+  fxRing(e.clientX, e.clientY, { r1: 260, dur: 900 });
+  pistaSnitch('');
+  let t = 700;
+  for (const texto of (S.atrapada || [])) {
+    later(t, () => escribirLineaSnitch(texto), 'snitch');
+    t += 520 + graphemes(texto).length * 42;
+  }
+  later(Math.max(t, 2600), () => pistaSnitch(S.pistaAbrir), 'snitch');
+}
+
+/* Se abre: sale la nota con el mensaje, frase a frase */
+function abrirSnitch() {
+  if (snitch.abierta) return;
+  const S = CONFIG.snitch || {};
+  snitch.abierta = performance.now();
+  pistaSnitch('');
+  for (const linea of snitchLineasEl.children) linea.classList.add('out');
+  later(900, () => snitchLineasEl.replaceChildren(), 'snitch');
+  const r = snitchCanvas.getBoundingClientRect();
+  const h = snitch.hit;
+  if (h) {
+    const k = r.width / snitchCanvas.width;
+    fxBurst(r.left + h.x * k, r.top + h.y * k, 40, 200);
+  }
+  later(1100, () => {
+    snitchNotaEl.hidden = false;
+    void snitchNotaEl.offsetWidth;
+    snitchNotaEl.classList.add('in');
+  }, 'snitch');
+  // el mensaje se escribe frase a frase, cada una con su pausa
+  let t = 1900;
+  (S.mensaje || []).forEach((parrafo, i) => {
+    const frases = parrafo.match(/[^.!?…]+[.!?…]*\s*/g) || [parrafo];
+    let p = null;
+    frases.forEach(frase => {
+      const texto = frase.trim();
+      if (!texto) return;
+      later(t, () => {
+        if (!p) { p = el('p', 'nota-parrafo'); snitchNotaTextoEl.appendChild(p); }
+        const s = escribirLineaSnitch(texto, p);
+        s.classList.add('frase');
+        snitchNotaEl.scrollTop = snitchNotaEl.scrollHeight;
+      }, 'snitch');
+      t += 700 + graphemes(texto).length * 38;
+    });
+    t += 500;
+  });
+  if (S.firma) {
+    later(t, () => {
+      const f = el('p', 'nota-firma', S.firma);
+      snitchNotaTextoEl.appendChild(f);
+      void f.offsetWidth;
+      f.classList.add('in');
+    }, 'snitch');
+    t += 900;
+  }
+  later(t + 400, () => {
+    snitchSeguirBtn.hidden = false;
+    void snitchSeguirBtn.offsetWidth;
+    snitchSeguirBtn.classList.add('in');
+    snitchNotaEl.scrollTop = snitchNotaEl.scrollHeight;
+  }, 'snitch');
+}
+
+function cerrarSnitch() {
+  if (!snitch.activo) return;
+  cancelTasks('snitch');
+  snitchSeguirBtn.classList.remove('in');
+  snitchEl.classList.remove('show');
+  snitchEl.classList.add('out');
+  later(950, () => {
+    snitch.activo = false;
+    snitch.fase = '';
+    snitchEl.hidden = true;
+    snitchEl.classList.remove('out');
+    snitchLineasEl.replaceChildren();
+    snitchNotaTextoEl.replaceChildren();
+    snitchNotaEl.hidden = true;
+    snitchNotaEl.classList.remove('in');
+    snitchPistaEl.hidden = true;
+    snitchBtn.hidden = snitchSeguirBtn.hidden = true;
+    document.body.classList.remove('cazando');
+  }, 'snitch');
 }
 
 /* =====================================================================
@@ -7911,6 +8467,7 @@ function buildExtras() {
   fillRune(reparoFilaBtn, HX.reparo);
   fillRune(pruebasFilaBtn, HX.pruebas);
   fillRune(oesedFilaBtn, HX.oesed);
+  fillRune(snitchFilaBtn, HX.snitch);
   cargarFotoOesed();   // se baja desde ya, para que esté lista al mirar en el espejo
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
@@ -7960,6 +8517,10 @@ function bindExtras() {
   oesedBtn.addEventListener('click', lanzarOesed);
   oesedSeguirBtn.addEventListener('click', cerrarOesed);
   oesedCanvas.addEventListener('pointerdown', tocarOesed);
+  snitchFilaBtn.addEventListener('click', () => mostrarSnitchEscena());
+  snitchBtn.addEventListener('click', lanzarSnitch);
+  snitchSeguirBtn.addEventListener('click', cerrarSnitch);
+  snitchCanvas.addEventListener('pointerdown', tocarSnitch);
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);
   expelBtn.addEventListener('click', lanzarExpel);
@@ -8222,7 +8783,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, snitchFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -8241,6 +8802,12 @@ function resetExtras() {
   cancelTasks('priori');
   cancelTasks('rep');
   cancelTasks('oesed');
+  cancelTasks('snitch');
+  snitch.activo = false;
+  snitch.fase = '';
+  snitchEl.hidden = true;
+  snitchEl.classList.remove('show', 'out');
+  document.body.classList.remove('cazando');
   oesed.activo = false;
   oesedEl.hidden = true;
   oesedEl.classList.remove('show', 'out');
@@ -9075,6 +9642,7 @@ function frame(now) {
   dibujarExpel(now);
   dibujarPriori(now);
   dibujarOesed(now);
+  dibujarSnitch(now);
   dibujarReparo(now);
   if (t === null && !needsRedraw) return;
   needsRedraw = false;
