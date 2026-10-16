@@ -378,15 +378,7 @@ const CONFIG = {
     antes: [
       "Quiero explicarte algo."
     ],
-    /* La parte oscura: mientras se escribe, el paisaje se apaga, el castillo
-       se queda a oscuras, la escarcha entra por los bordes y los dementores
-       cruzan el lago. Se lee en frío, más pequeño, como lo que es. */
-    oscuro: [
-      "La pornografía tipo webcam puede generar un placer más intenso que el contenido grabado,",
-      "porque combina excitación sexual, novedad e interacción en tiempo real.",
-      "La sensación de que la otra persona responde específicamente a ti aumenta la anticipación y la recompensa,",
-      "y hace que el cerebro libere dopamina y quiera repetir la experiencia con más frecuencia."
-    ],
+    oscuro: [],
     boton: "Expelliarmus",
     botonDesc: "el hechizo de Harry: desarmar, nunca herir",
     despues: [
@@ -568,7 +560,7 @@ const CONFIG = {
   // Música de fondo: la invoca Sonorus (los móviles bloquean el autoplay)
   music: {
     enabled: true,
-    file: "assets/cancion.mp3",
+    file: "assets/cancion.m4a",
     title: "From the Moon",
     volume: 0.45,
     fadeInSeconds: 3,
@@ -2638,28 +2630,29 @@ function hidePlate(btn) {
   later(420, () => { btn.hidden = true; btn.classList.remove('out'); });
 }
 
-/* Todos los hechizos del árbol viven en una fila fija de botones:
-   Sonorus · Expecto Patronum · Dracarys · Terra Australis · Tempus.
+/* Todos los hechizos del árbol viven en una fila fija de botones, en el
+   orden de la historia: la música, lo que ya pasó, el perdón, el presente,
+   lo que viene y, al final, el Espejo de Oesed y la Snitch.
    Arriba queda una sola placa grande para el hechizo del momento
    (Lumos Máxima o Revelio), así la carta nunca se queda sin sitio. */
 function hechizosFila() {
   const F = FX_ON;
   return [
     { btn: sonorusBtn, activo: () => music.available },
+    { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
+    { btn: merodeadorBtn, activo: () => F.merodeador !== false && !!(CONFIG.merodeador && CONFIG.merodeador.activo) },
+    { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
+    { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
+    { btn: orchideousBtn, activo: () => F.orchideous !== false },
     { btn: patronusBtn, activo: () => true },
     { btn: dracarysBtn, activo: () => F.dracarys !== false },
-    { btn: australisBtn, activo: () => F.australis !== false },
-    { btn: orchideousBtn, activo: () => F.orchideous !== false },
-    { btn: merodeadorBtn, activo: () => F.merodeador !== false && !!(CONFIG.merodeador && CONFIG.merodeador.activo) },
-    { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
-    { btn: wingardiumFilaBtn, activo: () => !!(CONFIG.leviosa && CONFIG.leviosa.activo) },
-    { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
-    { btn: prioriFilaBtn, activo: () => !!(CONFIG.priori && CONFIG.priori.activo) },
-    { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
-    { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) },
-    { btn: reparoFilaBtn, activo: () => !!(CONFIG.reparo && CONFIG.reparo.activo) },
+    { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) },
     { btn: pruebasFilaBtn, activo: () => !!(CONFIG.modoAcertijo && CONFIG.pruebasEntrada !== true && CONFIG.pruebas && CONFIG.pruebas.length) },
-    { btn: tempusBtn, activo: () => !!(CONFIG.estaciones && CONFIG.estaciones.activo) }
+    { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
+    { btn: australisBtn, activo: () => F.australis !== false },
+    { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
+    { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
+    { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) }
   ];
 }
 
@@ -2686,6 +2679,7 @@ function actualizarPlacas(delay = 300) {
       h.btn.hidden = !debe;
       if (debe) later(delay, () => h.btn.classList.add('in'));
     }
+    marcarSiguiente();
   }
 
   const principal = spells.revelio ? revelioBtn : (secret.shown && !secret.started ? secretBtn : null);
@@ -2695,10 +2689,33 @@ function actualizarPlacas(delay = 300) {
   }
 }
 
+/* El camino: el primer hechizo de la fila que ella aún no ha lanzado brilla,
+   así sabe por dónde sigue la historia. Se recuerda en su móvil. */
+const LANZADOS_KEY = 'arbol-lanzados';
+const lanzados = new Set((() => {
+  try { return JSON.parse(localStorage.getItem(LANZADOS_KEY)) || []; } catch (e) { return []; }
+})());
+
+function marcarSiguiente() {
+  const visibles = hechizosFila().map(h => h.btn).filter(b => !b.hidden);
+  const siguiente = visibles.find(b => !lanzados.has(b.id) && !b.classList.contains('usado'));
+  for (const b of visibles) b.classList.toggle('siguiente', b === siguiente);
+}
+
+// en captura: se apunta antes de que el hechizo se apague a sí mismo
+spellRowEl.addEventListener('click', e => {
+  const btn = e.target.closest('.rune-btn');
+  if (!btn || btn.disabled) return;
+  lanzados.add(btn.id);
+  try { localStorage.setItem(LANZADOS_KEY, JSON.stringify([...lanzados])); } catch (e) {}
+  setTimeout(marcarSiguiente, 0);
+}, true);
+
 /* Marca un hechizo de un solo uso como gastado, sin mover la fila */
 function gastarHechizo(btn) {
   btn.classList.add('usado');
   btn.disabled = true;
+  marcarSiguiente();
 }
 
 function showSpellHint(text) {

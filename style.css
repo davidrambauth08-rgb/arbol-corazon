@@ -1582,6 +1582,31 @@ body.sonorus-echo #spellbook { animation-name: eco-book; }
   50%      { text-shadow: 0 0 16px rgba(245, 211, 107, 0.85); }
 }
 
+/* el orden de la historia: cada hechizo lleva su número… */
+#spell-row { counter-reset: hechizo; }
+.rune-btn { position: relative; }
+.rune-btn:not([hidden]) { counter-increment: hechizo; }
+.rune-btn::before {
+  content: counter(hechizo);
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  font-family: var(--serif);
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(240, 208, 140, 0.55);
+}
+/* …y el siguiente que toca brilla en oro */
+.rune-btn.siguiente.in {
+  border-color: var(--warm-gold);
+  animation: rune-siguiente 2.2s ease-in-out infinite;
+}
+.rune-btn.siguiente::before { color: var(--warm-gold); }
+@keyframes rune-siguiente {
+  0%, 100% { box-shadow: 0 6px 18px rgba(6, 8, 18, 0.45), 0 0 0 0 rgba(245, 211, 107, 0); }
+  50%      { box-shadow: 0 6px 18px rgba(6, 8, 18, 0.45), 0 0 16px 2px rgba(245, 211, 107, 0.55); }
+}
+
 /* la fila necesita un poco más de ancho que una placa suelta */
 #spellbook { width: min(94vw, 356px); }
 @media (max-width: 380px) {
@@ -1729,6 +1754,7 @@ body.probando #clock {
 
 @media (prefers-reduced-motion: reduce) {
   .rune-btn.in:not(.usado) .rune-glyph { animation: none !important; }
+  .rune-btn.siguiente.in { animation: none; box-shadow: 0 0 12px 2px rgba(245, 211, 107, 0.5); }
   #invite, #dino-say { transition-duration: 0.25s; }
 }
 

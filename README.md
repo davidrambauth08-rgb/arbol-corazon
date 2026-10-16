@@ -68,7 +68,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 | **Lingua Amoris** | en la tarjeta, tras el primer recuerdo | la misma frase en dieciocho idiomas cruzando la pantalla |
 | **Finite Incantatem** | al abrir el cierre | se lee mientras la magia se apaga |
 
-**La fila de hechizos**: Sonorus · Expecto Patronum · Dracarys · Terra Australis · Orchideous · Juro solemnemente · Quiero volar · Wingardium Leviosa · Priori Incantatem · Espejo de Oesed · Me abro al cierre · Reparo · Las tres pruebas · Tempus viven en una fila (en el móvil se parte en varias líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
+**La fila de hechizos**, en el orden de la historia (cada uno lleva su número y **el siguiente que toca brilla en oro**; lo que ya lanzó se recuerda en su móvil): Sonorus · Priori Incantatem · Juro solemnemente · Reparo · Wingardium Leviosa · Orchideous · Expecto Patronum · Dracarys · Tempus · Las tres pruebas · Quiero volar · Terra Australis · Espejo de Oesed · Me abro al cierre. Viven en una fila (en el móvil se parte en varias líneas, pero nunca se mueve después) debajo de la carta, siempre en el mismo sitio. Los de un solo uso se apagan al lanzarlos en vez de desaparecer, así ningún botón se mueve bajo el dedo. Encima queda una sola placa grande para el hechizo del momento (Lumos Máxima o Revelio).
 
 **Cada hechizo trae su fondo**: Dracarys enciende un cielo de brasas (`CIELOS` en script.js, que se mezcla sobre el de la estación y vuelve solo al acabar). Orchideous y Terra Australis van más lejos y se quedan con la pantalla entera: el primero la apaga a negro para que sólo brillen los girasoles; el segundo la cambia por un atardecer del hemisferio sur, con la Cruz del Sur, nubes, un volcán y palmeras. Los dinosaurios son de dibujo, con panza clara, crestas, ojos grandes y mofletes.
 
@@ -91,7 +91,7 @@ Cada eco lleva **su flor** alrededor del marco —dibujada, meciéndose con la b
 - Tras el primer recuerdo aparece **"¿Una última cosa?"** con el botón **"Sí ❤️"**: lluvia de corazones de ~3,5 s y mensaje final.
 - **"Volver a verlo"** reinicia toda la experiencia: acertijos, árbol, foto, recuerdos, easter egg, confeti y canción.
 
-**Música:** pon tu canción en `assets/cancion.mp3`. La invoca el hechizo **Sonorus** junto al árbol (así cumple las reglas de autoplay del iPhone) y se controla desde el pergamino musical. Los botones de la esquina superior derecha la pausan, la reanudan o la silencian. Si el archivo no existe, no se muestran.
+**Música:** pon tu canción en `assets/cancion.m4a`. La invoca el hechizo **Sonorus** junto al árbol (así cumple las reglas de autoplay del iPhone) y se controla desde el pergamino musical. Los botones de la esquina superior derecha la pausan, la reanudan o la silencian. Si el archivo no existe, no se muestran.
 
 **Easter egg:** con el árbol ya formado, tocar la copa 5 veces en 4 segundos muestra un mensaje oculto. Solo una vez por reproducción.
 
