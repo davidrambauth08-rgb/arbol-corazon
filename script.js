@@ -373,7 +373,7 @@ const CONFIG = {
      enfrentadas. Al lanzar el hechizo, una varita sale volando y amanece.
      Las frases son tuyas: cámbialas por lo que quieras. */
   expelliarmus: {
-    activo: true,
+    activo: false,          // false = quitado de la fila (16-10)
     entrada: false,         // true = es lo primero al pasar la puerta
     antes: [
       "Quiero explicarte algo."
