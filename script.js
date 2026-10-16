@@ -241,6 +241,9 @@ const CONFIG = {
     pistaCaza: "atrápala",
     escapes: 2,
     escapa: ["¡casi!", "es rápida… otra vez"],
+    // cada vez que se escapa suelta una palabra; la última, al atraparla.
+    // Luego vuelan y se juntan en una frase
+    palabras: ["Sigo", "aquí,", "eligiéndote"],
     atrapada: ["La atrapaste.", "Tiene algo grabado."],
     inscripcion: "Me abro|al cierre",
     pistaAbrir: "tócala para abrirla",
@@ -250,6 +253,38 @@ const CONFIG = {
       "Sí, sé que he fallado en algunas cosas, aunque nunca te he faltado al respeto. Déjame cuidarte, que yo también me dejo cuidar por ti."
     ],
     firma: "",
+    /* después del mensaje, el poema, verso a verso ("" = cambio de estrofa) */
+    poema: {
+      titulo: "No sé escribir cosas bonitas",
+      versos: [
+        "no sé escribir cosas bonitas, Karen.",
+        "sé de noches largas,",
+        "de cafés que se enfrían,",
+        "de equivocarme",
+        "y levantarme otra vez.",
+        "",
+        "pero hay algo que sí sé:",
+        "el mundo está lleno de ruido",
+        "y tú eres",
+        "lo único que se oye.",
+        "",
+        "he visto amaneceres",
+        "que no valían nada",
+        "hasta que tú",
+        "los mirabas conmigo.",
+        "",
+        "no te prometo un cielo sin tormentas.",
+        "te prometo esto:",
+        "cuando todo se caiga",
+        "voy a seguir aquí,",
+        "torpe, terco,",
+        "eligiéndote."
+      ]
+    },
+    /* el final: la Snitch escribe "cielo" con su estela y se queda de estrella */
+    mirarCielo: "Mirar al cielo",
+    cielo: "Siempre",
+    cieloLinea: "Y esa estrella, la que más brilla, es nuestra.",
     seguir: "Seguir",
     seguirDesc: "volver al árbol"
   },
@@ -2659,6 +2694,7 @@ function hechizosFila() {
 
 function mostrarJuego(delay = 300) {
   spells.juegoShown = true;
+  setTimeout(prepararSnitch3d, 5000);   // la Snitch 3D se va bajando con calma
   actualizarPlacas(delay);
 }
 
@@ -4701,7 +4737,9 @@ function cerrarPriori() {
    dentro sale una nota con el mensaje, que se escribe frase a frase.
    ===================================================================== */
 const snitch = { activo: false, fase: '', born: 0, ultimo: 0, x: 0.5, y: 0.6, vx: 0, vy: 0, objetivo: null, cambia: 0,
-                 escapes: 0, cazaDesde: 0, atrapada: 0, abierta: 0, estela: [], estrellas: [], focos: [], luces: [], hit: null };
+                 escapes: 0, cazaDesde: 0, atrapada: 0, abierta: 0, estela: [], estrellas: [], focos: [], luces: [], hit: null,
+                 palabras: [], polvo: [], fraseHasta: 0, tamFrase: 0, luz3d: false, cielo: null,
+                 prevX: null, prevY: null, vsx: 0, vsy: 0 };
 
 /* La Snitch en 3D (CONFIG.snitch.modelo3d): un <model-viewer> que va encima
    del lienzo, justo donde estaría la dibujada. Mientras vuela se ladea hacia
@@ -4752,40 +4790,281 @@ function reiniciarSnitch3d() {
   const mv = snitch3d.el;
   if (!mv) return;
   snitch3d.vista = false;
-  mv.classList.remove('in', 'en-mano');
-  mv.removeAttribute('camera-controls');
-  mv.removeAttribute('auto-rotate');
-  mv.setAttribute('orientation', '0deg 0deg 0deg');
-  mv.setAttribute('camera-orbit', '0deg 78deg auto');
+  mv.classList.remove('in');
+  soltarSnitch3d(mv);
 }
 
-/* Coloca la 3D en (px, py) del lienzo; devuelve false si toca la dibujada */
-function colocarSnitch3d(px, py, R, abre, t) {
+/* Deja la 3D lista para volar: sin control del dedo, sin giro, de frente */
+function soltarSnitch3d(mv) {
+  snitch3d.enMano = false;
+  mv.classList.remove('en-mano');
+  mv.removeAttribute('camera-controls');
+  mv.removeAttribute('auto-rotate');
+  mv.setAttribute('rotation-per-second', '40deg');
+  mv.style.filter = mv.style.opacity = '';
+  mv.setAttribute('orientation', '0deg 0deg 0deg');
+  mv.setAttribute('camera-orbit', '0deg 78deg auto');
+  if (typeof mv.resetTurntableRotation === 'function') mv.resetTurntableRotation(0);
+  if (typeof mv.jumpCameraToGoal === 'function') mv.jumpCameraToGoal();
+}
+
+/* Coloca la 3D en (px, py) del lienzo; devuelve false si toca la dibujada.
+   "luz" (0…1) es el momento en que se abre: gira cada vez más rápido y se
+   vuelve blanca. */
+function colocarSnitch3d(px, py, R, abre, t, luz, oculta) {
   const mv = snitch3d.el;
   if (!mv || !snitch3d.listo) return false;
-  const visible = abre <= 0;
+  const visible = !oculta && abre <= 0;
   if (visible !== snitch3d.vista) {
     snitch3d.vista = visible;
     mv.classList.toggle('in', visible);
   }
   if (!visible) return false;
   const k = snitchCanvas.width / (snitchCanvas.clientWidth || snitchCanvas.width);
-  const lado = Math.min((R * 6.4) / k, (snitchCanvas.clientWidth || 9999) * 0.96);   // en el móvil no se sale por los lados
-  mv.style.width = mv.style.height = lado.toFixed(1) + 'px';
-  mv.style.transform = `translate(${(px / k - lado / 2).toFixed(1)}px, ${(py / k - lado / 2).toFixed(1)}px)`;
-  const enMano = snitch.fase === 'atrapada';
-  if (enMano && !mv.classList.contains('en-mano')) {
-    mv.classList.add('en-mano');
-    mv.setAttribute('orientation', '0deg 0deg 0deg');
-    mv.setAttribute('camera-controls', '');
-    if (!REDUCED) mv.setAttribute('auto-rotate', '');
-  } else if (!enMano) {
-    // en vuelo: se inclina hacia donde va y cabecea un poco
-    const ladeo = clamp(snitch.vx * 70, -32, 32);
-    const giro = REDUCED ? 0 : Math.sin(t * 1.7) * 28;
-    mv.setAttribute('orientation', `${(-ladeo).toFixed(1)}deg 0deg ${giro.toFixed(1)}deg`);
+  const enMano = snitch.fase === 'atrapada' && !snitch.abierta;
+  const ancho = snitchCanvas.clientWidth || 9999, alto = snitchCanvas.clientHeight || 9999;
+  // en la mano no se sale por los lados; al entrar rozando la pantalla puede ser enorme
+  const lado = Math.min((R * 6.4) / k, enMano || luz > 0 ? ancho * 0.96 : Math.max(ancho, alto) * 1.6);
+  // el zumbido de las alas: un temblor pequeño y muy rápido mientras vuela
+  const zumbido = snitch.fase === 'atrapada' || REDUCED ? 0 : Math.sin(t * 57) * 0.022;
+  const crece = 1 + luz * 0.25;
+  // el visor sólo cambia de tamaño a saltos (cambiarlo cada fotograma es caro);
+  // lo que falta lo hace la escala
+  const cubo = Math.round(Math.pow(1.25, Math.ceil(Math.log(Math.max(lado, 24)) / Math.log(1.25))));
+  if (cubo !== snitch3d.cubo) {
+    snitch3d.cubo = cubo;
+    mv.style.width = mv.style.height = cubo + 'px';
+  }
+  const esc = (lado / cubo) * crece;
+  mv.style.transform = `translate(${(px / k - cubo / 2).toFixed(1)}px, ${(py / k - cubo / 2).toFixed(1)}px) ` +
+    `scale(${(esc * (1 + zumbido)).toFixed(3)}, ${(esc * (1 - zumbido)).toFixed(3)})`;
+
+  if (luz > 0) {
+    // se abre en luz
+    mv.classList.remove('en-mano');
+    mv.removeAttribute('camera-controls');
+    if (!mv.hasAttribute('auto-rotate')) mv.setAttribute('auto-rotate', '');
+    mv.setAttribute('rotation-per-second', `${Math.round(60 + 1300 * luz * luz)}deg`);
+    mv.style.filter = `brightness(${(1 + luz * 3.5).toFixed(2)}) saturate(${(1 - luz * 0.6).toFixed(2)})`;
+    mv.style.opacity = luz > 0.8 ? String(Math.max(0, 1 - (luz - 0.8) / 0.2).toFixed(2)) : '';
+  } else if (enMano) {
+    if (!snitch3d.enMano) {
+      snitch3d.enMano = true;
+      mv.classList.add('en-mano');
+      mv.setAttribute('orientation', '0deg 0deg 0deg');
+      mv.setAttribute('camera-controls', '');
+      if (!REDUCED) mv.setAttribute('auto-rotate', '');
+    }
+  } else {
+    if (snitch3d.enMano || mv.hasAttribute('auto-rotate')) soltarSnitch3d(mv);
+    // en vuelo: mira hacia donde va, se inclina en las curvas y cabecea al subir o bajar
+    const giro = clamp(snitch.vsx * 140, -60, 60) + (REDUCED ? 0 : Math.sin(t * 2.1) * 10);
+    const ladeo = clamp(-snitch.vsx * 80, -35, 35);
+    const cabeceo = clamp(snitch.vsy * 90, -25, 25);
+    mv.setAttribute('orientation', `${ladeo.toFixed(1)}deg ${cabeceo.toFixed(1)}deg ${giro.toFixed(1)}deg`);
   }
   return true;
+}
+
+/* Las palabras que suelta al escaparse: flotan donde las dejó y, al
+   atraparla, vuelan a juntarse en una frase */
+const fuentePalabra = tam => `italic 600 ${tam}px "Cormorant Garamond", serif`;
+const tamPalabra = (W, H) => Math.min(W, H) * (W / H < 0.9 ? 0.075 : 0.06);
+
+function nuevaPalabra(texto, x, y) {
+  const W = snitchCanvas.width, H = snitchCanvas.height;
+  snitch.palabras.push({ texto, x: clamp(x, W * 0.14, W * 0.86), y: clamp(y, H * 0.28, H * 0.7),
+                         born: performance.now(), fase: Math.random() * TAU });
+}
+
+function juntarPalabras() {
+  if (!snitch.palabras.length) return;
+  const W = snitchCanvas.width, H = snitchCanvas.height, g = snitchCtx;
+  const tam = tamPalabra(W, H);
+  g.save();
+  g.font = fuentePalabra(tam);
+  const anchos = snitch.palabras.map(w => g.measureText(w.texto).width);
+  g.restore();
+  const hueco = tam * 0.3;
+  const total = anchos.reduce((a, b) => a + b, 0) + hueco * (anchos.length - 1);
+  const esc = Math.min(1.25, (W * 0.9) / total);
+  snitch.tamFrase = tam * esc;
+  let x = W / 2 - (total * esc) / 2;
+  const y = H * (W / H < 0.9 ? 0.25 : 0.23);
+  const ahora = performance.now();
+  snitch.palabras.forEach((w, i) => {
+    const a = anchos[i] * esc;
+    w.desde = { x: w.x, y: w.yAct == null ? w.y : w.yAct };
+    w.hacia = { x: x + a / 2, y };
+    w.vuela = ahora + 300 + i * 170;
+    x += a + hueco * esc;
+  });
+  snitch.fraseHasta = ahora + 5600;
+}
+
+function dibujarPalabras(g, W, H, u, t, ahora) {
+  if (!snitch.palabras.length) return;
+  const tam = tamPalabra(W, H);
+  g.save();
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (const w of snitch.palabras) {
+    let x = w.x, y, size = tam;
+    if (w.hacia) {
+      const k = clamp((ahora - w.vuela) / 1400);
+      const e = 1 - Math.pow(1 - k, 3);
+      x = lerp(w.desde.x, w.hacia.x, e);
+      y = lerp(w.desde.y, w.hacia.y, e) - Math.sin(k * Math.PI) * H * 0.07;
+      size = lerp(tam, snitch.tamFrase, e);
+    } else {
+      y = w.y - clamp((ahora - w.born) / 2600) * H * 0.05 + Math.sin(t * 1.4 + w.fase) * u * 0.6;
+      w.yAct = y;
+    }
+    let a = clamp((ahora - w.born) / 700);
+    if (snitch.fraseHasta && ahora > snitch.fraseHasta) a *= 1 - clamp((ahora - snitch.fraseHasta) / 900);
+    if (a <= 0.01) continue;
+    g.font = fuentePalabra(size);
+    g.globalAlpha = a;
+    g.shadowColor = 'rgba(245, 211, 107, 0.8)';
+    g.shadowBlur = size * 0.4;
+    g.fillStyle = '#ffe8aa';
+    g.fillText(w.texto, x, y);
+  }
+  g.restore();
+  if (snitch.fraseHasta && ahora > snitch.fraseHasta + 1000) {
+    snitch.palabras.length = 0;
+    snitch.fraseHasta = 0;
+  }
+}
+
+/* El polvo de oro que va soltando al volar */
+function polvoSnitch(g, px, py, R, dt, ahora, emite) {
+  if (emite && !REDUCED) {
+    for (let i = 0; i < 2; i++) {
+      snitch.polvo.push({ x: px + (Math.random() - 0.5) * R, y: py + (Math.random() - 0.5) * R * 0.6,
+                          vx: (Math.random() - 0.5) * R * 0.6, vy: R * (0.2 + Math.random() * 0.5),
+                          born: ahora, vida: 900 + Math.random() * 900, r: R * (0.05 + Math.random() * 0.09) });
+    }
+    if (snitch.polvo.length > 220) snitch.polvo.splice(0, snitch.polvo.length - 220);
+  }
+  if (!snitch.polvo.length) return;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  for (let i = snitch.polvo.length - 1; i >= 0; i--) {
+    const p = snitch.polvo[i];
+    const k = (ahora - p.born) / p.vida;
+    if (k >= 1) { snitch.polvo.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    g.fillStyle = `rgba(255, 215, 120, ${((1 - k) * 0.8).toFixed(3)})`;
+    g.beginPath();
+    g.arc(p.x, p.y, Math.max(0.5, p.r * (1 - k * 0.5)), 0, TAU);
+    g.fill();
+  }
+  g.restore();
+}
+
+/* El final: la palabra que escribe con su estela y la estrella en que se queda */
+function mirarAlCielo() {
+  const S = CONFIG.snitch || {};
+  snitchSeguirBtn.classList.remove('in');
+  snitchNotaEl.classList.remove('in');
+  later(900, () => { snitchNotaEl.hidden = true; }, 'snitch');
+  later(700, () => empezarCielo(S.cielo), 'snitch');
+}
+
+function empezarCielo(palabra) {
+  const W = snitchCanvas.width, H = snitchCanvas.height;
+  const vertical = W / H < 0.9;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d');
+  let tam = Math.min(W * (vertical ? 0.24 : 0.15), H * 0.2);
+  g.font = fuentePalabra(tam);
+  const medida = g.measureText(palabra).width;
+  if (medida > W * 0.86) { tam *= (W * 0.86) / medida; g.font = fuentePalabra(tam); }
+  const ancho = g.measureText(palabra).width;
+  const cx = W / 2, cy = H * (vertical ? 0.42 : 0.44);
+  const oro = g.createLinearGradient(cx - ancho / 2, 0, cx + ancho / 2, 0);
+  oro.addColorStop(0, '#c99a2e');
+  oro.addColorStop(0.5, '#fff1c4');
+  oro.addColorStop(1, '#c99a2e');
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(245, 211, 107, 0.85)';
+  g.shadowBlur = tam * 0.14;
+  g.fillStyle = oro;
+  g.fillText(palabra, cx, cy);
+  snitch.cielo = {
+    lienzo: c, cy, alto: tam * 0.32, ondas: Math.max(4, palabra.length),
+    x0: cx - ancho / 2 - tam * 0.08, x1: cx + ancho / 2 + tam * 0.08, frente: null,
+    sx: cx + ancho * 0.44, sy: cy - tam * 0.95,
+    desde: performance.now() + 1100, dur: 900 + palabra.length * 420, fin: 0, listo: false
+  };
+  snitch.estela.length = 0;
+  snitch.fase = 'escribe';
+}
+
+function dibujarCielo(g, W, H, u, t, ahora) {
+  const C = snitch.cielo;
+  const frente = snitch.fase === 'escribe' ? (C.frente == null ? C.x0 : C.frente) : W;
+  if (frente > C.x0) {
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, frente, H);
+    g.clip();
+    g.globalAlpha = 0.85 + 0.15 * Math.sin(t * 1.3);
+    g.drawImage(C.lienzo, 0, 0);
+    g.restore();
+  }
+  if (snitch.fase === 'estrella') {
+    const a = clamp(((ahora - C.fin) / 2600 - 0.8) / 0.2);
+    if (a <= 0) return;
+    const r = Math.max(u * 0.9, 3) * (0.8 + 0.2 * Math.sin(t * 3.1));
+    const brillo = g.createRadialGradient(C.sx, C.sy, 0, C.sx, C.sy, r * 10);
+    brillo.addColorStop(0, `rgba(255, 248, 225, ${0.9 * a})`);
+    brillo.addColorStop(1, 'rgba(255, 248, 225, 0)');
+    g.fillStyle = brillo;
+    g.fillRect(C.sx - r * 10, C.sy - r * 10, r * 20, r * 20);
+    g.save();
+    g.strokeStyle = `rgba(255, 245, 215, ${0.75 * a})`;
+    g.lineWidth = Math.max(1, u * 0.15);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(C.sx - r * 7, C.sy); g.lineTo(C.sx + r * 7, C.sy);
+    g.moveTo(C.sx, C.sy - r * 9); g.lineTo(C.sx, C.sy + r * 9);
+    g.stroke();
+    g.restore();
+    g.fillStyle = `rgba(255, 255, 255, ${a})`;
+    g.beginPath();
+    g.arc(C.sx, C.sy, r, 0, TAU);
+    g.fill();
+  }
+}
+
+function finCielo() {
+  const S = CONFIG.snitch || {};
+  if (S.cieloLinea) escribirLineaSnitch(S.cieloLinea);
+  fillPlate(snitchBtn, { runa: "❧", nombre: S.seguir || 'Seguir', desc: S.seguirDesc || '' });
+  later(1600, () => {
+    snitchBtn.hidden = false;
+    void snitchBtn.offsetWidth;
+    snitchBtn.classList.add('in');
+  }, 'snitch');
+}
+
+/* El botón de arriba: antes de la caza la empieza; al final vuelve al árbol */
+function botonSnitch() {
+  if (snitch.fase === 'espera') lanzarSnitch();
+  else if (snitch.fase === 'estrella') cerrarSnitch();
+}
+
+/* El botón de la nota: si hay cielo, primero mirar al cielo */
+function seguirSnitch() {
+  const S = CONFIG.snitch || {};
+  if (S.cielo && snitch.fase === 'atrapada' && snitch.abierta) mirarAlCielo();
+  else cerrarSnitch();
 }
 
 /* Con la 3D, la inscripción se lee debajo de la bola */
@@ -4812,8 +5091,15 @@ function abrirSnitchLienzo() {
   snitchCanvas.height = canvas.height;
   snitch.born = performance.now();
   snitch.ultimo = 0;
-  snitch.fase = 'espera';
+  snitch.fase = REDUCED ? 'espera' : 'llega';   // primero entra rozando la pantalla
   snitch.x = 0.5; snitch.y = 0.62; snitch.vx = snitch.vy = 0;
+  snitch.palabras.length = 0;
+  snitch.polvo.length = 0;
+  snitch.fraseHasta = 0;
+  snitch.luz3d = false;
+  snitch.cielo = null;
+  snitch.prevX = snitch.prevY = null;
+  snitch.vsx = snitch.vsy = 0;
   snitch.objetivo = null;
   snitch.escapes = 0;
   snitch.atrapada = snitch.abierta = snitch.cazaDesde = 0;
@@ -5067,12 +5353,36 @@ function dibujarSnitch(now) {
   g.fillStyle = niebla;
   g.fillRect(0, suelo - H * 0.1, W, H * 0.16);
 
+  // al empezar, la escena sale de la oscuridad mientras pasa la Snitch
+  if (t < 2.6) {
+    g.fillStyle = `rgba(3, 4, 10, ${(1 - clamp((t - 0.3) / 2.3)).toFixed(3)})`;
+    g.fillRect(0, 0, W, H);
+  }
+
   // --- la Snitch ---
   const Rpeq = Math.max(u * 1.6, 9 * (H / 900) * 2);
   const centroY = vertical ? 0.5 : 0.52;
-  let R = Rpeq, px, py, alas = 1, letras = 0, abre = 0;
+  const Rg = Math.min(W, H) * (vertical ? 0.2 : 0.15);
+  const ahora = performance.now();
+  const suave = k => k * k * (3 - 2 * k);
+  let R = Rpeq, px, py, alas = 1, letras = 0, abre = 0, luz = 0, oculta = false;
 
-  if (snitch.fase === 'espera' || snitch.fase === 'caza') {
+  if (snitch.fase === 'llega') {
+    // entra rozando la pantalla, enorme, cruza y se aleja hasta el campo
+    const k = clamp((now - snitch.born - 700) / 3200);
+    const e = suave(k);
+    const curva = (p0, p1, p2) => (1 - e) * (1 - e) * p0 + 2 * (1 - e) * e * p1 + e * e * p2;
+    px = curva(-0.3, 1.2, 0.5) * W;
+    py = curva(0.42, 0.1, 0.62) * H;
+    R = lerp(Rg * 2.6, Rpeq, Math.pow(e, 0.55));
+    oculta = k <= 0;
+    snitch.hit = null;
+    if (k >= 1) {
+      snitch.fase = 'espera';
+      snitch.x = 0.5; snitch.y = 0.62; snitch.vx = snitch.vy = 0;
+      snitch.objetivo = null;
+    }
+  } else if (snitch.fase === 'espera' || snitch.fase === 'caza') {
     // vuela hacia un punto que cambia cada poco; en la caza, más rápida
     const caza = snitch.fase === 'caza';
     const cansada = caza ? clamp((performance.now() - snitch.cazaDesde) / 1000 / 18) : 0;   // con el tiempo se cansa
@@ -5089,11 +5399,19 @@ function dibujarSnitch(now) {
     px = snitch.x * W + Math.sin(t * 7) * u * 0.6;
     py = snitch.y * H + Math.cos(t * 9) * u * 0.5;
     snitch.hit = caza ? { x: px, y: py } : null;
-  } else {
+  } else if (snitch.fase === 'atrapada' && snitch.abierta && snitch.luz3d) {
+    // se abre en luz: gira cada vez más rápido, se vuelve blanca y estalla
+    luz = clamp((ahora - snitch.abierta) / 1400);
+    px = W / 2;
+    py = H * centroY + Math.sin(t * 1.6) * u * 0.5;
+    R = Rg;
+    alas = 0;
+    oculta = luz >= 1;
+    snitch.hit = null;
+  } else if (snitch.fase === 'atrapada') {
     // atrapada: va al centro y crece; abierta: sube un poco para dejar sitio a la nota
     const ka = clamp((performance.now() - snitch.atrapada) / 1000 / 1.2);
     const e = 1 - Math.pow(1 - ka, 3);
-    const Rg = Math.min(W, H) * (vertical ? 0.2 : 0.15);
     const ko = snitch.abierta ? clamp((performance.now() - snitch.abierta) / 1000 / 1.6) : 0;
     const eo = ko * ko * (3 - 2 * ko);
     const fx = snitch.x * W, fy = snitch.y * H;
@@ -5104,26 +5422,77 @@ function dibujarSnitch(now) {
     letras = snitch.abierta ? 0 : clamp((performance.now() - snitch.atrapada) / 1000 / 1.2 - 1);
     abre = snitch.abierta ? 1 - Math.pow(1 - clamp((performance.now() - snitch.abierta) / 1000 / 0.9), 3) : 0;
     snitch.hit = !snitch.abierta && letras > 0.5 ? { x: px, y: py, r: R * 1.2 } : null;
+  } else {
+    // el final: escribe la palabra en el cielo y sube a quedarse de estrella
+    const C = snitch.cielo;
+    if (snitch.fase === 'escribe') {
+      if (ahora < C.desde) {
+        const e = suave(clamp(1 - (C.desde - ahora) / 1100));
+        px = lerp(W / 2, C.x0, e);
+        py = lerp(H * centroY, C.cy, e);
+        C.frente = C.x0;
+      } else {
+        const k = clamp((ahora - C.desde) / C.dur);
+        C.frente = lerp(C.x0, C.x1, k);
+        px = C.frente;
+        py = C.cy + Math.sin(k * TAU * C.ondas) * C.alto;
+        if (k >= 1) { snitch.fase = 'estrella'; C.fin = ahora; }
+      }
+      R = Rpeq * 1.4;
+    } else {
+      const k = clamp((ahora - C.fin) / 2600);
+      const e = suave(k);
+      px = lerp(C.x1, C.sx, e);
+      py = lerp(C.cy, C.sy, e) - Math.sin(k * Math.PI) * H * 0.1;
+      R = Rpeq * 1.4 * (1 - 0.85 * e);
+      oculta = k >= 0.9;
+      if (k >= 1 && !C.listo) { C.listo = true; finCielo(); }
+    }
+    snitch.hit = null;
   }
 
-  // la estela dorada
-  snitch.estela.push({ x: px, y: py });
-  if (snitch.estela.length > 16) snitch.estela.shift();
-  if (snitch.fase !== 'atrapada') {
-    snitch.estela.forEach((p, i) => {
-      const a = (i / snitch.estela.length) * 0.5;
-      g.fillStyle = `rgba(245, 211, 107, ${a})`;
-      g.beginPath();
-      g.arc(p.x, p.y, R * 0.5 * (i / snitch.estela.length), 0, TAU);
-      g.fill();
-    });
+  // su velocidad en pantalla: la 3D mira hacia donde va
+  if (dt > 0 && snitch.prevX != null) {
+    snitch.vsx = lerp(snitch.vsx, (px - snitch.prevX) / W / dt, 0.12);
+    snitch.vsy = lerp(snitch.vsy, (py - snitch.prevY) / H / dt, 0.12);
   }
-  // su halo
-  const halo = g.createRadialGradient(px, py, 0, px, py, R * 3.2);
-  halo.addColorStop(0, 'rgba(255, 220, 120, 0.4)');
-  halo.addColorStop(1, 'rgba(255, 220, 120, 0)');
-  g.fillStyle = halo;
-  g.fillRect(px - R * 3.2, py - R * 3.2, R * 6.4, R * 6.4);
+  snitch.prevX = px;
+  snitch.prevY = py;
+
+  if (snitch.cielo) dibujarCielo(g, W, H, u, t, ahora);
+  dibujarPalabras(g, W, H, u, t, ahora);
+
+  // la estela: un trazo de luz dorada que se afina
+  const vuela = !oculta && snitch.fase !== 'atrapada';
+  snitch.estela.push({ x: px, y: py });
+  if (snitch.estela.length > 18) snitch.estela.shift();
+  if (vuela && snitch.estela.length > 2) {
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.lineCap = 'round';
+    const n = snitch.estela.length;
+    for (let i = 1; i < n; i++) {
+      const p0 = snitch.estela[i - 1], p1 = snitch.estela[i], f = i / n;
+      g.strokeStyle = `rgba(245, 211, 107, ${(0.35 * f).toFixed(3)})`;
+      g.lineWidth = Math.max(1, R * 0.6 * f);
+      g.beginPath();
+      g.moveTo(p0.x, p0.y);
+      g.lineTo(p1.x, p1.y);
+      g.stroke();
+    }
+    g.restore();
+  }
+  polvoSnitch(g, px, py, R, dt, ahora, vuela);
+
+  if (!oculta) {
+    // su halo, que crece cuando se abre en luz
+    const rh = R * 3.2 * (1 + luz * 1.5);
+    const halo = g.createRadialGradient(px, py, 0, px, py, rh);
+    halo.addColorStop(0, `rgba(255, 220, 120, ${(0.4 + 0.5 * luz).toFixed(3)})`);
+    halo.addColorStop(1, 'rgba(255, 220, 120, 0)');
+    g.fillStyle = halo;
+    g.fillRect(px - rh, py - rh, rh * 2, rh * 2);
+  }
   if (snitch.fase === 'atrapada' && !snitch.abierta && letras > 0.5) {
     // un anillo que invita a tocarla
     const an = (t % 2) / 2;
@@ -5133,11 +5502,26 @@ function dibujarSnitch(now) {
     g.arc(px, py, R * (1.15 + an * 0.6), 0, TAU);
     g.stroke();
   }
+  // el destello blanco al abrirse en luz
+  if (snitch.luz3d && snitch.abierta) {
+    const s = (ahora - snitch.abierta) / 1000;
+    const a = s < 1.4 ? Math.pow(s / 1.4, 3) : Math.max(0, 1 - (s - 1.4) / 1.2);
+    if (a > 0.01) {
+      const rd = Math.max(W, H) * (0.25 + 0.6 * Math.min(1, s / 1.4));
+      const flash = g.createRadialGradient(W / 2, H * centroY, 0, W / 2, H * centroY, rd);
+      flash.addColorStop(0, `rgba(255, 252, 240, ${(0.95 * a).toFixed(3)})`);
+      flash.addColorStop(0.4, `rgba(255, 236, 190, ${(0.45 * a).toFixed(3)})`);
+      flash.addColorStop(1, 'rgba(255, 236, 190, 0)');
+      g.fillStyle = flash;
+      g.fillRect(0, 0, W, H);
+    }
+  }
+
   g.save();
-  if (colocarSnitch3d(px, py, R, abre, t)) inscripcionSnitch3d(g, px, py, R, t, letras);
-  else pintarSnitch(g, px, py, R, t, abre, letras, alas);
+  if (colocarSnitch3d(px, py, R, abre, t, luz, oculta)) inscripcionSnitch3d(g, px, py, R, t, letras);
+  else if (!oculta) pintarSnitch(g, px, py, R, t, abre, letras, alas);
   g.restore();
-  if (snitch.fase === 'caza' && !REDUCED && Math.random() < 0.3) {
+  if ((snitch.fase === 'caza' || snitch.fase === 'escribe') && !REDUCED && Math.random() < 0.3) {
     const r = snitchCanvas.getBoundingClientRect();
     fxSpark(r.left + px * (r.width / W), r.top + py * (r.height / H), 26, 0.5);
   }
@@ -5201,12 +5585,14 @@ function mostrarSnitchEscena() {
     later(t, () => escribirLineaSnitch(texto), 'snitch');
     t += 520 + graphemes(texto).length * 42;
   }
-  later(t + 400, () => {
+  const botonCaza = () => {
+    if (snitch.fase === 'llega') return later(400, botonCaza, 'snitch');
     if (snitch.fase !== 'espera') return;
     snitchBtn.hidden = false;
     void snitchBtn.offsetWidth;
     snitchBtn.classList.add('in');
-  }, 'snitch');
+  };
+  later(t + 400, botonCaza, 'snitch');
   return true;
 }
 
@@ -5242,6 +5628,8 @@ function tocarSnitch(e) {
       snitch.vx += (snitch.objetivo.x - snitch.x) * 4;
       snitch.vy += (snitch.objetivo.y - snitch.y) * 4;
       snitch.cambia = performance.now() + 900;
+      const palabra = (S.palabras || [])[snitch.escapes - 1];
+      if (palabra) nuevaPalabra(palabra, h.x, h.y);
       const frases = S.escapa || [];
       pistaSnitch(frases[(snitch.escapes - 1) % Math.max(1, frases.length)] || '');
       fxBurst(e.clientX, e.clientY, 10, 80);
@@ -5263,12 +5651,17 @@ function atraparSnitch(e) {
   fxBurst(e.clientX, e.clientY, 36, 170);
   fxRing(e.clientX, e.clientY, { r1: 260, dur: 900 });
   pistaSnitch('');
-  let t = 700;
+  const pal = S.palabras || [];
+  const h = snitch.hit || { x: snitch.x * snitchCanvas.width, y: snitch.y * snitchCanvas.height };
+  for (let i = snitch.escapes; i < pal.length; i++) nuevaPalabra(pal[i], h.x + (i - snitch.escapes) * 40, h.y - 30);
+  juntarPalabras();
+  // si hay frase, las líneas esperan a que se lea
+  let t = snitch.palabras.length ? 6200 : 700;
   for (const texto of (S.atrapada || [])) {
     later(t, () => escribirLineaSnitch(texto), 'snitch');
     t += 520 + graphemes(texto).length * 42;
   }
-  later(Math.max(t, 2600), () => pistaSnitch(S.pistaAbrir), 'snitch');
+  later(Math.max(t, snitch.palabras.length ? 6200 : 2600), () => pistaSnitch(S.pistaAbrir), 'snitch');
 }
 
 /* Se abre: sale la nota con el mensaje, frase a frase */
@@ -5276,22 +5669,32 @@ function abrirSnitch() {
   if (snitch.abierta) return;
   const S = CONFIG.snitch || {};
   snitch.abierta = performance.now();
+  snitch.luz3d = !!(snitch3d.el && snitch3d.listo && snitch3d.vista);
   pistaSnitch('');
   for (const linea of snitchLineasEl.children) linea.classList.add('out');
   later(900, () => snitchLineasEl.replaceChildren(), 'snitch');
   const r = snitchCanvas.getBoundingClientRect();
   const h = snitch.hit;
-  if (h) {
+  if (h && !snitch.luz3d) {
     const k = r.width / snitchCanvas.width;
     fxBurst(r.left + h.x * k, r.top + h.y * k, 40, 200);
   }
-  later(1100, () => {
+  if (snitch.luz3d && h) {
+    // cuando estalla la luz
+    later(1400, () => {
+      const k = r.width / snitchCanvas.width;
+      fxBurst(r.left + h.x * k, r.top + h.y * k, 70, 280);
+      fxRing(r.left + h.x * k, r.top + h.y * k, { r1: 420, dur: 1100 });
+    }, 'snitch');
+  }
+  const pausa = snitch.luz3d ? 700 : 0;
+  later(1100 + pausa, () => {
     snitchNotaEl.hidden = false;
     void snitchNotaEl.offsetWidth;
     snitchNotaEl.classList.add('in');
   }, 'snitch');
   // el mensaje se escribe frase a frase, cada una con su pausa
-  let t = 1900;
+  let t = 1900 + pausa;
   (S.mensaje || []).forEach((parrafo, i) => {
     const frases = parrafo.match(/[^.!?…]+[.!?…]*\s*/g) || [parrafo];
     let p = null;
@@ -5317,6 +5720,36 @@ function abrirSnitch() {
     }, 'snitch');
     t += 900;
   }
+  // el poema, verso a verso
+  const P = S.poema;
+  if (P && P.versos && P.versos.length) {
+    later(t, () => {
+      for (const [clase, texto] of [['nota-sep', '✦'], ['nota-poema-titulo', P.titulo || '']]) {
+        if (!texto) continue;
+        const e = el('p', clase, texto);
+        snitchNotaTextoEl.appendChild(e);
+        void e.offsetWidth;
+        e.classList.add('in');
+      }
+      snitchNotaEl.scrollTop = snitchNotaEl.scrollHeight;
+    }, 'snitch');
+    t += 1400;
+    let estrofa = null;
+    for (const verso of P.versos) {
+      if (!verso) {
+        later(t, () => { estrofa = null; }, 'snitch');
+        t += 600;
+        continue;
+      }
+      later(t, () => {
+        if (!estrofa) { estrofa = el('p', 'nota-estrofa'); snitchNotaTextoEl.appendChild(estrofa); }
+        escribirLineaSnitch(verso, estrofa).classList.add('verso');
+        snitchNotaEl.scrollTop = snitchNotaEl.scrollHeight;
+      }, 'snitch');
+      t += 650 + graphemes(verso).length * 45;
+    }
+  }
+  if (S.cielo) fillPlate(snitchSeguirBtn, { runa: "✦", nombre: S.mirarCielo || 'Mirar al cielo', desc: '' });
   later(t + 400, () => {
     snitchSeguirBtn.hidden = false;
     void snitchSeguirBtn.offsetWidth;
@@ -8679,8 +9112,8 @@ function bindExtras() {
   oesedSeguirBtn.addEventListener('click', cerrarOesed);
   oesedCanvas.addEventListener('pointerdown', tocarOesed);
   snitchFilaBtn.addEventListener('click', () => mostrarSnitchEscena());
-  snitchBtn.addEventListener('click', lanzarSnitch);
-  snitchSeguirBtn.addEventListener('click', cerrarSnitch);
+  snitchBtn.addEventListener('click', botonSnitch);
+  snitchSeguirBtn.addEventListener('click', seguirSnitch);
   snitchCanvas.addEventListener('pointerdown', tocarSnitch);
   prioriBtn.addEventListener('click', lanzarPriori);
   prioriSeguirBtn.addEventListener('click', cerrarPriori);

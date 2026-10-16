@@ -2805,6 +2805,26 @@ body.probando #clock {
   transition: opacity 0.9s ease;
 }
 #snitch-nota .nota-firma.in { opacity: 1; }
+/* el poema, después del mensaje */
+#snitch-nota .nota-sep,
+#snitch-nota .nota-poema-titulo { text-align: center; opacity: 0; transition: opacity 0.9s ease; }
+#snitch-nota .nota-sep.in,
+#snitch-nota .nota-poema-titulo.in { opacity: 1; }
+#snitch-nota .nota-sep { margin: 1.1em 0 0.3em; color: rgba(160, 120, 50, 0.85); letter-spacing: 0.4em; }
+#snitch-nota .nota-poema-titulo {
+  margin: 0 0 1em;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(19px, 4.8vw, 23px);
+}
+#snitch-nota .nota-estrofa { margin: 0 0 0.95em; }
+#snitch-nota .v-line.verso {
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(16px, 4.2vw, 19px);
+  line-height: 1.38;
+}
 #snitch-seguir { display: flex; width: auto; margin: 14px auto 0; justify-content: center; color: var(--magic-white); }
 #snitch-seguir .plate-text { align-items: center; }
 
