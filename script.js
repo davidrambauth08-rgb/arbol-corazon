@@ -30,7 +30,7 @@ const CONFIG = {
      Las respuestas no distinguen mayúsculas, tildes ni espacios.
      "valor" puede ser una respuesta o una lista de respuestas válidas. */
   puerta: {
-    activo: true,
+    activo: false,   // false = se entra sin clave ni contraseña
     titulo: "La puerta está encantada",
     subtitulo: "Nadie entra sin decir lo correcto",
     pasos: [

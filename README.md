@@ -13,7 +13,7 @@ Después se escribe la carta y aparece el botón **"¿Quieres descubrir un secre
 - Tras 2 fallos aparece la pista y las respuestas correctas laten (`SETTINGS.hintAfter`).
 - Una respuesta incorrecta no dice "incorrecto": muestra su `mensaje` gracioso.
 
-**La puerta encantada** (`CONFIG.puerta`): al abrir el enlace pide dos cosas antes de dejar pasar.
+**La puerta encantada** (`CONFIG.puerta`): **ahora está apagada** (`activo: false`), así que se entra sin clave. Si se enciende, pide dos cosas antes de dejar pasar.
 1. **La clave:** `16-08` (también valen `1608`, `16/08`, `16 08`).
 2. **La contraseña:** `Valar Morghulis`.
 
