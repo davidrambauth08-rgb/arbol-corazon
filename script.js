@@ -248,10 +248,7 @@ const CONFIG = {
     inscripcion: "Me abro|al cierre",
     pistaAbrir: "tócala para abrirla",
     // el mensaje de dentro: cada elemento es un párrafo
-    mensaje: [
-      "Oye, yo quiero estar bien contigo. Me haces falta. Quiero poder llamarte y contarte mis cosas sin que te enojes. Quiero sentirte cerca de mí, poder contar contigo y que tú también puedas contar conmigo. Quiero amarte en vez de pelear contigo.",
-      "Sí, sé que he fallado en algunas cosas, aunque nunca te he faltado al respeto. Déjame cuidarte, que yo también me dejo cuidar por ti."
-    ],
+    mensaje: [],
     firma: "",
     /* después del mensaje, el poema, verso a verso ("" = cambio de estrofa) */
     poema: {
@@ -5724,7 +5721,7 @@ function abrirSnitch() {
   const P = S.poema;
   if (P && P.versos && P.versos.length) {
     later(t, () => {
-      for (const [clase, texto] of [['nota-sep', '✦'], ['nota-poema-titulo', P.titulo || '']]) {
+      for (const [clase, texto] of [['nota-sep', (S.mensaje || []).length ? '✦' : ''], ['nota-poema-titulo', P.titulo || '']]) {
         if (!texto) continue;
         const e = el('p', clase, texto);
         snitchNotaTextoEl.appendChild(e);
