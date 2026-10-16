@@ -231,6 +231,7 @@ const CONFIG = {
      En "inscripcion", la | parte la línea. */
   snitch: {
     activo: true,
+    modelo3d: "assets/snitch.glb",   // la Snitch en 3D; "" = sólo la dibujada
     antes: [
       "En su primer partido, Harry atrapó la Snitch con la boca.",
       "Años después, Dumbledore le dejó una con un mensaje: «Me abro al cierre»."
@@ -4702,6 +4703,110 @@ function cerrarPriori() {
 const snitch = { activo: false, fase: '', born: 0, ultimo: 0, x: 0.5, y: 0.6, vx: 0, vy: 0, objetivo: null, cambia: 0,
                  escapes: 0, cazaDesde: 0, atrapada: 0, abierta: 0, estela: [], estrellas: [], focos: [], hit: null };
 
+/* La Snitch en 3D (CONFIG.snitch.modelo3d): un <model-viewer> que va encima
+   del lienzo, justo donde estaría la dibujada. Mientras vuela se ladea hacia
+   donde va; atrapada, ella la gira con el dedo y un toque sin arrastrar la
+   abre. Al abrirse se desvanece y sigue la dibujada, que es la que se abre.
+   Si el modelo tarda o falla, todo sigue con la dibujada. */
+const MODEL_VIEWER_JS = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
+const snitch3d = { el: null, listo: false, pedido: false, vista: false, toque: null };
+
+function prepararSnitch3d() {
+  const S = CONFIG.snitch || {};
+  if (!S.modelo3d || snitch3d.pedido) return;
+  snitch3d.pedido = true;
+  if (!window.customElements || !customElements.get('model-viewer')) {
+    const js = document.createElement('script');
+    js.type = 'module';
+    js.src = MODEL_VIEWER_JS;
+    js.onerror = () => { snitch3d.listo = false; };
+    document.head.appendChild(js);
+  }
+  const mv = document.createElement('model-viewer');
+  mv.id = 'snitch-3d';
+  mv.setAttribute('src', S.modelo3d);
+  mv.setAttribute('alt', 'La Snitch dorada');
+  mv.setAttribute('loading', 'eager');
+  mv.setAttribute('environment-image', 'neutral');
+  mv.setAttribute('exposure', '1.2');
+  mv.setAttribute('camera-orbit', '0deg 78deg auto');
+  mv.setAttribute('interaction-prompt', 'none');
+  mv.setAttribute('disable-zoom', '');
+  mv.setAttribute('disable-pan', '');
+  mv.setAttribute('rotation-per-second', '40deg');
+  mv.setAttribute('aria-hidden', 'true');
+  mv.addEventListener('load', () => { snitch3d.listo = true; });
+  mv.addEventListener('error', () => { snitch3d.listo = false; });
+  mv.addEventListener('pointerdown', e => { snitch3d.toque = { x: e.clientX, y: e.clientY }; });
+  mv.addEventListener('pointerup', e => {
+    const t = snitch3d.toque;
+    snitch3d.toque = null;
+    if (!t || Math.hypot(e.clientX - t.x, e.clientY - t.y) > 12) return;   // la estaba girando
+    if (snitch.fase === 'atrapada' && snitch.hit && snitch.hit.r) abrirSnitch();
+  });
+  snitchCanvas.after(mv);
+  snitch3d.el = mv;
+}
+
+function reiniciarSnitch3d() {
+  const mv = snitch3d.el;
+  if (!mv) return;
+  snitch3d.vista = false;
+  mv.classList.remove('in', 'en-mano');
+  mv.removeAttribute('camera-controls');
+  mv.removeAttribute('auto-rotate');
+  mv.setAttribute('orientation', '0deg 0deg 0deg');
+  mv.setAttribute('camera-orbit', '0deg 78deg auto');
+}
+
+/* Coloca la 3D en (px, py) del lienzo; devuelve false si toca la dibujada */
+function colocarSnitch3d(px, py, R, abre, t) {
+  const mv = snitch3d.el;
+  if (!mv || !snitch3d.listo) return false;
+  const visible = abre <= 0;
+  if (visible !== snitch3d.vista) {
+    snitch3d.vista = visible;
+    mv.classList.toggle('in', visible);
+  }
+  if (!visible) return false;
+  const k = snitchCanvas.width / (snitchCanvas.clientWidth || snitchCanvas.width);
+  const lado = Math.min((R * 6.4) / k, (snitchCanvas.clientWidth || 9999) * 0.96);   // en el móvil no se sale por los lados
+  mv.style.width = mv.style.height = lado.toFixed(1) + 'px';
+  mv.style.transform = `translate(${(px / k - lado / 2).toFixed(1)}px, ${(py / k - lado / 2).toFixed(1)}px)`;
+  const enMano = snitch.fase === 'atrapada';
+  if (enMano && !mv.classList.contains('en-mano')) {
+    mv.classList.add('en-mano');
+    mv.setAttribute('orientation', '0deg 0deg 0deg');
+    mv.setAttribute('camera-controls', '');
+    if (!REDUCED) mv.setAttribute('auto-rotate', '');
+  } else if (!enMano) {
+    // en vuelo: se inclina hacia donde va y cabecea un poco
+    const ladeo = clamp(snitch.vx * 70, -32, 32);
+    const giro = REDUCED ? 0 : Math.sin(t * 1.7) * 28;
+    mv.setAttribute('orientation', `${(-ladeo).toFixed(1)}deg 0deg ${giro.toFixed(1)}deg`);
+  }
+  return true;
+}
+
+/* Con la 3D, la inscripción se lee debajo de la bola */
+function inscripcionSnitch3d(g, x, y, R, t, letras) {
+  if (letras <= 0) return;
+  const brilla = 0.75 + 0.25 * Math.sin(t * 2.4);
+  g.save();
+  g.globalAlpha *= letras;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = `italic 600 ${R * 0.36}px "Cormorant Garamond", serif`;
+  g.shadowColor = 'rgba(245, 211, 107, 0.6)';
+  g.shadowBlur = R * 0.25;
+  const lineas = String(CONFIG.snitch && CONFIG.snitch.inscripcion || 'Me abro al cierre').split('|');
+  lineas.forEach((ln, i) => {
+    g.fillStyle = `rgba(255, 236, 180, ${0.95 * brilla})`;
+    g.fillText(ln, x, y + R * 2.1 + i * R * 0.45);
+  });
+  g.restore();
+}
+
 function abrirSnitchLienzo() {
   snitchCanvas.width = canvas.width;
   snitchCanvas.height = canvas.height;
@@ -4720,6 +4825,7 @@ function abrirSnitchLienzo() {
   }
   snitch.focos.length = 0;
   for (const x of [0.12, 0.88]) snitch.focos.push({ x, fase: Math.random() * TAU });
+  reiniciarSnitch3d();
   snitch.activo = true;
 }
 
@@ -4992,7 +5098,8 @@ function dibujarSnitch(now) {
     g.stroke();
   }
   g.save();
-  pintarSnitch(g, px, py, R, t, abre, letras, alas);
+  if (colocarSnitch3d(px, py, R, abre, t)) inscripcionSnitch3d(g, px, py, R, t, letras);
+  else pintarSnitch(g, px, py, R, t, abre, letras, alas);
   g.restore();
   if (snitch.fase === 'caza' && !REDUCED && Math.random() < 0.3) {
     const r = snitchCanvas.getBoundingClientRect();
@@ -5036,6 +5143,7 @@ function mostrarSnitchEscena() {
   const S = CONFIG.snitch;
   if (!S || !S.activo || snitch.activo) return false;
   document.body.classList.add('cazando');
+  prepararSnitch3d();
   abrirSnitchLienzo();
   snitchLineasEl.replaceChildren();
   snitchNotaTextoEl.replaceChildren();
