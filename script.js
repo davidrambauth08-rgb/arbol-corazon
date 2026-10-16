@@ -4701,7 +4701,7 @@ function cerrarPriori() {
    dentro sale una nota con el mensaje, que se escribe frase a frase.
    ===================================================================== */
 const snitch = { activo: false, fase: '', born: 0, ultimo: 0, x: 0.5, y: 0.6, vx: 0, vy: 0, objetivo: null, cambia: 0,
-                 escapes: 0, cazaDesde: 0, atrapada: 0, abierta: 0, estela: [], estrellas: [], focos: [], hit: null };
+                 escapes: 0, cazaDesde: 0, atrapada: 0, abierta: 0, estela: [], estrellas: [], focos: [], luces: [], hit: null };
 
 /* La Snitch en 3D (CONFIG.snitch.modelo3d): un <model-viewer> que va encima
    del lienzo, justo donde estaría la dibujada. Mientras vuela se ladea hacia
@@ -4820,11 +4820,15 @@ function abrirSnitchLienzo() {
   snitch.estela.length = 0;
   snitch.hit = null;
   snitch.estrellas.length = 0;
-  for (let i = 0; i < (REDUCED ? 40 : 110); i++) {
-    snitch.estrellas.push({ x: Math.random(), y: Math.random() * 0.62, r: 0.4 + Math.random() * 1.3, fase: Math.random() * TAU });
+  for (let i = 0; i < (REDUCED ? 30 : 80); i++) {
+    snitch.estrellas.push({ x: Math.random(), y: Math.random() * 0.7, r: 0.4 + Math.random() * 1.3, fase: Math.random() * TAU });
   }
   snitch.focos.length = 0;
-  for (const x of [0.12, 0.88]) snitch.focos.push({ x, fase: Math.random() * TAU });
+  for (const x of [0.1, 0.9]) snitch.focos.push({ x, fase: Math.random() * TAU });
+  snitch.luces.length = 0;
+  for (let i = 0; i < (REDUCED ? 40 : 90); i++) {
+    snitch.luces.push({ x: Math.random(), y: 0.15 + Math.random() * 0.7, a: 0.15 + Math.random() * 0.4, fase: Math.random() * TAU });
+  }
   reiniciarSnitch3d();
   snitch.activo = true;
 }
@@ -4950,86 +4954,118 @@ function dibujarSnitch(now) {
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, W, H);
 
-  // --- el cielo: estrellas y dos focos que barren despacio ---
+  // --- el cielo: estrellas finas y una luz cálida que sube del estadio ---
+  const suelo = H * 0.86;
   for (const e of snitch.estrellas) {
-    const a = 0.35 + 0.45 * Math.abs(Math.sin(t * 0.9 + e.fase));
+    const a = 0.25 + 0.4 * Math.abs(Math.sin(t * 0.7 + e.fase));
     g.fillStyle = `rgba(255, 250, 235, ${a})`;
     g.beginPath();
-    g.arc(e.x * W, e.y * H, e.r * (H / 900) * 1.4, 0, TAU);
+    g.arc(e.x * W, e.y * H, e.r * (H / 900) * 1.1, 0, TAU);
     g.fill();
   }
+  const resplandor = g.createRadialGradient(W / 2, suelo, 0, W / 2, suelo, Math.max(W, H) * 0.75);
+  resplandor.addColorStop(0, 'rgba(201, 163, 74, 0.16)');
+  resplandor.addColorStop(0.45, 'rgba(120, 100, 70, 0.05)');
+  resplandor.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  g.fillStyle = resplandor;
+  g.fillRect(0, 0, W, H);
+
+  // dos focos muy suaves que barren despacio desde las gradas
   for (const f of snitch.focos) {
-    const ang = -Math.PI / 2 + Math.sin(t * 0.25 + f.fase) * 0.35 + (f.x < 0.5 ? 0.25 : -0.25);
-    const fx = f.x * W, fy = H * 0.86, largo = H * 1.1;
+    const ang = -Math.PI / 2 + Math.sin(t * 0.18 + f.fase) * 0.28 + (f.x < 0.5 ? 0.3 : -0.3);
+    const fx = f.x * W, fy = suelo - H * 0.07, largo = H * 1.2;
     const haz = g.createLinearGradient(fx, fy, fx + Math.cos(ang) * largo, fy + Math.sin(ang) * largo);
-    haz.addColorStop(0, 'rgba(255, 236, 190, 0.16)');
-    haz.addColorStop(1, 'rgba(255, 236, 190, 0)');
+    haz.addColorStop(0, 'rgba(255, 240, 205, 0.09)');
+    haz.addColorStop(1, 'rgba(255, 240, 205, 0)');
     g.fillStyle = haz;
     g.beginPath();
     g.moveTo(fx, fy);
-    g.arc(fx, fy, largo, ang - 0.09, ang + 0.09);
+    g.arc(fx, fy, largo, ang - 0.13, ang + 0.13);
     g.closePath();
     g.fill();
   }
 
-  // --- el campo: gradas a los lados, césped y los tres aros de cada portería ---
-  const suelo = H * 0.88;
-  g.fillStyle = '#0d1a17';
-  g.fillRect(0, suelo, W, H - suelo);
+  // --- el estadio: una sola silueta curva en el horizonte, con lucecitas ---
+  const curva = x => suelo - H * (0.075 + 0.045 * Math.pow((x / W - 0.5) * 2, 2));   // más alta en los lados
+  g.fillStyle = '#070912';
+  g.beginPath();
+  g.moveTo(0, suelo);
+  for (let x = 0; x <= W; x += W / 40) g.lineTo(x, curva(x));
+  g.lineTo(W, suelo);
+  g.closePath();
+  g.fill();
+  // el borde de arriba, apenas dorado
+  g.strokeStyle = 'rgba(201, 163, 74, 0.18)';
+  g.lineWidth = Math.max(1, u * 0.15);
+  g.beginPath();
+  for (let x = 0; x <= W; x += W / 40) x ? g.lineTo(x, curva(x)) : g.moveTo(x, curva(x));
+  g.stroke();
+  for (const l of snitch.luces) {
+    const x = l.x * W, y = lerp(curva(x), suelo, l.y);
+    const a = l.a * (0.6 + 0.4 * Math.sin(t * 1.3 + l.fase));
+    g.fillStyle = `rgba(255, 214, 140, ${a})`;
+    g.beginPath();
+    g.arc(x, y, Math.max(0.6, u * 0.12), 0, TAU);
+    g.fill();
+  }
+
+  // --- el césped: oscuro, con las franjas del corte en perspectiva ---
   const cesped = g.createLinearGradient(0, suelo, 0, H);
-  cesped.addColorStop(0, 'rgba(45, 91, 73, 0.55)');
-  cesped.addColorStop(1, 'rgba(10, 20, 18, 0)');
+  cesped.addColorStop(0, '#0f1c18');
+  cesped.addColorStop(1, '#04070a');
   g.fillStyle = cesped;
   g.fillRect(0, suelo, W, H - suelo);
+  g.save();
+  g.beginPath();
+  g.rect(0, suelo, W, H - suelo);
+  g.clip();
+  for (let i = -8; i <= 8; i += 2) {
+    g.fillStyle = 'rgba(255, 255, 255, 0.018)';
+    g.beginPath();
+    g.moveTo(W / 2 + i * W * 0.012, suelo);
+    g.lineTo(W / 2 + (i + 1) * W * 0.012, suelo);
+    g.lineTo(W / 2 + (i + 1) * W * 0.22, H);
+    g.lineTo(W / 2 + i * W * 0.22, H);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+
+  // --- los aros: finos, de oro, con un brillo suave ---
+  g.save();
+  g.shadowColor = 'rgba(245, 211, 107, 0.45)';
+  g.shadowBlur = Math.max(4, u * 1.2);
   for (const lado of [-1, 1]) {
-    // gradas: torres con sus banderines de colores de las casas
-    const colores = ['#7a1f2b', '#1f4f7a', '#c9a34a', '#2d5b49'];
+    const base = lado < 0 ? W * (vertical ? 0.2 : 0.24) : W * (vertical ? 0.8 : 0.76);
     for (let i = 0; i < 3; i++) {
-      const bx = lado < 0 ? W * (0.02 + i * 0.07) : W * (0.98 - i * 0.07);
-      const bw = W * 0.055, bh = H * (0.16 + (i % 2) * 0.05);
-      g.fillStyle = 'rgba(14, 12, 28, 0.95)';
-      g.fillRect(bx - bw / 2, suelo - bh, bw, bh);
-      g.fillStyle = colores[(i + (lado > 0 ? 2 : 0)) % 4];
+      const ax = base + (i - 1) * W * (vertical ? 0.07 : 0.032);
+      const alto = H * (0.17 + (i === 1 ? 0.07 : 0));
+      const ar = Math.max(u * 1.4, W * 0.012);
+      const metal = g.createLinearGradient(ax - ar, 0, ax + ar, 0);
+      metal.addColorStop(0, 'rgba(160, 120, 50, 0.7)');
+      metal.addColorStop(0.5, 'rgba(255, 228, 150, 0.85)');
+      metal.addColorStop(1, 'rgba(160, 120, 50, 0.7)');
+      g.strokeStyle = metal;
+      g.lineWidth = Math.max(1, u * 0.22);
       g.beginPath();
-      g.moveTo(bx - bw / 2, suelo - bh);
-      g.lineTo(bx + bw / 2, suelo - bh);
-      g.lineTo(bx, suelo - bh - bw * 0.7);
-      g.closePath();
-      g.fill();
-      const ondea = Math.sin(t * 3 + i + lado) * bw * 0.15;
+      g.moveTo(ax, suelo);
+      g.lineTo(ax, suelo - alto + ar);
+      g.stroke();
+      g.lineWidth = Math.max(1.2, u * 0.3);
       g.beginPath();
-      g.moveTo(bx, suelo - bh - bw * 0.7);
-      g.lineTo(bx, suelo - bh - bw * 1.3);
-      g.lineTo(bx + bw * 0.45 + ondea, suelo - bh - bw * 1.15);
-      g.lineTo(bx, suelo - bh - bw);
-      g.fill();
-    }
-    // los aros
-    if (!vertical || true) {
-      const base = lado < 0 ? W * 0.27 : W * 0.73;
-      for (let i = 0; i < 3; i++) {
-        const ax = base + (i - 1) * W * (vertical ? 0.05 : 0.035);
-        const alto = H * (0.2 + (i === 1 ? 0.08 : 0));
-        const ar = Math.max(u * 1.6, W * 0.014);
-        g.strokeStyle = 'rgba(201, 163, 74, 0.55)';
-        g.lineWidth = Math.max(1, u * 0.35);
-        g.beginPath();
-        g.moveTo(ax, suelo);
-        g.lineTo(ax, suelo - alto + ar);
-        g.stroke();
-        g.beginPath();
-        g.arc(ax, suelo - alto, ar, 0, TAU);
-        g.stroke();
-      }
+      g.arc(ax, suelo - alto, ar, 0, TAU);
+      g.stroke();
     }
   }
+  g.restore();
+
   // niebla baja sobre el campo
-  const niebla = g.createLinearGradient(0, suelo - H * 0.12, 0, suelo + H * 0.04);
-  niebla.addColorStop(0, 'rgba(200, 200, 230, 0)');
-  niebla.addColorStop(0.7, 'rgba(200, 200, 230, 0.08)');
-  niebla.addColorStop(1, 'rgba(200, 200, 230, 0)');
+  const niebla = g.createLinearGradient(0, suelo - H * 0.1, 0, suelo + H * 0.06);
+  niebla.addColorStop(0, 'rgba(190, 195, 225, 0)');
+  niebla.addColorStop(0.65, 'rgba(190, 195, 225, 0.07)');
+  niebla.addColorStop(1, 'rgba(190, 195, 225, 0)');
   g.fillStyle = niebla;
-  g.fillRect(0, suelo - H * 0.12, W, H * 0.16);
+  g.fillRect(0, suelo - H * 0.1, W, H * 0.16);
 
   // --- la Snitch ---
   const Rpeq = Math.max(u * 1.6, 9 * (H / 900) * 2);
