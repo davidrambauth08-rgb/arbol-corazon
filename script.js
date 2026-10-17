@@ -10837,3 +10837,20 @@ function init() {
 }
 
 init();
+
+/* Depuración: ?depurar enseña los errores en pantalla; ?spectrus abre el
+   fotomosaico directo. Sin esos parámetros no hace nada. */
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (q.has('depurar')) {
+    const caja = document.createElement('pre');
+    caja.style.cssText = 'position:fixed;left:0;top:0;z-index:999;color:#0f0;background:#000c;font:13px monospace;white-space:pre-wrap;margin:0;padding:6px;max-width:100vw;pointer-events:none';
+    document.body.appendChild(caja);
+    const log = m => { caja.textContent += m + '\n'; };
+    window.logDepurar = log;
+    addEventListener('error', e => log('ERR ' + e.message + ' @' + e.lineno));
+    addEventListener('unhandledrejection', e => log('REJ ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
+    setInterval(() => log('geminio ' + geminio.activo + ' ' + geminioCanvas.width + 'x' + geminioCanvas.height + ' celdas=' + geminio.celdas.length + ' listo=' + geminio.listo), 2000);
+  }
+  if (q.has('spectrus')) setTimeout(() => { document.getElementById('mesesaurio').hidden = true; mostrarGeminio(); }, 1500);
+})();
