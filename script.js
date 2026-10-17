@@ -221,6 +221,7 @@ const CONFIG = {
     reparo: { runa: "❖", nombre: "Reparo", desc: "pedirle perdón al cielo entero", corto: "Reparo" },
     pruebas: { runa: "✠", nombre: "Las tres pruebas", desc: "a ver si te lo sabes", corto: "Pruebas" },
     oesed: { runa: "❂", nombre: "Espejo de Oesed", desc: "ver lo que más desea el corazón", corto: "Espejo" },
+    geminio: { runa: "▦", nombre: "Geminio", desc: "muchos recuerdos que hacen uno solo", corto: "Geminio" },
     snitch: { runa: "◉", nombre: "Me abro al cierre", desc: "atrapar la Snitch dorada", corto: "Snitch" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
@@ -300,6 +301,23 @@ const CONFIG = {
      tu corazón. Al principio sólo está él; al mirar, el cristal se empaña y
      aparece ella a su lado. Las frases de "despues" salen de tres en tres
      como mucho, para no tapar el espejo. */
+  /* Geminio: el fotomosaico. Las fotos pequeñas vuelan, se acomodan y entre
+     todas forman la foto grande. Tocar un cuadrito abre esa foto.
+     atlas: las miniaturas en una sola imagen (columnas × filas de 128 px),
+     en el mismo orden que fotos. */
+  geminio: {
+    activo: true,
+    foto: "assets/foto-final.jpg",
+    atlas: "assets/mosaico/atlas.jpg",
+    atlasColumnas: 6,
+    fotos: Array.from({ length: 27 }, (_, i) => `assets/mosaico/m${String(i + 1).padStart(2, '0')}.jpg`),
+    columnas: 38,               // cuadritos a lo ancho (en el móvil, menos)
+    tinte: 0.52,                // cuánto se tiñe cada foto del color de la grande
+    antes: ["Cada recuerdo es pequeño.", "Pero juntos…"],
+    despues: ["…somos esto.", "Toca cualquier cuadrito."],
+    volver: "Volver al árbol"
+  },
+
   oesed: {
     activo: true,
     // la inscripción del marco, al revés como en el libro: «esto no es tu cara sino de tu corazón el deseo»
@@ -1081,6 +1099,7 @@ const reparoFilaBtn = document.getElementById('spell-reparo');
 const pruebasFilaBtn = document.getElementById('spell-pruebas');
 const oesedFilaBtn = document.getElementById('spell-oesed');
 const snitchFilaBtn = document.getElementById('spell-snitch');
+const geminioFilaBtn = document.getElementById('spell-geminio');
 const snitchEl = document.getElementById('snitch');
 const snitchCanvas = document.getElementById('snitch-lienzo');
 const snitchCtx = snitchCanvas.getContext('2d');
@@ -2694,6 +2713,7 @@ function hechizosFila() {
     { btn: vueloBtn2, activo: () => !!(CONFIG.vuelo && CONFIG.vuelo.activo) },
     { btn: australisBtn, activo: () => F.australis !== false },
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
+    { btn: geminioFilaBtn, activo: () => !!(CONFIG.geminio && CONFIG.geminio.activo) },
     { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
     { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) }
   ];
@@ -6978,6 +6998,220 @@ function cerrarOesed() {
 }
 
 /* =====================================================================
+   GEMINIO — el fotomosaico
+   Las fotos pequeñas entran volando desde todos lados, cada una se posa en
+   su sitio y se tiñe un poco del color que le toca: de lejos se ve la foto
+   grande, de cerca cada cuadrito es otro recuerdo. Va con su propio bucle.
+   ===================================================================== */
+const geminio = { activo: false, celdas: [], t0: 0, raf: 0, listo: false, timers: [] };
+const geminioEl = document.getElementById('geminio');
+const geminioCanvas = document.getElementById('geminio-lienzo');
+const geminioLineasEl = document.getElementById('geminio-lineas');
+const geminioVolverBtn = document.getElementById('geminio-volver');
+const geminioVerEl = document.getElementById('geminio-ver');
+
+function cargarImagen(src) {
+  return new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = src; });
+}
+
+function geminioLater(ms, fn) { geminio.timers.push(setTimeout(fn, ms)); }
+
+function lineaGeminio(texto) {
+  const p = el('p', 'geminio-linea', texto);
+  geminioLineasEl.appendChild(p);
+  void p.offsetWidth;
+  p.classList.add('in');
+}
+
+async function mostrarGeminio() {
+  const G = CONFIG.geminio;
+  if (!G || !G.activo || geminio.activo) return;
+  geminio.activo = true;
+  geminio.listo = false;
+  document.body.classList.add('geminio-abierto');
+  geminioLineasEl.replaceChildren();
+  geminioVolverBtn.hidden = true;
+  geminioVolverBtn.classList.remove('in');
+  fillPlate(geminioVolverBtn, { runa: "❧", nombre: G.volver || 'Volver', desc: '' });
+  geminioEl.hidden = false;
+  void geminioEl.offsetWidth;
+  geminioEl.classList.add('show');
+  let t = 500;
+  for (const texto of (G.antes || [])) { geminioLater(t, () => lineaGeminio(texto)); t += 1500; }
+  let grande, atlas;
+  try { [grande, atlas] = await Promise.all([cargarImagen(G.foto), cargarImagen(G.atlas)]); }
+  catch (e) { geminioLater(400, cerrarGeminio); return; }
+  if (!geminio.activo) return;
+  prepararMosaico(G, grande, atlas);
+  geminioLater(Math.max(0, t - 600), () => {
+    geminio.t0 = performance.now();
+    cancelAnimationFrame(geminio.raf);
+    geminio.raf = requestAnimationFrame(pintarGeminio);
+  });
+}
+
+function prepararMosaico(G, grande, atlas) {
+  const movil = innerWidth < 600;
+  const cols = Math.round((G.columnas || 38) * (movil ? 0.7 : 1));
+  const rows = Math.max(1, Math.round(cols * grande.height / grande.width));
+  // el lienzo: lo más grande que quepa, dejando sitio al texto
+  const maxW = Math.min(innerWidth - 32, 760), maxH = innerHeight * (movil ? 0.6 : 0.68);
+  const lado = Math.max(4, Math.floor(Math.min(maxW / cols, maxH / rows)));
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  geminioCanvas.width = cols * lado * dpr;
+  geminioCanvas.height = rows * lado * dpr;
+  geminioCanvas.style.width = cols * lado + 'px';
+  geminioCanvas.style.height = rows * lado + 'px';
+  // el color de cada celda: la foto grande reducida a cols × rows
+  const c = document.createElement('canvas');
+  c.width = cols; c.height = rows;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(grande, 0, 0, cols, rows);
+  const px = g.getImageData(0, 0, cols, rows).data;
+  // el color medio de cada miniatura
+  const N = G.fotos.length, AC = G.atlasColumnas || 6, T = 128;
+  const a = document.createElement('canvas');
+  a.width = AC; a.height = Math.ceil(N / AC);
+  const ag = a.getContext('2d', { willReadFrequently: true });
+  ag.imageSmoothingQuality = 'high';
+  ag.drawImage(atlas, 0, 0, a.width, a.height);
+  const am = ag.getImageData(0, 0, a.width, a.height).data;
+  const medias = Array.from({ length: N }, (_, i) => [am[i * 4], am[i * 4 + 1], am[i * 4 + 2]]);
+  const usos = new Array(N).fill(0);
+  geminio.celdas = [];
+  const W = geminioCanvas.width, H = geminioCanvas.height, s = lado * dpr;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const k = (y * cols + x) * 4, col = [px[k], px[k + 1], px[k + 2]];
+      // la miniatura que más se parece, sin repetir la de al lado
+      const vecinas = new Set();
+      if (x > 0) vecinas.add(geminio.celdas[geminio.celdas.length - 1].foto);
+      if (y > 0) vecinas.add(geminio.celdas[(y - 1) * cols + x].foto);
+      let mejor = 0, md = Infinity;
+      for (let i = 0; i < N; i++) {
+        if (vecinas.has(i)) continue;
+        const m = medias[i];
+        const d = (m[0] - col[0]) ** 2 + (m[1] - col[1]) ** 2 + (m[2] - col[2]) ** 2 + usos[i] * 40 + Math.random() * 900;
+        if (d < md) { md = d; mejor = i; }
+      }
+      usos[mejor]++;
+      const cx = (x + 0.5) / cols - 0.5, cy = (y + 0.5) / rows - 0.5;
+      const ang = Math.random() * TAU, lejos = 0.9 + Math.random() * 0.8;
+      geminio.celdas.push({
+        x: x * s, y: y * s, s, foto: mejor, col,
+        sx: (mejor % AC) * T, sy: Math.floor(mejor / AC) * T,
+        // de dónde viene volando y cuándo sale
+        ox: x * s + Math.cos(ang) * W * lejos, oy: y * s + Math.sin(ang) * H * lejos,
+        giro: (Math.random() - 0.5) * 3,
+        retraso: Math.hypot(cx, cy) * 2600 + Math.random() * 900
+      });
+    }
+  }
+  geminio.atlas = atlas;
+  geminio.cols = cols; geminio.rows = rows; geminio.s = s;
+  geminio.fin = Math.max(...geminio.celdas.map(c => c.retraso)) + 1400;
+}
+
+function pintarGeminio(ahora) {
+  if (!geminio.activo) return;
+  const G = CONFIG.geminio;
+  const g = geminioCanvas.getContext('2d');
+  const W = geminioCanvas.width, H = geminioCanvas.height;
+  const t = REDUCED ? geminio.fin + 3000 : ahora - geminio.t0;
+  g.clearRect(0, 0, W, H);
+  const tinteMax = G.tinte == null ? 0.52 : G.tinte;
+  // el tinte llega cuando ya están casi todas
+  const tinte = tinteMax * clamp((t - geminio.fin * 0.75) / 1800, 0, 1);
+  let posadas = 0;
+  for (const c of geminio.celdas) {
+    const k = clamp((t - c.retraso) / 1300, 0, 1);
+    if (k <= 0) continue;
+    const e = 1 - Math.pow(1 - k, 3);
+    const x = c.ox + (c.x - c.ox) * e, y = c.oy + (c.y - c.oy) * e;
+    const tam = c.s * (1.8 - 0.8 * e);
+    g.save();
+    g.globalAlpha = Math.min(1, k * 2.5);
+    g.translate(x + c.s / 2, y + c.s / 2);
+    if (k < 1) g.rotate(c.giro * (1 - e));
+    g.drawImage(geminio.atlas, c.sx, c.sy, 128, 128, -tam / 2, -tam / 2, tam, tam);
+    if (k >= 1) {
+      posadas++;
+      if (tinte > 0) {
+        g.globalAlpha = tinte;
+        g.fillStyle = `rgb(${c.col[0]},${c.col[1]},${c.col[2]})`;
+        g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
+      }
+    }
+    g.restore();
+  }
+  // un brillo que barre la foto cuando ya está entera
+  const brillo = (t - geminio.fin - 1600) / 1600;
+  if (brillo > 0 && brillo < 1 && !REDUCED) {
+    const bx = -W * 0.3 + brillo * W * 1.6;
+    const grad = g.createLinearGradient(bx - W * 0.2, 0, bx + W * 0.2, H);
+    grad.addColorStop(0, 'rgba(255,240,200,0)');
+    grad.addColorStop(0.5, 'rgba(255,240,200,0.35)');
+    grad.addColorStop(1, 'rgba(255,240,200,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+  }
+  if (!geminio.listo && t > geminio.fin + 1800) {
+    geminio.listo = true;
+    geminioLineasEl.replaceChildren();
+    let d = 0;
+    for (const texto of (G.despues || [])) { geminioLater(d, () => lineaGeminio(texto)); d += 1400; }
+    geminioLater(d + 200, () => {
+      geminioVolverBtn.hidden = false;
+      void geminioVolverBtn.offsetWidth;
+      geminioVolverBtn.classList.add('in');
+    });
+  }
+  // cuando todo está quieto, deja de pintar
+  if (t < geminio.fin + 3400) geminio.raf = requestAnimationFrame(pintarGeminio);
+}
+
+/* tocar un cuadrito: esa foto se abre en grande */
+function tocarGeminio(e) {
+  if (!geminio.activo || !geminio.listo) return;
+  const r = geminioCanvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / r.width * geminio.cols);
+  const y = Math.floor((e.clientY - r.top) / r.height * geminio.rows);
+  const c = geminio.celdas[y * geminio.cols + x];
+  if (!c) return;
+  fxBurst(e.clientX, e.clientY, 12, 80);
+  const img = geminioVerEl.querySelector('img');
+  img.src = CONFIG.geminio.fotos[c.foto];
+  geminioVerEl.hidden = false;
+  void geminioVerEl.offsetWidth;
+  geminioVerEl.classList.add('in');
+}
+
+function cerrarFotoGeminio() {
+  geminioVerEl.classList.remove('in');
+  setTimeout(() => { geminioVerEl.hidden = true; }, 400);
+}
+
+function cerrarGeminio() {
+  if (!geminio.activo) return;
+  geminio.timers.forEach(clearTimeout);
+  geminio.timers = [];
+  cancelAnimationFrame(geminio.raf);
+  geminioEl.classList.remove('show');
+  geminioVerEl.hidden = true;
+  geminioVerEl.classList.remove('in');
+  setTimeout(() => {
+    geminio.activo = false;
+    geminioEl.hidden = true;
+    geminioLineasEl.replaceChildren();
+    document.body.classList.remove('geminio-abierto');
+  }, 900);
+}
+
+geminioCanvas.addEventListener('click', tocarGeminio);
+geminioVerEl.addEventListener('click', cerrarFotoGeminio);
+geminioVolverBtn.addEventListener('click', cerrarGeminio);
+
+/* =====================================================================
    EXPELLIARMUS — el duelo junto al lago
    El paisaje: el castillo al otro lado del agua, montañas, bosque y niebla,
    de noche. Dos varitas enfrentadas abajo. Al lanzar el hechizo sale un haz
@@ -9069,6 +9303,7 @@ function buildExtras() {
   fillRune(pruebasFilaBtn, HX.pruebas);
   fillRune(oesedFilaBtn, HX.oesed);
   fillRune(snitchFilaBtn, HX.snitch);
+  fillRune(geminioFilaBtn, HX.geminio);
   cargarFotoOesed();   // se baja desde ya, para que esté lista al mirar en el espejo
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
   llenarMerodeador();
@@ -9119,6 +9354,7 @@ function bindExtras() {
   oesedSeguirBtn.addEventListener('click', cerrarOesed);
   oesedCanvas.addEventListener('pointerdown', tocarOesed);
   snitchFilaBtn.addEventListener('click', () => mostrarSnitchEscena());
+  geminioFilaBtn.addEventListener('click', () => mostrarGeminio());
   snitchBtn.addEventListener('click', botonSnitch);
   snitchSeguirBtn.addEventListener('click', seguirSnitch);
   snitchCanvas.addEventListener('pointerdown', tocarSnitch);
@@ -9384,7 +9620,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, snitchFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, geminioFilaBtn, snitchFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');

@@ -3060,3 +3060,74 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
 @media (prefers-reduced-motion: reduce) {
   .aurora, .flota, .meses-marco { animation: none; }
 }
+
+/* ---------------------------------------------------------------------
+   Geminio: el fotomosaico
+   --------------------------------------------------------------------- */
+#geminio {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  overflow: hidden;
+  background:
+    radial-gradient(90% 60% at 50% 45%, rgba(120, 80, 170, 0.35) 0%, rgba(120, 80, 170, 0) 70%),
+    linear-gradient(180deg, #151a36 0%, #120f27 55%, #0a0814 100%);
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+#geminio[hidden] { display: none; }
+#geminio.show { opacity: 1; }
+#geminio-lineas { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.geminio-linea {
+  margin: 2px 0;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: clamp(20px, 5vw, 26px);
+  color: #f6e7c4;
+  text-align: center;
+  text-shadow: 0 0 14px rgba(240, 200, 120, 0.4);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.9s ease, transform 0.9s ease;
+}
+.geminio-linea.in { opacity: 1; transform: none; }
+#geminio-lienzo {
+  display: block;
+  max-width: 100%;
+  border-radius: 6px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 50px rgba(240, 208, 140, 0.15);
+  cursor: zoom-in;
+  touch-action: manipulation;
+}
+#geminio-volver { flex-shrink: 0; }
+#geminio-ver {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 5, 13, 0.82);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  cursor: zoom-out;
+}
+#geminio-ver[hidden] { display: none; }
+#geminio-ver.in { opacity: 1; }
+#geminio-ver img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(240, 208, 140, 0.55);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  transform: scale(0.92);
+  transition: transform 0.4s ease;
+}
+#geminio-ver.in img { transform: none; }

@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=39">
+  <link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -65,6 +65,7 @@
       <button id="spell-vuelo" class="rune-btn" type="button" hidden></button>
       <button id="spell-australis" class="rune-btn" type="button" hidden></button>
       <button id="spell-expel" class="rune-btn" type="button" hidden></button>
+      <button id="spell-geminio" class="rune-btn" type="button" hidden></button>
       <button id="spell-oesed" class="rune-btn" type="button" hidden></button>
       <button id="spell-snitch" class="rune-btn" type="button" hidden></button>
     </div>
@@ -101,6 +102,14 @@
       <div id="snitch-nota-texto" aria-live="polite"></div>
       <button id="snitch-seguir" class="plate quiet" type="button" hidden></button>
     </div>
+  </div>
+
+  <!-- Geminio: el fotomosaico (CONFIG.geminio) -->
+  <div id="geminio" hidden>
+    <div id="geminio-lineas" aria-live="polite"></div>
+    <canvas id="geminio-lienzo" aria-label="Foto hecha con muchas fotos"></canvas>
+    <button id="geminio-volver" class="plate quiet" type="button" hidden></button>
+    <div id="geminio-ver" hidden><img alt="Un recuerdo"></div>
   </div>
 
   <!-- Espejo de Oesed: lo que más desea el corazón (CONFIG.oesed) -->
@@ -303,6 +312,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=39"></script>
+  <script src="script.js?v=40"></script>
 </body>
 </html>
