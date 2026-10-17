@@ -7018,13 +7018,22 @@ const geminioLineasEl = document.getElementById('geminio-lineas');
 const geminioVolverBtn = document.getElementById('geminio-volver');
 const geminioVerEl = document.getElementById('geminio-ver');
 
-function cargarImagen(src) {
+/* carga una foto; si en 9 s no llega, lo intenta otra vez sin caché */
+function cargarImagen(src, intento = 0) {
   const log = window.logDepurar || (() => {});
   return new Promise((ok, mal) => {
     const i = new Image();
+    const reloj = setTimeout(() => {
+      log('LENTA ' + src);
+      i.onload = i.onerror = null;
+      if (intento < 1) cargarImagen(src + (src.includes('?') ? '&' : '?') + 'r=' + Date.now(), 1).then(ok, mal);
+      else mal(new Error('no carga ' + src));
+    }, 9000);
+    window.__imgsGeminio = window.__imgsGeminio || [];
+    window.__imgsGeminio.push(i);   // Safari: que no se pierda mientras carga
     const t0 = performance.now();
-    i.onload = () => { log('ok ' + src + ' ' + i.naturalWidth + 'x' + i.naturalHeight + ' ' + Math.round(performance.now() - t0) + 'ms'); ok(i); };
-    i.onerror = e => { log('FALLA ' + src); mal(e); };
+    i.onload = () => { clearTimeout(reloj); log('ok ' + src + ' ' + i.naturalWidth + 'x' + i.naturalHeight + ' ' + Math.round(performance.now() - t0) + 'ms'); ok(i); };
+    i.onerror = e => { clearTimeout(reloj); log('FALLA ' + src); mal(e); };
     i.src = src;
     log('pido ' + src + ' complete=' + i.complete);
   });
@@ -7055,11 +7064,21 @@ async function mostrarGeminio() {
   let t = 500;
   for (const texto of (G.antes || [])) { geminioLater(t, () => lineaGeminio(texto)); t += 1500; }
   const grandes = (G.grandes || []).filter(x => x && x.foto);
-  let fotos, atlas;
-  try { [atlas, ...fotos] = await Promise.all([cargarImagen(G.atlas), ...grandes.map(x => cargarImagen(x.foto))]); }
-  catch (e) { geminioLater(400, cerrarGeminio); return; }
-  if (!geminio.activo || !fotos.length) return;
-  prepararMosaico(G, grandes, fotos, atlas);
+  // si alguna foto grande no llega se salta; sin las miniaturas no hay mosaico
+  const [rAtlas, ...rFotos] = await Promise.allSettled([cargarImagen(G.atlas), ...grandes.map(x => cargarImagen(x.foto))]);
+  if (!geminio.activo) return;
+  const usadas = grandes.filter((x, i) => rFotos[i].status === 'fulfilled');
+  const fotos = rFotos.filter(r => r.status === 'fulfilled').map(r => r.value);
+  if (rAtlas.status !== 'fulfilled' || !fotos.length) {
+    geminioLineasEl.replaceChildren();
+    lineaGeminio('Las fotos no han llegado. Vuelve a intentarlo en un momento.');
+    geminioVolverBtn.hidden = false;
+    void geminioVolverBtn.offsetWidth;
+    geminioVolverBtn.classList.add('in');
+    return;
+  }
+  const atlas = rAtlas.value;
+  prepararMosaico(G, usadas, fotos, atlas);
   geminioLater(Math.max(0, t - 600), () => {
     geminio.t0 = performance.now();
     geminio.etapaDicha = -1;
@@ -7313,6 +7332,7 @@ function cerrarGeminio() {
     geminioCanvas.width = geminioCanvas.height = 1;
     geminio.celdas = [];
     geminio.atlas = null;
+    window.__imgsGeminio = [];
     geminioVerEl.querySelector('img').removeAttribute('src');
     document.body.classList.remove('geminio-abierto');
   }, 900);
