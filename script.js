@@ -148,7 +148,7 @@ const CONFIG = {
                 (cada acierto hace crecer el árbol); además siguen en la fila (✠ Pruebas)
      false    → el árbol crece solo y las pruebas sólo están en la fila
      true     → las pruebas van siempre antes del árbol, como al principio */
-  pruebasEntrada: "elegir",
+  pruebasEntrada: false,
   // La tarjeta de la elección (sólo con pruebasEntrada: "elegir")
   eleccion: {
     etiqueta: "Elige tu hechizo",
