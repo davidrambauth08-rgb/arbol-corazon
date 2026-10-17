@@ -7023,25 +7023,29 @@ const geminioLineasEl = document.getElementById('geminio-lineas');
 const geminioVolverBtn = document.getElementById('geminio-volver');
 const geminioVerEl = document.getElementById('geminio-ver');
 
-/* carga una foto; si en 9 s no llega, lo intenta otra vez sin caché */
+/* carga una foto. Safari a veces deja colgado un new Image() suelto, así que
+   la pide con fetch y la monta desde el blob; si en 9 s no llega, reintenta. */
 function cargarImagen(src, intento = 0) {
   const log = window.logDepurar || (() => {});
-  return new Promise((ok, mal) => {
-    const i = new Image();
-    const reloj = setTimeout(() => {
-      log('LENTA ' + src);
-      i.onload = i.onerror = null;
-      if (intento < 1) cargarImagen(src + (src.includes('?') ? '&' : '?') + 'r=' + Date.now(), 1).then(ok, mal);
-      else mal(new Error('no carga ' + src));
-    }, 9000);
-    window.__imgsGeminio = window.__imgsGeminio || [];
-    window.__imgsGeminio.push(i);   // Safari: que no se pierda mientras carga
-    const t0 = performance.now();
-    i.onload = () => { clearTimeout(reloj); log('ok ' + src + ' ' + i.naturalWidth + 'x' + i.naturalHeight + ' ' + Math.round(performance.now() - t0) + 'ms'); ok(i); };
-    i.onerror = e => { clearTimeout(reloj); log('FALLA ' + src); mal(e); };
-    i.src = src;
-    log('pido ' + src + ' complete=' + i.complete);
-  });
+  const t0 = performance.now();
+  log('pido ' + src + (intento ? ' (otra vez)' : ''));
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const reloj = setTimeout(() => ctl && ctl.abort(), 9000);
+  return fetch(src, ctl ? { signal: ctl.signal, cache: intento ? 'reload' : 'default' } : undefined)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); log('red ' + src + ' ' + r.status + ' ' + Math.round(performance.now() - t0) + 'ms'); return r.blob(); })
+    .then(b => new Promise((ok, mal) => {
+      const url = URL.createObjectURL(b);
+      const i = new Image();
+      i.onload = () => { log('ok ' + src + ' ' + i.naturalWidth + 'x' + i.naturalHeight + ' ' + Math.round(performance.now() - t0) + 'ms'); ok(i); };
+      i.onerror = () => { URL.revokeObjectURL(url); mal(new Error('no se pinta ' + src)); };
+      i.src = url;
+    }))
+    .catch(err => {
+      log('FALLA ' + src + ' ' + (err && err.message));
+      if (intento < 1) return cargarImagen(src, 1);
+      throw err;
+    })
+    .finally(() => clearTimeout(reloj));
 }
 
 function geminioLater(ms, fn) { geminio.timers.push(setTimeout(fn, ms)); }
