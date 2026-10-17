@@ -3018,3 +3018,45 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
 #meses-opciones { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 .meses-op { min-width: 150px; }
 .meses-op.elegida { background: rgba(240, 208, 140, 0.35); }
+
+/* el fondo del mesesaurio se mueve: auroras suaves y cosas que flotan */
+#mesesaurio > :not(.meses-cielo):not(#meses-flotan) { position: relative; z-index: 1; }
+.meses-cielo, #meses-flotan { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.aurora {
+  position: absolute;
+  width: 70vmax; height: 70vmax;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+  animation: aurora-va 18s ease-in-out infinite alternate;
+}
+.aurora.a1 { left: -20vmax; top: -25vmax; background: radial-gradient(circle, rgba(150, 96, 220, 0.75), transparent 65%); }
+.aurora.a2 { right: -25vmax; top: 10vh; background: radial-gradient(circle, rgba(240, 150, 190, 0.5), transparent 65%); animation-duration: 23s; animation-delay: -7s; }
+.aurora.a3 { left: 10vw; bottom: -35vmax; background: radial-gradient(circle, rgba(240, 200, 120, 0.4), transparent 65%); animation-duration: 27s; animation-delay: -12s; }
+@keyframes aurora-va {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(8vw, 6vh) scale(1.15); }
+  100% { transform: translate(-6vw, 10vh) scale(0.95); }
+}
+.flota {
+  position: absolute;
+  bottom: -40px;
+  color: rgba(244, 212, 138, 0.8);
+  text-shadow: 0 0 10px rgba(240, 190, 90, 0.7);
+  animation: flota-sube linear infinite, flota-brilla ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+.flota.luz { border-radius: 50%; background: #ffe7a8; box-shadow: 0 0 10px 3px rgba(255, 210, 120, 0.7); }
+.flota:nth-child(3n) { color: rgba(250, 170, 200, 0.85); text-shadow: 0 0 10px rgba(250, 150, 190, 0.7); }
+@keyframes flota-sube {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(var(--deriva), -115vh) rotate(var(--gira)); }
+}
+@keyframes flota-brilla { from { opacity: 0.25; } to { opacity: 1; } }
+.meses-marco { animation: marco-respira 4.5s ease-in-out infinite; }
+@keyframes marco-respira {
+  50% { box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 70px rgba(240, 208, 140, 0.38); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora, .flota, .meses-marco { animation: none; }
+}

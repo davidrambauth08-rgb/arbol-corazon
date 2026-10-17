@@ -9691,6 +9691,21 @@ function conMesesaurio(seguir) {
     });
     opciones.appendChild(b);
   }
+  // alrededor: lucecitas, flores y corazones que suben despacio
+  const flotan = document.getElementById('meses-flotan');
+  if (flotan && !flotan.childElementCount) {
+    const cosas = ['✿', '❀', '♥', '✦', '', '', '', ''];
+    const n = REDUCED ? 0 : (innerWidth < 600 ? 22 : 38);
+    for (let i = 0; i < n; i++) {
+      const c = cosas[i % cosas.length];
+      const f = el('span', c ? 'flota' : 'flota luz', c);
+      const tam = c ? 12 + Math.random() * 14 : 3 + Math.random() * 4;
+      f.style.cssText = `left:${Math.random() * 100}%;font-size:${tam}px;width:${c ? 'auto' : tam + 'px'};height:${c ? 'auto' : tam + 'px'};` +
+        `animation-duration:${9 + Math.random() * 10}s,${2 + Math.random() * 3}s;animation-delay:-${Math.random() * 18}s,-${Math.random() * 3}s;` +
+        `--deriva:${(Math.random() * 80 - 40).toFixed(0)}px;--gira:${(Math.random() * 120 - 60).toFixed(0)}deg`;
+      flotan.appendChild(f);
+    }
+  }
   caja.hidden = false;
   const p = video.play();
   if (p && p.catch) p.catch(() => {});
