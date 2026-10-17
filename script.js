@@ -7019,7 +7019,15 @@ const geminioVolverBtn = document.getElementById('geminio-volver');
 const geminioVerEl = document.getElementById('geminio-ver');
 
 function cargarImagen(src) {
-  return new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = src; });
+  const log = window.logDepurar || (() => {});
+  return new Promise((ok, mal) => {
+    const i = new Image();
+    const t0 = performance.now();
+    i.onload = () => { log('ok ' + src + ' ' + i.naturalWidth + 'x' + i.naturalHeight + ' ' + Math.round(performance.now() - t0) + 'ms'); ok(i); };
+    i.onerror = e => { log('FALLA ' + src); mal(e); };
+    i.src = src;
+    log('pido ' + src + ' complete=' + i.complete);
+  });
 }
 
 function geminioLater(ms, fn) { geminio.timers.push(setTimeout(fn, ms)); }
