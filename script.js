@@ -221,7 +221,7 @@ const CONFIG = {
     reparo: { runa: "❖", nombre: "Reparo", desc: "pedirle perdón al cielo entero", corto: "Reparo" },
     pruebas: { runa: "✠", nombre: "Las tres pruebas", desc: "a ver si te lo sabes", corto: "Pruebas" },
     oesed: { runa: "❂", nombre: "Espejo de Oesed", desc: "ver lo que más desea el corazón", corto: "Espejo" },
-    geminio: { runa: "▦", nombre: "Geminio", desc: "muchos recuerdos que hacen uno solo", corto: "Geminio" },
+    geminio: { runa: "▦", nombre: "Spectrus Patronus", desc: "muchos recuerdos que hacen uno solo", corto: "Spectrus" },
     snitch: { runa: "◉", nombre: "Me abro al cierre", desc: "atrapar la Snitch dorada", corto: "Snitch" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
@@ -301,7 +301,7 @@ const CONFIG = {
      tu corazón. Al principio sólo está él; al mirar, el cristal se empaña y
      aparece ella a su lado. Las frases de "despues" salen de tres en tres
      como mucho, para no tapar el espejo. */
-  /* Geminio: el fotomosaico. Las fotos pequeñas vuelan, se acomodan y entre
+  /* Spectrus Patronus (geminio en el código): el fotomosaico. Las fotos pequeñas vuelan, se acomodan y entre
      todas forman la foto grande. Tocar un cuadrito abre esa foto.
      atlas: las miniaturas en una sola imagen (columnas × filas de 128 px),
      en el mismo orden que fotos. */
@@ -7006,7 +7006,7 @@ function cerrarOesed() {
 }
 
 /* =====================================================================
-   GEMINIO — el fotomosaico
+   SPECTRUS PATRONUS (geminio en el código) — el fotomosaico
    Las fotos pequeñas entran volando desde todos lados, cada una se posa en
    su sitio y se tiñe un poco del color que le toca: de lejos se ve la foto
    grande, de cerca cada cuadrito es otro recuerdo. Va con su propio bucle.
@@ -7082,7 +7082,7 @@ function prepararMosaico(G, grandes, fotos, atlas) {
   // el lienzo: lo más grande que quepa, dejando sitio al texto
   const maxW = Math.min(innerWidth - 32, 700), maxH = innerHeight * (movil ? 0.62 : 0.68);
   const lado = Math.max(4, Math.floor(Math.min(maxW / cols, maxH / rows)));
-  const dpr = Math.min(2, devicePixelRatio || 1);
+  const dpr = Math.min(1.5, devicePixelRatio || 1);   // en Safari la memoria se nota
   geminioCanvas.width = cols * lado * dpr;
   geminioCanvas.height = rows * lado * dpr;
   geminioCanvas.style.width = cols * lado + 'px';
@@ -7168,6 +7168,21 @@ function etapaCelda(c, t) {
   return { etapa, giro };
 }
 
+/* una chispa de oro dibujada una sola vez */
+let chispaGeminioCache = null;
+function chispaGeminio() {
+  if (chispaGeminioCache) return chispaGeminioCache;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,235,180,0.9)');
+  gr.addColorStop(1, 'rgba(255,235,180,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  return (chispaGeminioCache = c);
+}
+
 function pintarGeminio(ahora) {
   if (!geminio.activo) return;
   const G = CONFIG.geminio;
@@ -7211,13 +7226,10 @@ function pintarGeminio(ahora) {
   // chispas de oro por donde pasa la ola
   g.save();
   g.globalCompositeOperation = 'lighter';
+  const chispa = chispaGeminio();
   for (const [x, y] of chispas) {
     const r = geminio.s * (0.6 + Math.random());
-    const gr = g.createRadialGradient(x, y, 0, x, y, r);
-    gr.addColorStop(0, 'rgba(255,235,180,0.9)');
-    gr.addColorStop(1, 'rgba(255,235,180,0)');
-    g.fillStyle = gr;
-    g.fillRect(x - r, y - r, r * 2, r * 2);
+    g.drawImage(chispa, x - r, y - r, r * 2, r * 2);
   }
   g.restore();
   // un brillo que barre la foto cada vez que queda entera
@@ -7289,6 +7301,11 @@ function cerrarGeminio() {
     geminio.activo = false;
     geminioEl.hidden = true;
     geminioLineasEl.replaceChildren();
+    // suelta la memoria del lienzo y de las fotos
+    geminioCanvas.width = geminioCanvas.height = 1;
+    geminio.celdas = [];
+    geminio.atlas = null;
+    geminioVerEl.querySelector('img').removeAttribute('src');
     document.body.classList.remove('geminio-abierto');
   }, 900);
 }
