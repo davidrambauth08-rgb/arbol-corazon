@@ -3021,7 +3021,7 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
 
 /* el fondo del mesesaurio se mueve: auroras suaves y cosas que flotan */
 #mesesaurio > :not(.meses-cielo):not(#meses-flotan) { position: relative; z-index: 1; }
-.meses-cielo, #meses-flotan { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.meses-cielo, #meses-flotan, #geminio-flotan { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .aurora {
   position: absolute;
   width: 70vmax; height: 70vmax;
@@ -3131,3 +3131,10 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
   transition: transform 0.4s ease;
 }
 #geminio-ver.in img { transform: none; }
+
+/* Spectrus: todo se puede tocar */
+#geminio > :not(#geminio-flotan):not(#geminio-brillo):not(#geminio-ver) { position: relative; z-index: 1; }
+#geminio-brillo { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+#geminio-lienzo { cursor: pointer; touch-action: none; }
+.geminio-linea.pista { font-size: clamp(15px, 3.8vw, 18px); font-style: normal; letter-spacing: 0.06em; color: rgba(244, 212, 138, 0.85); animation: pista-late 2.4s ease-in-out infinite; }
+@keyframes pista-late { 50% { opacity: 0.55; } }

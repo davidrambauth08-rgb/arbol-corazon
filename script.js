@@ -319,10 +319,12 @@ const CONFIG = {
     atlasColumnas: 6,
     fotos: Array.from({ length: 27 }, (_, i) => `assets/mosaico/m${String(i + 1).padStart(2, '0')}.jpg`),
     columnas: 34,               // cuadritos a lo ancho (en el móvil, menos)
-    pausa: 3200,                // cuánto se queda cada foto antes de cambiar
     tinte: 0.52,                // cuánto se tiñe cada foto del color de la grande
     antes: ["Cada recuerdo es pequeño.", "Pero juntos…"],
-    despues: ["Toca cualquier cuadrito."],
+    pista: "Toca un cuadrito…",              // entre foto y foto
+    pistaFinal: "Toca cualquier cuadrito para verlo de cerca.",
+    pistaVolver: "Toca para volver",
+    despues: [],
     volver: "Volver al árbol"
   },
 
@@ -7011,7 +7013,10 @@ function cerrarOesed() {
    su sitio y se tiñe un poco del color que le toca: de lejos se ve la foto
    grande, de cerca cada cuadrito es otro recuerdo. Va con su propio bucle.
    ===================================================================== */
-const geminio = { activo: false, celdas: [], t0: 0, raf: 0, listo: false, timers: [] };
+const geminio = { activo: false, celdas: [], t0: 0, raf: 0, listo: false, timers: [],
+                  etapa: 0, modo: '', mt: 0, zc: null, zfoto: null, lupa: { x: 0, y: 0, a: 0, en: false }, chispas: [] };
+const geminioBrillo = document.getElementById('geminio-brillo');
+const geminioFlotan = document.getElementById('geminio-flotan');
 const geminioEl = document.getElementById('geminio');
 const geminioCanvas = document.getElementById('geminio-lienzo');
 const geminioLineasEl = document.getElementById('geminio-lineas');
@@ -7061,6 +7066,15 @@ async function mostrarGeminio() {
   geminioEl.hidden = false;
   void geminioEl.offsetWidth;
   geminioEl.classList.add('show');
+  geminio.modo = '';
+  geminio.chispas.length = 0;
+  geminio.lupa.a = 0;
+  geminio.lupa.en = false;
+  geminioBrillo.width = innerWidth;
+  geminioBrillo.height = innerHeight;
+  llenarFlotan(geminioFlotan);
+  cancelAnimationFrame(geminio.raf);
+  geminio.raf = requestAnimationFrame(pintarGeminio);
   let t = 500;
   for (const texto of (G.antes || [])) { geminioLater(t, () => lineaGeminio(texto)); t += 1500; }
   const grandes = (G.grandes || []).filter(x => x && x.foto);
@@ -7081,9 +7095,9 @@ async function mostrarGeminio() {
   prepararMosaico(G, usadas, fotos, atlas);
   geminioLater(Math.max(0, t - 600), () => {
     geminio.t0 = performance.now();
-    geminio.etapaDicha = -1;
-    cancelAnimationFrame(geminio.raf);
-    geminio.raf = requestAnimationFrame(pintarGeminio);
+    geminio.etapa = 0;
+    geminio.modo = 'llegan';
+    geminio.mt = geminio.t0;
   });
 }
 
@@ -7163,36 +7177,9 @@ function prepararMosaico(G, grandes, fotos, atlas) {
   geminio.atlas = atlas;
   geminio.cols = cols; geminio.rows = rows; geminio.s = s;
   geminio.grandes = grandes;
-  // el guion: entran volando, se tiñen, y cada foto se voltea en la siguiente
-  const llegan = Math.max(...geminio.celdas.map(c => c.retraso)) + 1300;
-  const pausa = G.pausa || 3200, ola = 2400;
-  geminio.llegan = llegan;
-  geminio.tinteYa = llegan * 0.75;
-  geminio.cambios = [];
-  let t = llegan + 1800 + pausa;
-  for (let e = 1; e < fotos.length; e++) {
-    // la ola sale de un sitio distinto cada vez
-    const ox = [0.5, 0.15, 0.85][e % 3] * cols, oy = [0.5, 0.2, 0.8][e % 3] * rows;
-    const maxD = Math.hypot(cols, rows);
-    geminio.cambios.push({ t, ox, oy, maxD });
-    t += ola + pausa;
-  }
-  geminio.fin = t - pausa;
-}
-
-/* en qué etapa está una celda y cuánto lleva volteándose (0..1) */
-function etapaCelda(c, t) {
-  let etapa = 0, giro = 1;
-  geminio.cambios.forEach((cb, i) => {
-    const d = Math.hypot(c.gx - cb.ox, c.gy - cb.oy) / cb.maxD;
-    const empieza = cb.t + d * 1700 + c.azar * 350;
-    if (t >= empieza) {
-      const k = clamp((t - empieza) / 620, 0, 1);
-      etapa = k < 0.5 ? i : i + 1;
-      giro = k;
-    }
-  });
-  return { etapa, giro };
+  // entran volando y se tiñen; lo demás lo decide ella tocando
+  geminio.llegan = Math.max(...geminio.celdas.map(c => c.retraso)) + 1300;
+  geminio.tinteYa = geminio.llegan * 0.75;
 }
 
 /* una chispa de oro dibujada una sola vez */
@@ -7210,110 +7197,294 @@ function chispaGeminio() {
   return (chispaGeminioCache = c);
 }
 
-function pintarGeminio(ahora) {
-  if (!geminio.activo) return;
-  const G = CONFIG.geminio;
-  const g = geminioCanvas.getContext('2d');
-  const W = geminioCanvas.width, H = geminioCanvas.height;
-  const t = REDUCED ? geminio.fin + 3000 : ahora - geminio.t0;
-  g.clearRect(0, 0, W, H);
-  const tinteMax = G.tinte == null ? 0.52 : G.tinte;
-  // el tinte llega cuando ya están casi todas
-  const tinte = tinteMax * clamp((t - geminio.tinteYa) / 1800, 0, 1);
-  let chispas = [];
-  for (const c of geminio.celdas) {
-    const k = clamp((t - c.retraso) / 1300, 0, 1);
-    if (k <= 0) continue;
-    const e = 1 - Math.pow(1 - k, 3);
-    const x = c.ox + (c.x - c.ox) * e, y = c.oy + (c.y - c.oy) * e;
-    const tam = c.s * (1.8 - 0.8 * e);
-    const { etapa, giro } = etapaCelda(c, t);
-    const E = c.etapas[Math.min(etapa, c.etapas.length - 1)];
-    // al voltearse se estrecha hasta cero y vuelve con la otra foto
-    const flip = giro < 1 ? Math.abs(Math.cos(giro * Math.PI)) : 1;
-    if (giro > 0.3 && giro < 0.7 && Math.random() < 0.05) chispas.push([c.x + c.s / 2, c.y + c.s / 2]);
-    g.save();
-    g.globalAlpha = Math.min(1, k * 2.5);
-    g.translate(x + c.s / 2, y + c.s / 2);
-    if (k < 1) g.rotate(c.giro * (1 - e));
-    g.scale(Math.max(0.02, flip), 1);
-    g.drawImage(geminio.atlas, E.sx, E.sy, 128, 128, -tam / 2, -tam / 2, tam, tam);
-    if (k >= 1 && tinte > 0) {
-      g.globalAlpha = tinte;
-      g.fillStyle = `rgb(${E.col[0]},${E.col[1]},${E.col[2]})`;
-      g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
-    }
-    if (giro < 1) {   // el canto del cuadrito brilla mientras gira
-      g.globalAlpha = 0.6 * (1 - flip);
-      g.fillStyle = '#ffe7a8';
-      g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
-    }
-    g.restore();
+/* lucecitas, flores y corazones que suben despacio por el fondo */
+function llenarFlotan(caja) {
+  if (!caja || caja.childElementCount) return;
+  const cosas = ['✿', '❀', '♥', '✦', '', '', '', ''];
+  const n = REDUCED ? 0 : (innerWidth < 600 ? 22 : 38);
+  for (let i = 0; i < n; i++) {
+    const c = cosas[i % cosas.length];
+    const f = el('span', c ? 'flota' : 'flota luz', c);
+    const tam = c ? 12 + Math.random() * 14 : 3 + Math.random() * 4;
+    f.style.cssText = `left:${Math.random() * 100}%;font-size:${tam}px;width:${c ? 'auto' : tam + 'px'};height:${c ? 'auto' : tam + 'px'};` +
+      `animation-duration:${9 + Math.random() * 10}s,${2 + Math.random() * 3}s;animation-delay:-${Math.random() * 18}s,-${Math.random() * 3}s;` +
+      `--deriva:${(Math.random() * 80 - 40).toFixed(0)}px;--gira:${(Math.random() * 120 - 60).toFixed(0)}deg`;
+    caja.appendChild(f);
   }
-  // chispas de oro por donde pasa la ola
-  g.save();
-  g.globalCompositeOperation = 'lighter';
-  const chispa = chispaGeminio();
-  for (const [x, y] of chispas) {
-    const r = geminio.s * (0.6 + Math.random());
-    g.drawImage(chispa, x - r, y - r, r * 2, r * 2);
-  }
-  g.restore();
-  // un brillo que barre la foto cada vez que queda entera
-  const finales = [geminio.llegan + 1800, ...geminio.cambios.map(cb => cb.t + 2400)];
-  for (const f of finales) {
-    const brillo = (t - f) / 1600;
-    if (brillo > 0 && brillo < 1 && !REDUCED) {
-      const bx = -W * 0.3 + brillo * W * 1.6;
-      const grad = g.createLinearGradient(bx - W * 0.2, 0, bx + W * 0.2, H);
-      grad.addColorStop(0, 'rgba(255,240,200,0)');
-      grad.addColorStop(0.5, 'rgba(255,240,200,0.3)');
-      grad.addColorStop(1, 'rgba(255,240,200,0)');
-      g.fillStyle = grad;
-      g.fillRect(0, 0, W, H);
-    }
-  }
-  // la frase de cada foto, cuando ya se ve
-  const etapaVista = finales.filter(f => t > f).length - 1;
-  if (etapaVista > geminio.etapaDicha && etapaVista >= 0) {
-    geminio.etapaDicha = etapaVista;
-    const texto = (geminio.grandes[etapaVista] || {}).texto;
-    if (texto) { geminioLineasEl.replaceChildren(); lineaGeminio(texto); }
-  }
-  if (!geminio.listo && t > geminio.fin + 1800) {
+}
+
+const suave = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+
+/* pone el texto de la foto y la pista de lo que puede hacer */
+function decirEtapa() {
+  const G = CONFIG.geminio, e = geminio.etapa, ultima = e >= geminio.grandes.length - 1;
+  geminioLineasEl.replaceChildren();
+  const texto = (geminio.grandes[e] || {}).texto;
+  if (texto) lineaGeminio(texto);
+  geminioLater(1100, () => {
+    const p = el('p', 'geminio-linea pista', ultima ? (G.pistaFinal || '') : (G.pista || ''));
+    geminioLineasEl.appendChild(p);
+    void p.offsetWidth;
+    p.classList.add('in');
+  });
+  if (ultima && !geminio.listo) {
     geminio.listo = true;
-    let d = 600;
-    for (const texto of (G.despues || [])) { geminioLater(d, () => lineaGeminio(texto)); d += 1400; }
+    let d = 1600;
+    for (const t of (G.despues || [])) { geminioLater(d, () => lineaGeminio(t)); d += 1400; }
     geminioLater(d, () => {
       geminioVolverBtn.hidden = false;
       void geminioVolverBtn.offsetWidth;
       geminioVolverBtn.classList.add('in');
     });
   }
-  // cuando todo está quieto, deja de pintar
-  if (t < geminio.fin + 3400) geminio.raf = requestAnimationFrame(pintarGeminio);
 }
 
-/* tocar un cuadrito: esa foto se abre en grande */
-function tocarGeminio(e) {
-  if (!geminio.activo || !geminio.listo) return;
+/* la cámara del zoom: lleva el centro del cuadrito al centro y lo agranda */
+function camaraZoom(g, k) {
+  const c = geminio.zc, W = geminioCanvas.width, H = geminioCanvas.height;
+  const Z = Math.min(W, H) * 0.94 / c.s;
+  const esc = 1 + (Z - 1) * k;
+  const ccx = c.x + c.s / 2, ccy = c.y + c.s / 2;
+  const fx = ccx + (W / 2 - ccx) * k, fy = ccy + (H / 2 - ccy) * k;
+  g.setTransform(esc, 0, 0, esc, fx - ccx * esc, fy - ccy * esc);
+}
+
+/* la foto de verdad del cuadrito, recortada en cuadrado, encima de él */
+function fotoEnCelda(g, c, alfa) {
+  const img = geminio.zfoto;
+  if (!img || !img.naturalWidth || alfa <= 0) return;
+  const lado = Math.min(img.naturalWidth, img.naturalHeight);
+  g.globalAlpha = alfa;
+  g.drawImage(img, (img.naturalWidth - lado) / 2, (img.naturalHeight - lado) / 2, lado, lado, c.x, c.y, c.s, c.s);
+  g.globalAlpha = 1;
+}
+
+function pintarGeminio(ahora) {
+  if (!geminio.activo) return;
+  geminio.raf = requestAnimationFrame(pintarGeminio);
+  pintarBrilloGeminio();
+  if (!geminio.modo || !geminio.celdas.length) return;
+  const G = CONFIG.geminio;
+  const g = geminioCanvas.getContext('2d');
+  const W = geminioCanvas.width, H = geminioCanvas.height;
+  const modo = geminio.modo, dt = ahora - geminio.mt;
+  const tinteMax = G.tinte == null ? 0.52 : G.tinte;
+  const tLleg = REDUCED ? 1e9 : ahora - geminio.t0;
+  const tinteBase = tinteMax * clamp((tLleg - geminio.tinteYa) / 1800, 0, 1);
+  // la lupa sigue el dedo con suavidad
+  const L = geminio.lupa;
+  L.a += ((L.en && (modo === 'quieto' || modo === 'llegan') ? 1 : 0) - L.a) * 0.15;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  // el paso de una etapa a otra
+  if (modo === 'llegan' && tLleg > geminio.llegan + 1800) {
+    geminio.modo = 'quieto'; geminio.mt = ahora; decirEtapa();
+  }
+  let k = 0;   // cuánto zoom hay
+  if (modo === 'zoom') {
+    k = suave(clamp(dt / 1900, 0, 1));
+    if (dt > 1900 + 700) {
+      if (geminio.etapa < geminio.grandes.length - 1) { geminio.modo = 'nace'; geminio.etapa++; }
+      else { geminio.modo = 'foto'; geminioLineasEl.replaceChildren(); lineaGeminio(G.pistaVolver || ''); }
+      geminio.mt = ahora;
+    }
+  } else if (modo === 'foto') {
+    k = 1;
+  } else if (modo === 'vuelve') {
+    k = 1 - suave(clamp(dt / 1400, 0, 1));
+    if (dt > 1400) { geminio.modo = 'quieto'; geminio.mt = ahora; geminio.zc = null; decirEtapa(); }
+  }
+
+  if (modo === 'nace') {
+    // la foto grande del cuadrito se queda un momento y se deshace en el mosaico nuevo
+    const sale = 1 - clamp(dt / 1600, 0, 1);
+    if (sale > 0 && geminio.zc) {
+      camaraZoom(g, 1);
+      fotoEnCelda(g, geminio.zc, sale);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    const E0 = geminio.etapa;
+    let todas = true;
+    const cxm = geminio.cols / 2, cym = geminio.rows / 2, maxD = Math.hypot(cxm, cym);
+    for (const c of geminio.celdas) {
+      const d = Math.hypot(c.gx + 0.5 - cxm, c.gy + 0.5 - cym) / maxD;
+      const p = clamp((dt - 250 - d * 1500 - c.azar * 300) / 650, 0, 1);
+      if (p < 1) todas = false;
+      if (p <= 0) continue;
+      const E = c.etapas[E0];
+      const e = suave(p);
+      const flip = Math.abs(Math.cos((1 - e) * Math.PI / 2));
+      g.save();
+      g.translate(c.x + c.s / 2, c.y + c.s / 2);
+      g.scale(Math.max(0.02, flip) * (0.4 + 0.6 * e), 0.4 + 0.6 * e);
+      g.globalAlpha = e;
+      g.drawImage(geminio.atlas, E.sx, E.sy, 128, 128, -c.s / 2, -c.s / 2, c.s, c.s);
+      g.globalAlpha = tinteMax * e;
+      g.fillStyle = `rgb(${E.col[0]},${E.col[1]},${E.col[2]})`;
+      g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
+      if (p < 1) { g.globalAlpha = 0.7 * (1 - e); g.fillStyle = '#ffe7a8'; g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s); }
+      g.restore();
+      if (p > 0.2 && p < 0.5 && Math.random() < 0.03) geminio.chispas.push(chispaDesdeLienzo(c.x + c.s / 2, c.y + c.s / 2, 'oro'));
+    }
+    if (todas && dt > 2600) { geminio.modo = 'quieto'; geminio.mt = ahora; geminio.zc = null; geminio.zfoto = null; decirEtapa(); }
+    return;
+  }
+
+  if (k > 0) camaraZoom(g, k);
+  const E0 = geminio.etapa;
+  const lupaCeldas = [];
+  const R = 4.6 * geminio.s;
+  for (const c of geminio.celdas) {
+    const p = clamp((tLleg - c.retraso) / 1300, 0, 1);
+    if (p <= 0) continue;
+    const E = c.etapas[E0];
+    if (L.a > 0.01 && p >= 1) {
+      const d = Math.hypot(c.x + c.s / 2 - L.x, c.y + c.s / 2 - L.y);
+      if (d < R) { lupaCeldas.push([c, E, Math.pow(1 - d / R, 2) * L.a]); continue; }
+    }
+    const e = 1 - Math.pow(1 - p, 3);
+    const x = c.ox + (c.x - c.ox) * e, y = c.oy + (c.y - c.oy) * e;
+    const tam = c.s * (1.8 - 0.8 * e);
+    g.save();
+    g.translate(x + c.s / 2, y + c.s / 2);
+    if (p < 1) { g.rotate(c.giro * (1 - e)); g.globalAlpha = Math.min(1, p * 2.5); }
+    g.drawImage(geminio.atlas, E.sx, E.sy, 128, 128, -tam / 2, -tam / 2, tam, tam);
+    const tinte = tinteBase * (1 - k);
+    if (p >= 1 && tinte > 0) {
+      g.globalAlpha = tinte;
+      g.fillStyle = `rgb(${E.col[0]},${E.col[1]},${E.col[2]})`;
+      g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
+    }
+    g.restore();
+  }
+  // bajo la lupa: los cuadritos se levantan y se ven sin tinte
+  lupaCeldas.sort((a, b) => a[2] - b[2]);
+  for (const [c, E, f] of lupaCeldas) {
+    const tam = c.s * (1 + 1.7 * f);
+    g.save();
+    g.translate(c.x + c.s / 2, c.y + c.s / 2);
+    g.shadowColor = 'rgba(0,0,0,0.45)';
+    g.shadowBlur = 10 * f;
+    g.drawImage(geminio.atlas, E.sx, E.sy, 128, 128, -tam / 2, -tam / 2, tam, tam);
+    g.shadowBlur = 0;
+    g.globalAlpha = tinteBase * (1 - f);
+    g.fillStyle = `rgb(${E.col[0]},${E.col[1]},${E.col[2]})`;
+    g.fillRect(-tam / 2, -tam / 2, tam, tam);
+    g.globalAlpha = 0.8 * f;
+    g.strokeStyle = '#f4d48a';
+    g.lineWidth = Math.max(1, c.s * 0.06);
+    g.strokeRect(-tam / 2, -tam / 2, tam, tam);
+    g.restore();
+  }
+  // durante el zoom aparece la foto de verdad del cuadrito
+  if (geminio.zc && k > 0) {
+    fotoEnCelda(g, geminio.zc, clamp((k - 0.55) / 0.4, 0, 1));
+    g.globalAlpha = 0.9 * clamp((k - 0.9) / 0.1, 0, 1);
+    g.strokeStyle = '#f4d48a';
+    g.lineWidth = geminio.zc.s * 0.01;
+    g.strokeRect(geminio.zc.x, geminio.zc.y, geminio.zc.s, geminio.zc.s);
+    g.globalAlpha = 1;
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  // un brillo que barre la foto cuando acaba de formarse
+  const brillo = modo === 'quieto' ? dt / 1600 : -1;
+  if (brillo > 0 && brillo < 1 && !REDUCED) {
+    const bx = -W * 0.3 + brillo * W * 1.6;
+    const grad = g.createLinearGradient(bx - W * 0.2, 0, bx + W * 0.2, H);
+    grad.addColorStop(0, 'rgba(255,240,200,0)');
+    grad.addColorStop(0.5, 'rgba(255,240,200,0.3)');
+    grad.addColorStop(1, 'rgba(255,240,200,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+  }
+}
+
+/* chispas y corazones por toda la pantalla, en su propio lienzo */
+function chispaDesdeLienzo(x, y, tipo) {
   const r = geminioCanvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - r.left) / r.width * geminio.cols);
-  const y = Math.floor((e.clientY - r.top) / r.height * geminio.rows);
+  const k = r.width / geminioCanvas.width;
+  return nuevaChispaGeminio(r.left + x * k, r.top + y * k, tipo);
+}
+
+function nuevaChispaGeminio(x, y, tipo) {
+  const a = Math.random() * TAU, v = tipo === 'rastro' ? 10 + Math.random() * 30 : 40 + Math.random() * 120;
+  return { x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (tipo === 'corazon' ? 60 : 0),
+           nace: performance.now(), vida: tipo === 'rastro' ? 700 : 1200 + Math.random() * 600,
+           tipo, tam: tipo === 'corazon' ? 14 + Math.random() * 12 : 6 + Math.random() * 12 };
+}
+
+let brilloUltimo = 0;
+function pintarBrilloGeminio() {
+  const g = geminioBrillo.getContext('2d');
+  const ahora = performance.now();
+  const dt = Math.min(0.05, (ahora - (brilloUltimo || ahora)) / 1000);
+  brilloUltimo = ahora;
+  g.clearRect(0, 0, geminioBrillo.width, geminioBrillo.height);
+  if (!geminio.chispas.length) return;
+  const chispa = chispaGeminio();
+  g.globalCompositeOperation = 'lighter';
+  geminio.chispas = geminio.chispas.filter(p => ahora - p.nace < p.vida);
+  for (const p of geminio.chispas) {
+    const k = (ahora - p.nace) / p.vida;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += (p.tipo === 'corazon' ? -20 : 30) * dt;
+    p.vx *= 0.98;
+    g.globalAlpha = (1 - k) * (p.tipo === 'rastro' ? 0.8 : 1);
+    if (p.tipo === 'corazon') {
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#f7a8c4';
+      g.font = `${p.tam}px serif`;
+      g.fillText('♥', p.x, p.y);
+      g.globalCompositeOperation = 'lighter';
+    } else {
+      const r = p.tam * (1 - k * 0.5);
+      g.drawImage(chispa, p.x - r, p.y - r, r * 2, r * 2);
+    }
+  }
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+}
+
+function puntoEnLienzo(e) {
+  const r = geminioCanvas.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * geminioCanvas.width / r.width,
+           y: (e.clientY - r.top) * geminioCanvas.height / r.height,
+           dentro: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom };
+}
+
+/* mover el dedo o el ratón: la lupa y el rastro de chispas */
+function moverGeminio(e) {
+  if (!geminio.activo) return;
+  const p = puntoEnLienzo(e);
+  geminio.lupa.x = p.x; geminio.lupa.y = p.y; geminio.lupa.en = p.dentro;
+  if (!REDUCED && geminio.chispas.length < 160) {
+    geminio.chispas.push(nuevaChispaGeminio(e.clientX, e.clientY, 'rastro'));
+  }
+}
+
+/* tocar: en un cuadrito entra en él; fuera, salen corazones */
+function tocarGeminio(e) {
+  if (!geminio.activo) return;
+  if (e.target.closest && e.target.closest('button')) return;
+  const p = puntoEnLienzo(e);
+  if (!p.dentro || geminio.modo !== 'quieto') {
+    if (geminio.modo === 'foto') { geminio.modo = 'vuelve'; geminio.mt = performance.now(); geminioLineasEl.replaceChildren(); return; }
+    for (let i = 0; i < 9; i++) geminio.chispas.push(nuevaChispaGeminio(e.clientX, e.clientY, i % 3 ? 'oro' : 'corazon'));
+    return;
+  }
+  const x = Math.floor(p.x / geminio.s), y = Math.floor(p.y / geminio.s);
   const c = geminio.celdas[y * geminio.cols + x];
   if (!c) return;
-  const E = c.etapas[c.etapas.length - 1];
-  fxBurst(e.clientX, e.clientY, 12, 80);
-  const img = geminioVerEl.querySelector('img');
-  img.src = CONFIG.geminio.fotos[E.foto];
-  geminioVerEl.hidden = false;
-  void geminioVerEl.offsetWidth;
-  geminioVerEl.classList.add('in');
-}
-
-function cerrarFotoGeminio() {
-  geminioVerEl.classList.remove('in');
-  setTimeout(() => { geminioVerEl.hidden = true; }, 400);
+  for (let i = 0; i < 14; i++) geminio.chispas.push(nuevaChispaGeminio(e.clientX, e.clientY, 'oro'));
+  const E = c.etapas[geminio.etapa];
+  geminio.zc = c;
+  geminio.zfoto = null;
+  cargarImagen(CONFIG.geminio.fotos[E.foto]).then(img => { if (geminio.zc === c) geminio.zfoto = img; }, () => {});
+  geminio.modo = 'zoom';
+  geminio.mt = performance.now();
+  geminio.lupa.en = false;
+  geminioLineasEl.replaceChildren();
 }
 
 function cerrarGeminio() {
@@ -7333,13 +7504,19 @@ function cerrarGeminio() {
     geminio.celdas = [];
     geminio.atlas = null;
     window.__imgsGeminio = [];
+    geminio.zc = geminio.zfoto = null;
+    geminio.chispas.length = 0;
+    geminioBrillo.width = geminioBrillo.height = 1;
     geminioVerEl.querySelector('img').removeAttribute('src');
     document.body.classList.remove('geminio-abierto');
   }, 900);
 }
 
-geminioCanvas.addEventListener('click', tocarGeminio);
-geminioVerEl.addEventListener('click', cerrarFotoGeminio);
+geminioEl.addEventListener('pointermove', moverGeminio);
+geminioEl.addEventListener('pointerdown', moverGeminio);
+geminioEl.addEventListener('pointerleave', () => { geminio.lupa.en = false; });
+geminioEl.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') geminio.lupa.en = false; });
+geminioEl.addEventListener('click', tocarGeminio);
 geminioVolverBtn.addEventListener('click', cerrarGeminio);
 
 /* =====================================================================
