@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -249,6 +249,15 @@
     </button>
   </div>
 
+  <!-- Mesesaurio: lo primero de todo (textos en CONFIG.mesesaurio) -->
+  <div id="mesesaurio" hidden>
+    <div class="meses-marco">
+      <video id="meses-video" muted autoplay loop playsinline preload="auto" aria-hidden="true"></video>
+    </div>
+    <h1 id="meses-titulo"></h1>
+    <div id="meses-opciones"></div>
+  </div>
+
   <!-- Puerta encantada: clave y frase (textos en CONFIG.puerta) -->
   <div id="gate" hidden>
     <div class="gate-card">
@@ -292,6 +301,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=37"></script>
+  <script src="script.js?v=38"></script>
 </body>
 </html>

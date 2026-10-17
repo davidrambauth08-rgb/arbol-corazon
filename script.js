@@ -29,6 +29,16 @@ const CONFIG = {
   /* Puerta encantada: primero la clave, después la contraseña.
      Las respuestas no distinguen mayúsculas, tildes ni espacios.
      "valor" puede ser una respuesta o una lista de respuestas válidas. */
+  /* Lo primero de todo: el gatito con flores, «Feliz mesesaurio» y la pregunta.
+     Cualquiera de las dos opciones abre la página. activo: false lo quita. */
+  mesesaurio: {
+    activo: true,
+    video: "assets/mesesaurio.mp4",
+    poster: "assets/mesesaurio.jpg",
+    titulo: "Feliz mesesaurio",
+    opciones: ["Opción 8", "Opción 16"]
+  },
+
   puerta: {
     activo: false,   // false = se entra sin clave ni contraseña
     titulo: "La puerta está encantada",
@@ -9652,6 +9662,42 @@ function drawConfetti(dt, now, g) {
 
 
 /* ---------------------------------------------------------------------
+   Mesesaurio: el gatito con flores y la pregunta, antes que todo
+   --------------------------------------------------------------------- */
+function conMesesaurio(seguir) {
+  const M = CONFIG.mesesaurio;
+  const caja = document.getElementById('mesesaurio');
+  if (!M || !M.activo || !caja) return seguir();
+  const video = document.getElementById('meses-video');
+  if (M.poster) video.poster = M.poster;
+  video.src = M.video;
+  document.getElementById('meses-titulo').textContent = M.titulo || '';
+  const opciones = document.getElementById('meses-opciones');
+  opciones.replaceChildren();
+  let elegido = false;
+  for (const texto of (M.opciones || [])) {
+    const b = el('button', 'spell-btn meses-op', texto);
+    b.type = 'button';
+    b.addEventListener('click', e => {
+      if (elegido) return;
+      elegido = true;
+      b.classList.add('elegida');
+      fxBurst(e.clientX, e.clientY, 22, 130);
+      later(650, () => {
+        caja.classList.add('hide');
+        seguir();
+      });
+      later(1500, () => { caja.hidden = true; video.pause(); video.removeAttribute('src'); video.load(); });
+    });
+    opciones.appendChild(b);
+  }
+  caja.hidden = false;
+  const p = video.play();
+  if (p && p.catch) p.catch(() => {});
+}
+
+
+/* ---------------------------------------------------------------------
    Puerta encantada: clave y frase antes de entrar
    --------------------------------------------------------------------- */
 const GATE = CONFIG.puerta || { activo: false };
@@ -10420,7 +10466,7 @@ function init() {
   else if (GATE.activo && GATE.pasos && GATE.pasos.length) {
     introEl.hidden = true;
     magicEl.hidden = true;
-    buildGate();
+    conMesesaurio(buildGate);
   } else if (MAGIC.enabled || (CONFIG.reparo && CONFIG.reparo.entrada) ||
              (CONFIG.priori && CONFIG.priori.entrada) ||
              (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
@@ -10428,7 +10474,7 @@ function init() {
              (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
              (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;
-    entrada();
+    conMesesaurio(entrada);
   }
 
   lastNow = performance.now();

@@ -2970,3 +2970,51 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
 }
 #reparo-btn, #reparo-seguir { width: auto; justify-content: center; }
 #reparo-btn .plate-text, #reparo-seguir .plate-text { align-items: center; }
+
+/* ---------------------------------------------------------------------
+   Mesesaurio: el gatito con flores, antes que todo
+   --------------------------------------------------------------------- */
+#mesesaurio {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  overflow-y: auto;
+  padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(96, 72, 160, 0.3) 0%, rgba(96, 72, 160, 0) 60%),
+    linear-gradient(180deg, #151a36 0%, #120f27 55%, #0a0814 100%);
+  transition: opacity 0.8s ease;
+  animation: meses-in 1.1s ease both;
+}
+#mesesaurio[hidden] { display: none; }
+#mesesaurio.hide { opacity: 0; pointer-events: none; }
+@keyframes meses-in { from { opacity: 0; } }
+.meses-marco {
+  width: min(100%, 440px, 52vh);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(240, 208, 140, 0.55);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(240, 208, 140, 0.18);
+}
+#meses-video { display: block; width: 100%; height: 100%; object-fit: cover; }
+#meses-titulo {
+  margin: 0;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(38px, 9vw, 58px);
+  line-height: 1.05;
+  text-align: center;
+  color: #f4d48a;
+  text-shadow: 0 0 22px rgba(240, 190, 90, 0.55);
+}
+#meses-opciones { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.meses-op { min-width: 150px; }
+.meses-op.elegida { background: rgba(240, 208, 140, 0.35); }
