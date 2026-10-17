@@ -307,14 +307,22 @@ const CONFIG = {
      en el mismo orden que fotos. */
   geminio: {
     activo: true,
-    foto: "assets/foto-final.jpg",
+    /* Las fotos grandes, una detrás de otra: los cuadritos se voltean de una a
+       la siguiente. foco: el punto que queda en el centro al recortar. */
+    grandes: [
+      { foto: "assets/mosaico/m07.jpg", texto: "…somos esto.", foco: { x: 0.5, y: 0.42 } },
+      { foto: "assets/recuerdo-2.jpg", texto: "…y esto.", foco: { x: 0.46, y: 0.5 } },
+      { foto: "assets/foto-final.jpg", texto: "…y todo lo que nos falta.", foco: { x: 0.55, y: 0.5 } }
+    ],
+    proporcion: 0.875,          // ancho / alto del mosaico
     atlas: "assets/mosaico/atlas.jpg",
     atlasColumnas: 6,
     fotos: Array.from({ length: 27 }, (_, i) => `assets/mosaico/m${String(i + 1).padStart(2, '0')}.jpg`),
-    columnas: 38,               // cuadritos a lo ancho (en el móvil, menos)
+    columnas: 34,               // cuadritos a lo ancho (en el móvil, menos)
+    pausa: 3200,                // cuánto se queda cada foto antes de cambiar
     tinte: 0.52,                // cuánto se tiñe cada foto del color de la grande
     antes: ["Cada recuerdo es pequeño.", "Pero juntos…"],
-    despues: ["…somos esto.", "Toca cualquier cuadrito."],
+    despues: ["Toca cualquier cuadrito."],
     volver: "Volver al árbol"
   },
 
@@ -7038,36 +7046,47 @@ async function mostrarGeminio() {
   geminioEl.classList.add('show');
   let t = 500;
   for (const texto of (G.antes || [])) { geminioLater(t, () => lineaGeminio(texto)); t += 1500; }
-  let grande, atlas;
-  try { [grande, atlas] = await Promise.all([cargarImagen(G.foto), cargarImagen(G.atlas)]); }
+  const grandes = (G.grandes || []).filter(x => x && x.foto);
+  let fotos, atlas;
+  try { [atlas, ...fotos] = await Promise.all([cargarImagen(G.atlas), ...grandes.map(x => cargarImagen(x.foto))]); }
   catch (e) { geminioLater(400, cerrarGeminio); return; }
-  if (!geminio.activo) return;
-  prepararMosaico(G, grande, atlas);
+  if (!geminio.activo || !fotos.length) return;
+  prepararMosaico(G, grandes, fotos, atlas);
   geminioLater(Math.max(0, t - 600), () => {
     geminio.t0 = performance.now();
+    geminio.etapaDicha = -1;
     cancelAnimationFrame(geminio.raf);
     geminio.raf = requestAnimationFrame(pintarGeminio);
   });
 }
 
-function prepararMosaico(G, grande, atlas) {
+/* los colores de una foto grande reducida a cols × rows, recortada con su foco */
+function coloresDe(img, cols, rows, foco) {
+  const c = document.createElement('canvas');
+  c.width = cols; c.height = rows;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const r = cols / rows, ri = img.width / img.height;
+  let sw = img.width, sh = img.height;
+  if (ri > r) sw = img.height * r; else sh = img.width / r;
+  const fx = foco ? foco.x : 0.5, fy = foco ? foco.y : 0.5;
+  const sx = clamp(img.width * fx - sw / 2, 0, img.width - sw);
+  const sy = clamp(img.height * fy - sh / 2, 0, img.height - sh);
+  g.drawImage(img, sx, sy, sw, sh, 0, 0, cols, rows);
+  return g.getImageData(0, 0, cols, rows).data;
+}
+
+function prepararMosaico(G, grandes, fotos, atlas) {
   const movil = innerWidth < 600;
-  const cols = Math.round((G.columnas || 38) * (movil ? 0.7 : 1));
-  const rows = Math.max(1, Math.round(cols * grande.height / grande.width));
+  const cols = Math.round((G.columnas || 34) * (movil ? 0.72 : 1));
+  const rows = Math.max(1, Math.round(cols / (G.proporcion || 0.875)));
   // el lienzo: lo más grande que quepa, dejando sitio al texto
-  const maxW = Math.min(innerWidth - 32, 760), maxH = innerHeight * (movil ? 0.6 : 0.68);
+  const maxW = Math.min(innerWidth - 32, 700), maxH = innerHeight * (movil ? 0.62 : 0.68);
   const lado = Math.max(4, Math.floor(Math.min(maxW / cols, maxH / rows)));
   const dpr = Math.min(2, devicePixelRatio || 1);
   geminioCanvas.width = cols * lado * dpr;
   geminioCanvas.height = rows * lado * dpr;
   geminioCanvas.style.width = cols * lado + 'px';
   geminioCanvas.style.height = rows * lado + 'px';
-  // el color de cada celda: la foto grande reducida a cols × rows
-  const c = document.createElement('canvas');
-  c.width = cols; c.height = rows;
-  const g = c.getContext('2d', { willReadFrequently: true });
-  g.drawImage(grande, 0, 0, cols, rows);
-  const px = g.getImageData(0, 0, cols, rows).data;
   // el color medio de cada miniatura
   const N = G.fotos.length, AC = G.atlasColumnas || 6, T = 128;
   const a = document.createElement('canvas');
@@ -7077,16 +7096,32 @@ function prepararMosaico(G, grande, atlas) {
   ag.drawImage(atlas, 0, 0, a.width, a.height);
   const am = ag.getImageData(0, 0, a.width, a.height).data;
   const medias = Array.from({ length: N }, (_, i) => [am[i * 4], am[i * 4 + 1], am[i * 4 + 2]]);
-  const usos = new Array(N).fill(0);
-  geminio.celdas = [];
   const W = geminioCanvas.width, H = geminioCanvas.height, s = lado * dpr;
+  geminio.celdas = [];
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      const k = (y * cols + x) * 4, col = [px[k], px[k + 1], px[k + 2]];
+      const cx = (x + 0.5) / cols - 0.5, cy = (y + 0.5) / rows - 0.5;
+      const ang = Math.random() * TAU, lejos = 0.9 + Math.random() * 0.8;
+      geminio.celdas.push({
+        x: x * s, y: y * s, s, gx: x, gy: y, etapas: [],
+        // de dónde viene volando y cuándo sale
+        ox: x * s + Math.cos(ang) * W * lejos, oy: y * s + Math.sin(ang) * H * lejos,
+        giro: (Math.random() - 0.5) * 3,
+        retraso: Math.hypot(cx, cy) * 2600 + Math.random() * 900,
+        azar: Math.random()
+      });
+    }
+  }
+  // cada foto grande: qué miniatura va en cada cuadrito y de qué color se tiñe
+  fotos.forEach((img, e) => {
+    const px = coloresDe(img, cols, rows, grandes[e].foco);
+    const usos = new Array(N).fill(0);
+    for (const c of geminio.celdas) {
+      const k = (c.gy * cols + c.gx) * 4, col = [px[k], px[k + 1], px[k + 2]];
       // la miniatura que más se parece, sin repetir la de al lado
       const vecinas = new Set();
-      if (x > 0) vecinas.add(geminio.celdas[geminio.celdas.length - 1].foto);
-      if (y > 0) vecinas.add(geminio.celdas[(y - 1) * cols + x].foto);
+      if (c.gx > 0) vecinas.add(geminio.celdas[c.gy * cols + c.gx - 1].etapas[e].foto);
+      if (c.gy > 0) vecinas.add(geminio.celdas[(c.gy - 1) * cols + c.gx].etapas[e].foto);
       let mejor = 0, md = Infinity;
       for (let i = 0; i < N; i++) {
         if (vecinas.has(i)) continue;
@@ -7095,21 +7130,42 @@ function prepararMosaico(G, grande, atlas) {
         if (d < md) { md = d; mejor = i; }
       }
       usos[mejor]++;
-      const cx = (x + 0.5) / cols - 0.5, cy = (y + 0.5) / rows - 0.5;
-      const ang = Math.random() * TAU, lejos = 0.9 + Math.random() * 0.8;
-      geminio.celdas.push({
-        x: x * s, y: y * s, s, foto: mejor, col,
-        sx: (mejor % AC) * T, sy: Math.floor(mejor / AC) * T,
-        // de dónde viene volando y cuándo sale
-        ox: x * s + Math.cos(ang) * W * lejos, oy: y * s + Math.sin(ang) * H * lejos,
-        giro: (Math.random() - 0.5) * 3,
-        retraso: Math.hypot(cx, cy) * 2600 + Math.random() * 900
-      });
+      c.etapas.push({ foto: mejor, col, sx: (mejor % AC) * T, sy: Math.floor(mejor / AC) * T });
     }
-  }
+  });
   geminio.atlas = atlas;
   geminio.cols = cols; geminio.rows = rows; geminio.s = s;
-  geminio.fin = Math.max(...geminio.celdas.map(c => c.retraso)) + 1400;
+  geminio.grandes = grandes;
+  // el guion: entran volando, se tiñen, y cada foto se voltea en la siguiente
+  const llegan = Math.max(...geminio.celdas.map(c => c.retraso)) + 1300;
+  const pausa = G.pausa || 3200, ola = 2400;
+  geminio.llegan = llegan;
+  geminio.tinteYa = llegan * 0.75;
+  geminio.cambios = [];
+  let t = llegan + 1800 + pausa;
+  for (let e = 1; e < fotos.length; e++) {
+    // la ola sale de un sitio distinto cada vez
+    const ox = [0.5, 0.15, 0.85][e % 3] * cols, oy = [0.5, 0.2, 0.8][e % 3] * rows;
+    const maxD = Math.hypot(cols, rows);
+    geminio.cambios.push({ t, ox, oy, maxD });
+    t += ola + pausa;
+  }
+  geminio.fin = t - pausa;
+}
+
+/* en qué etapa está una celda y cuánto lleva volteándose (0..1) */
+function etapaCelda(c, t) {
+  let etapa = 0, giro = 1;
+  geminio.cambios.forEach((cb, i) => {
+    const d = Math.hypot(c.gx - cb.ox, c.gy - cb.oy) / cb.maxD;
+    const empieza = cb.t + d * 1700 + c.azar * 350;
+    if (t >= empieza) {
+      const k = clamp((t - empieza) / 620, 0, 1);
+      etapa = k < 0.5 ? i : i + 1;
+      giro = k;
+    }
+  });
+  return { etapa, giro };
 }
 
 function pintarGeminio(ahora) {
@@ -7121,46 +7177,75 @@ function pintarGeminio(ahora) {
   g.clearRect(0, 0, W, H);
   const tinteMax = G.tinte == null ? 0.52 : G.tinte;
   // el tinte llega cuando ya están casi todas
-  const tinte = tinteMax * clamp((t - geminio.fin * 0.75) / 1800, 0, 1);
-  let posadas = 0;
+  const tinte = tinteMax * clamp((t - geminio.tinteYa) / 1800, 0, 1);
+  let chispas = [];
   for (const c of geminio.celdas) {
     const k = clamp((t - c.retraso) / 1300, 0, 1);
     if (k <= 0) continue;
     const e = 1 - Math.pow(1 - k, 3);
     const x = c.ox + (c.x - c.ox) * e, y = c.oy + (c.y - c.oy) * e;
     const tam = c.s * (1.8 - 0.8 * e);
+    const { etapa, giro } = etapaCelda(c, t);
+    const E = c.etapas[Math.min(etapa, c.etapas.length - 1)];
+    // al voltearse se estrecha hasta cero y vuelve con la otra foto
+    const flip = giro < 1 ? Math.abs(Math.cos(giro * Math.PI)) : 1;
+    if (giro > 0.3 && giro < 0.7 && Math.random() < 0.05) chispas.push([c.x + c.s / 2, c.y + c.s / 2]);
     g.save();
     g.globalAlpha = Math.min(1, k * 2.5);
     g.translate(x + c.s / 2, y + c.s / 2);
     if (k < 1) g.rotate(c.giro * (1 - e));
-    g.drawImage(geminio.atlas, c.sx, c.sy, 128, 128, -tam / 2, -tam / 2, tam, tam);
-    if (k >= 1) {
-      posadas++;
-      if (tinte > 0) {
-        g.globalAlpha = tinte;
-        g.fillStyle = `rgb(${c.col[0]},${c.col[1]},${c.col[2]})`;
-        g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
-      }
+    g.scale(Math.max(0.02, flip), 1);
+    g.drawImage(geminio.atlas, E.sx, E.sy, 128, 128, -tam / 2, -tam / 2, tam, tam);
+    if (k >= 1 && tinte > 0) {
+      g.globalAlpha = tinte;
+      g.fillStyle = `rgb(${E.col[0]},${E.col[1]},${E.col[2]})`;
+      g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
+    }
+    if (giro < 1) {   // el canto del cuadrito brilla mientras gira
+      g.globalAlpha = 0.6 * (1 - flip);
+      g.fillStyle = '#ffe7a8';
+      g.fillRect(-c.s / 2, -c.s / 2, c.s, c.s);
     }
     g.restore();
   }
-  // un brillo que barre la foto cuando ya está entera
-  const brillo = (t - geminio.fin - 1600) / 1600;
-  if (brillo > 0 && brillo < 1 && !REDUCED) {
-    const bx = -W * 0.3 + brillo * W * 1.6;
-    const grad = g.createLinearGradient(bx - W * 0.2, 0, bx + W * 0.2, H);
-    grad.addColorStop(0, 'rgba(255,240,200,0)');
-    grad.addColorStop(0.5, 'rgba(255,240,200,0.35)');
-    grad.addColorStop(1, 'rgba(255,240,200,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, W, H);
+  // chispas de oro por donde pasa la ola
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  for (const [x, y] of chispas) {
+    const r = geminio.s * (0.6 + Math.random());
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(255,235,180,0.9)');
+    gr.addColorStop(1, 'rgba(255,235,180,0)');
+    g.fillStyle = gr;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.restore();
+  // un brillo que barre la foto cada vez que queda entera
+  const finales = [geminio.llegan + 1800, ...geminio.cambios.map(cb => cb.t + 2400)];
+  for (const f of finales) {
+    const brillo = (t - f) / 1600;
+    if (brillo > 0 && brillo < 1 && !REDUCED) {
+      const bx = -W * 0.3 + brillo * W * 1.6;
+      const grad = g.createLinearGradient(bx - W * 0.2, 0, bx + W * 0.2, H);
+      grad.addColorStop(0, 'rgba(255,240,200,0)');
+      grad.addColorStop(0.5, 'rgba(255,240,200,0.3)');
+      grad.addColorStop(1, 'rgba(255,240,200,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, W, H);
+    }
+  }
+  // la frase de cada foto, cuando ya se ve
+  const etapaVista = finales.filter(f => t > f).length - 1;
+  if (etapaVista > geminio.etapaDicha && etapaVista >= 0) {
+    geminio.etapaDicha = etapaVista;
+    const texto = (geminio.grandes[etapaVista] || {}).texto;
+    if (texto) { geminioLineasEl.replaceChildren(); lineaGeminio(texto); }
   }
   if (!geminio.listo && t > geminio.fin + 1800) {
     geminio.listo = true;
-    geminioLineasEl.replaceChildren();
-    let d = 0;
+    let d = 600;
     for (const texto of (G.despues || [])) { geminioLater(d, () => lineaGeminio(texto)); d += 1400; }
-    geminioLater(d + 200, () => {
+    geminioLater(d, () => {
       geminioVolverBtn.hidden = false;
       void geminioVolverBtn.offsetWidth;
       geminioVolverBtn.classList.add('in');
@@ -7178,9 +7263,10 @@ function tocarGeminio(e) {
   const y = Math.floor((e.clientY - r.top) / r.height * geminio.rows);
   const c = geminio.celdas[y * geminio.cols + x];
   if (!c) return;
+  const E = c.etapas[c.etapas.length - 1];
   fxBurst(e.clientX, e.clientY, 12, 80);
   const img = geminioVerEl.querySelector('img');
-  img.src = CONFIG.geminio.fotos[c.foto];
+  img.src = CONFIG.geminio.fotos[E.foto];
   geminioVerEl.hidden = false;
   void geminioVerEl.offsetWidth;
   geminioVerEl.classList.add('in');
