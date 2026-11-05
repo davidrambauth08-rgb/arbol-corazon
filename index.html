@@ -13,10 +13,10 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C7 21.5 3 17 3 12.2 3 8.2 6.1 5 10 5c2.4 0 4.6 1.2 6 3.1C17.4 6.2 19.6 5 22 5c3.9 0 7 3.2 7 7.2C29 17 25 21.5 16 28z' fill='%23c9a34a'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=48">
+  <link rel="stylesheet" href="style.css?v=49">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -271,6 +271,54 @@
     <div id="meses-opciones"></div>
   </div>
 
+  <!-- Carta-invitación: llega con una lechuza (textos en CONFIG.carta) -->
+  <div id="carta" hidden>
+    <div class="carta-cielo" aria-hidden="true"></div>
+    <svg id="carta-lechuza" viewBox="0 0 200 160" aria-hidden="true">
+      <g class="ala ala-i"><path d="M88 78 C60 40 22 34 4 52 C26 56 40 70 52 90 C64 98 80 96 88 90 Z"/></g>
+      <g class="ala ala-d"><path d="M112 78 C140 40 178 34 196 52 C174 56 160 70 148 90 C136 98 120 96 112 90 Z"/></g>
+      <ellipse cx="100" cy="92" rx="26" ry="34" class="cuerpo"/>
+      <path d="M88 100 q12 10 24 0 M90 110 q10 8 20 0" class="plumas"/>
+      <circle cx="100" cy="58" r="22" class="cuerpo"/>
+      <path d="M80 44 l-4 -14 l14 8 Z M120 44 l4 -14 l-14 8 Z" class="cuerpo"/>
+      <circle cx="91" cy="56" r="8" class="ojo"/><circle cx="109" cy="56" r="8" class="ojo"/>
+      <circle cx="92" cy="57" r="3.4" class="nina"/><circle cx="110" cy="57" r="3.4" class="nina"/>
+      <path d="M96 64 l4 7 l4 -7 Z" class="pico"/>
+      <path d="M90 124 l-3 8 M96 125 l0 9 M104 125 l0 9 M110 124 l3 8" class="patas"/>
+    </svg>
+    <button id="carta-sobre" type="button" aria-label="Abrir la carta">
+      <span class="sobre-cuerpo"></span>
+      <span id="carta-dir" class="sobre-dir"></span>
+      <span class="sobre-solapa"></span>
+      <span id="carta-sello"><span class="sello-mitad sm-i"></span><span class="sello-mitad sm-d"></span><span id="carta-sello-txt"></span></span>
+    </button>
+    <p id="carta-pista"></p>
+    <div id="carta-papel" role="document">
+      <svg class="carta-escudo" viewBox="0 0 120 140" aria-hidden="true">
+        <path d="M60 6 L110 22 C110 80 92 112 60 134 C28 112 10 80 10 22 Z" class="esc-borde"/>
+        <path d="M60 6 V134 M10 62 H110" class="esc-cruz"/>
+        <path d="M35 34 c-6-8 6-14 9-6 c3-8 15-2 9 6 l-9 10 Z" class="esc-icono"/>
+        <path d="M85 30 l3 7 7 1 -5 5 1 7 -6-4 -6 4 1-7 -5-5 7-1 Z" class="esc-icono"/>
+        <circle cx="38" cy="92" r="11" class="esc-luna"/><circle cx="43" cy="88" r="10" class="esc-tapa"/>
+        <path d="M78 82 l14 22 M92 82 l-14 22" class="esc-varitas"/>
+        <text x="60" y="76" text-anchor="middle" class="esc-letra">K</text>
+      </svg>
+      <p id="carta-lema" class="carta-lema"></p>
+      <h2 id="carta-colegio"></h2>
+      <p id="carta-director" class="carta-director"></p>
+      <p id="carta-saludo" class="carta-saludo"></p>
+      <div id="carta-cuerpo"></div>
+      <dl id="carta-detalles"></dl>
+      <h3 id="carta-lista-t"></h3>
+      <ul id="carta-lista"></ul>
+      <p id="carta-despedida"></p>
+      <p id="carta-firma" class="carta-firma"></p>
+      <p id="carta-cargo" class="carta-cargo"></p>
+      <span id="carta-aceptada" aria-live="polite"></span>
+      <div id="carta-ops"></div>
+    </div>
+  </div>
+
   <!-- Puerta encantada: clave y frase (textos en CONFIG.puerta) -->
   <div id="gate" hidden>
     <div class="gate-card">
@@ -314,6 +362,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=48"></script>
+  <script src="script.js?v=49"></script>
 </body>
 </html>

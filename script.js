@@ -39,6 +39,42 @@ const CONFIG = {
     opciones: ["Opción 8", "Opción 16"]
   },
 
+  /* Carta-invitación estilo colegio de magia: llega con una lechuza justo
+     después del mesesaurio. Ella rompe el sello, lee la carta y acepta.
+     No se envía nada. activo: false la quita. */
+  carta: {
+    activo: true,
+    sobre: ["Srta. Karen Trujillo", "El lugar donde más brilla", "Planeta Tierra, visto desde la Luna"],
+    sello: "D♥K",
+    pista: "Toca el sello para abrirla",
+    colegio: "Colegio de Magia y Hechicería del Corazón",
+    lema: "Amor vincit omnia",
+    director: "Director: David, Gran Hechicero de tus sonrisas",
+    saludo: "Querida Srta. Trujillo:",
+    cuerpo: [
+      "Tenemos el gusto de comunicarle que ha sido elegida —sin examen y por unanimidad— para asistir a una cita muy especial.",
+      "Encontrará los detalles abajo. Le rogamos que traiga lo que pide la lista y que no se lo cuente a ningún muggle."
+    ],
+    detalles: [
+      ["Día", "por decidir"],
+      ["Hora", "por decidir"],
+      ["Lugar", "es una sorpresa"]
+    ],
+    listaTitulo: "Lista de materiales",
+    lista: [
+      "Una sonrisa (obligatoria)",
+      "Ropa cómoda para caminar de la mano",
+      "Muchas ganas de reír",
+      "Nada de prisa"
+    ],
+    despedida: "Esperamos su lechuza con impaciencia.",
+    firma: "David",
+    cargo: "Subdirector de abrazos",
+    botones: ["Acepto ♥", "¡Claro que sí!"],
+    aceptada: "Aceptada",
+    seguir: "Seguir ✦"
+  },
+
   puerta: {
     activo: false,   // false = se entra sin clave ni contraseña
     titulo: "La puerta está encantada",
@@ -10260,6 +10296,83 @@ function conMesesaurio(seguir) {
 }
 
 
+
+/* ---------------------------------------------------------------------
+   Carta-invitación: la lechuza trae el sobre, ella rompe el sello y acepta
+   --------------------------------------------------------------------- */
+function conCarta(seguir) {
+  const C = CONFIG.carta;
+  const caja = document.getElementById('carta');
+  if (!C || !C.activo || !caja) return seguir();
+  const $ = id => document.getElementById(id);
+  const sobre = $('carta-sobre'), papel = $('carta-papel'), pista = $('carta-pista');
+  $('carta-dir').replaceChildren(...(C.sobre || []).map(t => el('span', '', t)));
+  $('carta-sello-txt').textContent = C.sello || '';
+  pista.textContent = C.pista || '';
+  $('carta-colegio').textContent = C.colegio || '';
+  $('carta-lema').textContent = C.lema || '';
+  $('carta-director').textContent = C.director || '';
+  $('carta-saludo').textContent = C.saludo || '';
+  $('carta-cuerpo').replaceChildren(...(C.cuerpo || []).map(t => el('p', '', t)));
+  $('carta-detalles').replaceChildren(...(C.detalles || []).map(([k, v]) => {
+    const fila = el('div', 'carta-det');
+    fila.append(el('dt', '', k), el('dd', '', v));
+    return fila;
+  }));
+  $('carta-lista-t').textContent = C.listaTitulo || '';
+  $('carta-lista').replaceChildren(...(C.lista || []).map(t => el('li', '', t)));
+  $('carta-despedida').textContent = C.despedida || '';
+  $('carta-firma').textContent = C.firma || '';
+  $('carta-cargo').textContent = C.cargo || '';
+  $('carta-aceptada').textContent = C.aceptada || '';
+  const ops = $('carta-ops');
+  ops.replaceChildren();
+  const corazones = (n) => {
+    for (let i = 0; i < (REDUCED ? 6 : n); i++) {
+      const h = el('span', 'carta-corazon', i % 3 ? '♥' : '✦');
+      h.style.cssText = `left:${10 + Math.random() * 80}%;animation-delay:${Math.random() * 0.8}s;` +
+        `font-size:${14 + Math.random() * 20}px;--deriva:${(Math.random() * 120 - 60).toFixed(0)}px`;
+      caja.appendChild(h);
+      setTimeout(() => h.remove(), 4200);
+    }
+  };
+  let aceptada = false;
+  for (const texto of (C.botones || [])) {
+    const b = el('button', 'spell-btn carta-op', texto);
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      if (aceptada) return;
+      aceptada = true;
+      b.classList.add('elegida');
+      papel.classList.add('aceptada');
+      corazones(40);
+      const sig = el('button', 'spell-btn carta-op carta-seguir', C.seguir || 'Seguir');
+      sig.type = 'button';
+      sig.addEventListener('click', () => {
+        caja.classList.add('hide');
+        seguir();
+        setTimeout(() => { caja.hidden = true; }, 1000);
+      }, { once: true });
+      setTimeout(() => ops.replaceChildren(sig), 1400);
+    });
+    ops.appendChild(b);
+  }
+  let abierta = false;
+  const abrir = () => {
+    if (abierta || !caja.classList.contains('llego')) return;
+    abierta = true;
+    caja.classList.add('abriendo');
+    corazones(14);
+    setTimeout(() => caja.classList.add('leyendo'), REDUCED ? 200 : 1500);
+  };
+  sobre.addEventListener('click', abrir);
+  caja.hidden = false;
+  caja.classList.remove('hide', 'llego', 'abriendo', 'leyendo');
+  void caja.offsetWidth;
+  caja.classList.add('vuela');
+  setTimeout(() => caja.classList.add('llego'), REDUCED ? 100 : 3000);
+}
+
 /* ---------------------------------------------------------------------
    Puerta encantada: clave y frase antes de entrar
    --------------------------------------------------------------------- */
@@ -11029,7 +11142,7 @@ function init() {
   else if (GATE.activo && GATE.pasos && GATE.pasos.length) {
     introEl.hidden = true;
     magicEl.hidden = true;
-    conMesesaurio(buildGate);
+    conMesesaurio(() => conCarta(buildGate));
   } else if (MAGIC.enabled || (CONFIG.reparo && CONFIG.reparo.entrada) ||
              (CONFIG.priori && CONFIG.priori.entrada) ||
              (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
@@ -11037,7 +11150,7 @@ function init() {
              (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
              (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;
-    conMesesaurio(entrada);
+    conMesesaurio(() => conCarta(entrada));
   }
 
   lastNow = performance.now();
