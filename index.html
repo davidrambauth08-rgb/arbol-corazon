@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
   <!-- La marca ?v= obliga al navegador a bajar la versión nueva en vez de la
        que tenga guardada. Hay que subirla cada vez que se publica un cambio. -->
-  <link rel="stylesheet" href="style.css?v=49">
+  <link rel="stylesheet" href="style.css?v=50">
 </head>
 <body>
   <!-- Fondo, panel, árbol, corazones y partículas se dibujan en este canvas -->
@@ -68,6 +68,7 @@
       <button id="spell-geminio" class="rune-btn" type="button" hidden></button>
       <button id="spell-oesed" class="rune-btn" type="button" hidden></button>
       <button id="spell-snitch" class="rune-btn" type="button" hidden></button>
+      <button id="spell-luna" class="rune-btn" type="button" hidden></button>
     </div>
   </div>
 
@@ -271,6 +272,16 @@
     <div id="meses-opciones"></div>
   </div>
 
+  <!-- ☾ Desde la Luna: el vídeo de David (textos en CONFIG.luna) -->
+  <div id="luna" hidden>
+    <h2 id="luna-titulo"></h2>
+    <p id="luna-sub"></p>
+    <div class="luna-marco">
+      <video id="luna-video" controls playsinline preload="none"></video>
+    </div>
+    <button id="luna-cerrar" class="spell-btn" type="button"></button>
+  </div>
+
   <!-- Carta-invitación: llega con una lechuza (textos en CONFIG.carta) -->
   <div id="carta" hidden>
     <div class="carta-cielo" aria-hidden="true"></div>
@@ -362,6 +373,6 @@
   <!-- Sirve para leer las zonas seguras del iPhone (notch, barra inferior) -->
   <div id="safe-area" aria-hidden="true"></div>
 
-  <script src="script.js?v=49"></script>
+  <script src="script.js?v=50"></script>
 </body>
 </html>

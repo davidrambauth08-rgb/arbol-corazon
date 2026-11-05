@@ -3395,3 +3395,38 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
 .carta-det dd { flex: 1; }
 .carta-escrito { font-family: 'Pinyon Script', cursive; font-style: normal; font-size: 1.35em; color: #1f3d6b; }
 a.carta-op { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* ---------------------------------------------------------------------
+   ☾ Desde la Luna: el vídeo a pantalla completa
+   --------------------------------------------------------------------- */
+#luna {
+  position: fixed; inset: 0; z-index: 42;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+  padding: calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgba(80, 100, 180, 0.35), transparent 65%),
+    linear-gradient(180deg, #0f1430, #07060f);
+  transition: opacity 0.6s ease;
+  animation: meses-in 0.8s ease both;
+}
+#luna[hidden] { display: none; }
+#luna.hide { opacity: 0; pointer-events: none; }
+#luna-titulo {
+  margin: 0; text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600;
+  font-size: clamp(26px, 7vw, 40px); color: #f4d48a;
+  text-shadow: 0 0 18px rgba(240, 190, 90, 0.5);
+}
+#luna-sub { margin: 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; color: #e8dcc0; opacity: 0.85; text-align: center; }
+.luna-marco {
+  flex: 1 1 auto; min-height: 0;
+  height: 100%; max-height: 72vh;
+  aspect-ratio: 9 / 16; max-width: 100%;
+  border-radius: 16px; overflow: hidden;
+  border: 1px solid rgba(240, 208, 140, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(240, 208, 140, 0.15);
+  background: #000;
+}
+#luna-video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+#luna-cerrar { min-height: 46px; padding: 8px 26px; font-size: 20px; flex-shrink: 0; }

@@ -39,6 +39,16 @@ const CONFIG = {
     opciones: ["Opción 8", "Opción 16"]
   },
 
+  /* ☾ Desde la Luna: el vídeo «I love you from the moon» (canción y animación de David) */
+  luna: {
+    activo: true,
+    video: "assets/luna.mp4",
+    poster: "assets/luna.jpg",
+    titulo: "I love you from the moon",
+    sub: "Una canción y una historia que hice para ti",
+    cerrar: "Volver al árbol"
+  },
+
   /* Carta-invitación estilo colegio de magia: llega con una lechuza justo
      después del mesesaurio. Ella rompe el sello, lee la carta y acepta.
      No se envía nada. activo: false la quita. */
@@ -267,6 +277,7 @@ const CONFIG = {
     oesed: { runa: "❂", nombre: "Espejo de Oesed", desc: "ver lo que más desea el corazón", corto: "Espejo" },
     geminio: { runa: "▦", nombre: "Spectrus Patronus", desc: "muchos recuerdos que hacen uno solo", corto: "Spectrus" },
     snitch: { runa: "◉", nombre: "Me abro al cierre", desc: "atrapar la Snitch dorada", corto: "Snitch" },
+    luna: { runa: "☾", nombre: "Lunaris Amoris", desc: "te quiero desde la Luna: un vídeo que hice para ti", corto: "Luna" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
 
@@ -1153,6 +1164,7 @@ const reparoFilaBtn = document.getElementById('spell-reparo');
 const pruebasFilaBtn = document.getElementById('spell-pruebas');
 const oesedFilaBtn = document.getElementById('spell-oesed');
 const snitchFilaBtn = document.getElementById('spell-snitch');
+const lunaFilaBtn = document.getElementById('spell-luna');
 const geminioFilaBtn = document.getElementById('spell-geminio');
 const snitchEl = document.getElementById('snitch');
 const snitchCanvas = document.getElementById('snitch-lienzo');
@@ -2769,7 +2781,8 @@ function hechizosFila() {
     { btn: expelFilaBtn, activo: () => !!(CONFIG.expelliarmus && CONFIG.expelliarmus.activo) },
     { btn: geminioFilaBtn, activo: () => !!(CONFIG.geminio && CONFIG.geminio.activo) },
     { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
-    { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) }
+    { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) },
+    { btn: lunaFilaBtn, activo: () => !!(CONFIG.luna && CONFIG.luna.activo) }
   ];
 }
 
@@ -9659,6 +9672,7 @@ function buildExtras() {
   fillRune(pruebasFilaBtn, HX.pruebas);
   fillRune(oesedFilaBtn, HX.oesed);
   fillRune(snitchFilaBtn, HX.snitch);
+  fillRune(lunaFilaBtn, HX.luna);
   fillRune(geminioFilaBtn, HX.geminio);
   cargarFotoOesed();   // se baja desde ya, para que esté lista al mirar en el espejo
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
@@ -9710,6 +9724,7 @@ function bindExtras() {
   oesedSeguirBtn.addEventListener('click', cerrarOesed);
   oesedCanvas.addEventListener('pointerdown', tocarOesed);
   snitchFilaBtn.addEventListener('click', () => mostrarSnitchEscena());
+  lunaFilaBtn.addEventListener('click', () => mostrarLuna());
   geminioFilaBtn.addEventListener('click', () => mostrarGeminio());
   snitchBtn.addEventListener('click', botonSnitch);
   snitchSeguirBtn.addEventListener('click', seguirSnitch);
@@ -9976,7 +9991,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, geminioFilaBtn, snitchFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, geminioFilaBtn, snitchFilaBtn, lunaFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -10304,6 +10319,40 @@ function conMesesaurio(seguir) {
 }
 
 
+
+
+/* ---------------------------------------------------------------------
+   ☾ Desde la Luna: el vídeo de David a pantalla completa
+   --------------------------------------------------------------------- */
+const lunaEl = document.getElementById('luna');
+const lunaVideo = document.getElementById('luna-video');
+let lunaMusicaSonaba = false;
+
+function mostrarLuna() {
+  const L = CONFIG.luna;
+  if (!L || !L.activo || !lunaEl) return;
+  document.getElementById('luna-titulo').textContent = L.titulo || '';
+  document.getElementById('luna-sub').textContent = L.sub || '';
+  document.getElementById('luna-cerrar').textContent = L.cerrar || '✕';
+  lunaMusicaSonaba = !!(music.el && !music.el.paused);
+  if (lunaMusicaSonaba) { music.userPaused = true; music.el.pause(); }
+  if (L.poster) lunaVideo.poster = L.poster;
+  if (!lunaVideo.getAttribute('src')) lunaVideo.src = L.video;
+  lunaEl.hidden = false;
+  lunaEl.classList.remove('hide');
+  try { lunaVideo.currentTime = 0; } catch (e) {}
+  const p = lunaVideo.play();
+  if (p && p.catch) p.catch(() => {});
+}
+
+function cerrarLuna() {
+  lunaVideo.pause();
+  lunaEl.classList.add('hide');
+  setTimeout(() => { lunaEl.hidden = true; }, 600);
+  if (lunaMusicaSonaba && music.el) toggleMusic();
+  lunaMusicaSonaba = false;
+}
+if (lunaEl) document.getElementById('luna-cerrar').addEventListener('click', cerrarLuna);
 
 /* ---------------------------------------------------------------------
    Carta-invitación: la lechuza trae el sobre, ella rompe el sello y acepta
