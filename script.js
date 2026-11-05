@@ -32,7 +32,7 @@ const CONFIG = {
   /* Lo primero de todo: el gatito con flores, «Feliz mesesaurio» y la pregunta.
      Cualquiera de las dos opciones abre la página. activo: false lo quita. */
   mesesaurio: {
-    activo: true,
+    activo: false,   // 06-nov: quitado; ahora se abre directo con la carta del cumpleaños
     video: "assets/mesesaurio.mp4",
     poster: "assets/mesesaurio.jpg",
     titulo: "Feliz mesesaurio",
