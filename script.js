@@ -52,14 +52,19 @@ const CONFIG = {
     director: "Director: David, Gran Hechicero de tus sonrisas",
     saludo: "Querida Srta. Trujillo:",
     cuerpo: [
-      "Tenemos el gusto de comunicarle que ha sido elegida —sin examen y por unanimidad— para asistir a una cita muy especial.",
-      "Encontrará los detalles abajo. Le rogamos que traiga lo que pide la lista y que no se lo cuente a ningún muggle."
+      "Tenemos el gusto de comunicarle que ha sido elegida —sin examen y por unanimidad— para celebrar su cumpleaños en una cita muy especial.",
+      "Por ser la cumpleañera, el lugar y la hora los decide usted. Escríbalos abajo con su mejor letra de bruja y no se lo cuente a ningún muggle."
     ],
+    /* [nombre, valor]; si el valor es null, ella lo escribe (con ese texto de ayuda) */
     detalles: [
-      ["Día", "por decidir"],
-      ["Hora", "por decidir"],
-      ["Lugar", "es una sorpresa"]
+      ["Día", "El día de su cumpleaños"],
+      ["Hora", null, "la que usted quiera"],
+      ["Lugar", null, "donde usted quiera"]
     ],
+    sinElegir: "lo que usted decida",
+    // número de David con prefijo y sin «+» (ej. "34600111222"); vacío = no se envía nada
+    whatsapp: "",
+    botonEnviar: "Enviar mi respuesta por lechuza 🦉",
     listaTitulo: "Lista de materiales",
     lista: [
       "Una sonrisa (obligatoria)",
@@ -10314,9 +10319,20 @@ function conCarta(seguir) {
   $('carta-director').textContent = C.director || '';
   $('carta-saludo').textContent = C.saludo || '';
   $('carta-cuerpo').replaceChildren(...(C.cuerpo || []).map(t => el('p', '', t)));
-  $('carta-detalles').replaceChildren(...(C.detalles || []).map(([k, v]) => {
+  const elegidos = [];
+  $('carta-detalles').replaceChildren(...(C.detalles || []).map(([k, v, ayuda]) => {
     const fila = el('div', 'carta-det');
-    fila.append(el('dt', '', k), el('dd', '', v));
+    const dd = el('dd', '', v == null ? undefined : v);
+    if (v == null) {
+      const inp = el('input', 'carta-elige');
+      inp.type = 'text';
+      inp.placeholder = ayuda || '';
+      inp.setAttribute('aria-label', k);
+      inp.autocomplete = 'off';
+      dd.appendChild(inp);
+      elegidos.push([k, inp, dd]);
+    }
+    fila.append(el('dt', '', k), dd);
     return fila;
   }));
   $('carta-lista-t').textContent = C.listaTitulo || '';
@@ -10344,8 +10360,22 @@ function conCarta(seguir) {
       if (aceptada) return;
       aceptada = true;
       b.classList.add('elegida');
+      const respuesta = elegidos.map(([k, inp, dd]) => {
+        const val = inp.value.trim() || C.sinElegir || '';
+        dd.replaceChildren(el('span', 'carta-escrito', val));
+        return k + ': ' + val;
+      });
       papel.classList.add('aceptada');
       corazones(40);
+      const botones = [];
+      if (C.whatsapp) {
+        const env = el('a', 'spell-btn carta-op carta-seguir', C.botonEnviar || 'Enviar');
+        env.href = 'https://wa.me/' + C.whatsapp + '?text=' + encodeURIComponent(
+          '🦉 Acepto la invitación a celebrar mi cumpleaños ♥\n' + respuesta.join('\n'));
+        env.target = '_blank';
+        env.rel = 'noopener';
+        botones.push(env);
+      }
       const sig = el('button', 'spell-btn carta-op carta-seguir', C.seguir || 'Seguir');
       sig.type = 'button';
       sig.addEventListener('click', () => {
@@ -10353,7 +10383,8 @@ function conCarta(seguir) {
         seguir();
         setTimeout(() => { caja.hidden = true; }, 1000);
       }, { once: true });
-      setTimeout(() => ops.replaceChildren(sig), 1400);
+      botones.push(sig);
+      setTimeout(() => ops.replaceChildren(...botones), 1400);
     });
     ops.appendChild(b);
   }

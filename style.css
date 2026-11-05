@@ -3383,3 +3383,15 @@ body.reflejando #fx, body.cazando #fx { z-index: 19; }
   #carta.vuela #carta-lechuza { animation: none; opacity: 0; }
   #carta.vuela #carta-sobre { animation: none; opacity: 1; }
 }
+.carta-elige {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  padding: 2px 4px; border: 0; border-bottom: 1px dashed #7a5a30;
+  background: transparent; outline: none;
+  font-family: 'IM Fell English', Georgia, serif; font-style: italic;
+  font-size: 1em; color: #1f3d6b;
+}
+.carta-elige::placeholder { color: rgba(90, 60, 30, 0.5); }
+.carta-elige:focus { border-bottom-color: #a3202b; background: rgba(255, 255, 255, 0.25); }
+.carta-det dd { flex: 1; }
+.carta-escrito { font-family: 'Pinyon Script', cursive; font-style: normal; font-size: 1.35em; color: #1f3d6b; }
+a.carta-op { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
