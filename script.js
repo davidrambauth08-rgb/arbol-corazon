@@ -53,10 +53,12 @@ const CONFIG = {
     saludo: "Querida Srta. Trujillo:",
     cuerpo: [
       "Tenemos el gusto de comunicarle que ha sido elegida —sin examen y por unanimidad— para celebrar su cumpleaños en una cita muy especial.",
+      "Antes de nada, como toda alumna nueva, deberá ir con su acompañante a comprar el uniforme: unas túnicas mágicas para los dos.",
       "Por ser la cumpleañera, el lugar y la hora los decide usted. Escríbalos abajo con su mejor letra de bruja y no se lo cuente a ningún muggle."
     ],
     /* [nombre, valor]; si el valor es null, ella lo escribe (con ese texto de ayuda) */
     detalles: [
+      ["Primero", "Ir de compras: túnicas mágicas"],
       ["Día", "El día de su cumpleaños"],
       ["Hora", null, "la que usted quiera"],
       ["Lugar", null, "donde usted quiera"]
@@ -67,6 +69,7 @@ const CONFIG = {
     botonEnviar: "Enviar mi respuesta por lechuza 🦉",
     listaTitulo: "Lista de materiales",
     lista: [
+      "Dos túnicas mágicas (se compran juntos, primera parada)",
       "Una sonrisa (obligatoria)",
       "Ropa cómoda para caminar de la mano",
       "Muchas ganas de reír",
