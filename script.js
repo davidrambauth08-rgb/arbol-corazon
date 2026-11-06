@@ -39,6 +39,16 @@ const CONFIG = {
     opciones: ["Opción 8", "Opción 16"]
   },
 
+  /* ✺ Felix Natalis: el vídeo de cumpleaños (solo ella, con mensajes y música libre) */
+  cumple: {
+    activo: true,
+    video: "assets/cumple.mp4",
+    poster: "assets/cumple.jpg",
+    titulo: "Feliz cumpleaños",
+    sub: "Un hechizo hecho solo para ti",
+    cerrar: "Volver al árbol"
+  },
+
   /* ☾ Desde la Luna: el vídeo «I love you from the moon» (canción y animación de David) */
   luna: {
     activo: true,
@@ -277,6 +287,7 @@ const CONFIG = {
     oesed: { runa: "❂", nombre: "Espejo de Oesed", desc: "ver lo que más desea el corazón", corto: "Espejo" },
     geminio: { runa: "▦", nombre: "Spectrus Patronus", desc: "muchos recuerdos que hacen uno solo", corto: "Spectrus" },
     snitch: { runa: "◉", nombre: "Me abro al cierre", desc: "atrapar la Snitch dorada", corto: "Snitch" },
+    cumple: { runa: "✺", nombre: "Felix Natalis", desc: "el hechizo de tu cumpleaños: un vídeo solo tuyo", corto: "Cumple" },
     luna: { runa: "☾", nombre: "Lunaris Amoris", desc: "te quiero desde la Luna: un vídeo que hice para ti", corto: "Luna" },
     finite: { runa: "✕", nombre: "Finite Incantatem", desc: "" }
   },
@@ -1165,6 +1176,7 @@ const pruebasFilaBtn = document.getElementById('spell-pruebas');
 const oesedFilaBtn = document.getElementById('spell-oesed');
 const snitchFilaBtn = document.getElementById('spell-snitch');
 const lunaFilaBtn = document.getElementById('spell-luna');
+const cumpleFilaBtn = document.getElementById('spell-cumple');
 const geminioFilaBtn = document.getElementById('spell-geminio');
 const snitchEl = document.getElementById('snitch');
 const snitchCanvas = document.getElementById('snitch-lienzo');
@@ -2782,7 +2794,8 @@ function hechizosFila() {
     { btn: geminioFilaBtn, activo: () => !!(CONFIG.geminio && CONFIG.geminio.activo) },
     { btn: oesedFilaBtn, activo: () => !!(CONFIG.oesed && CONFIG.oesed.activo) },
     { btn: snitchFilaBtn, activo: () => !!(CONFIG.snitch && CONFIG.snitch.activo) },
-    { btn: lunaFilaBtn, activo: () => !!(CONFIG.luna && CONFIG.luna.activo) }
+    { btn: lunaFilaBtn, activo: () => !!(CONFIG.luna && CONFIG.luna.activo) },
+    { btn: cumpleFilaBtn, activo: () => !!(CONFIG.cumple && CONFIG.cumple.activo) }
   ];
 }
 
@@ -9673,6 +9686,7 @@ function buildExtras() {
   fillRune(oesedFilaBtn, HX.oesed);
   fillRune(snitchFilaBtn, HX.snitch);
   fillRune(lunaFilaBtn, HX.luna);
+  fillRune(cumpleFilaBtn, HX.cumple);
   fillRune(geminioFilaBtn, HX.geminio);
   cargarFotoOesed();   // se baja desde ya, para que esté lista al mirar en el espejo
   fillPlate(marauderCloseBtn, { runa: "✕", nombre: (CONFIG.merodeador && CONFIG.merodeador.cierre) || "Travesura realizada", desc: (CONFIG.merodeador && CONFIG.merodeador.cierreDesc) || "" });
@@ -9725,6 +9739,7 @@ function bindExtras() {
   oesedCanvas.addEventListener('pointerdown', tocarOesed);
   snitchFilaBtn.addEventListener('click', () => mostrarSnitchEscena());
   lunaFilaBtn.addEventListener('click', () => mostrarLuna());
+  cumpleFilaBtn.addEventListener('click', () => mostrarLuna('cumple'));
   geminioFilaBtn.addEventListener('click', () => mostrarGeminio());
   snitchBtn.addEventListener('click', botonSnitch);
   snitchSeguirBtn.addEventListener('click', seguirSnitch);
@@ -9991,7 +10006,7 @@ function resetExtras() {
   lingua.activo = false;
   lingua.palabras.length = 0;
   finaleEl.classList.remove('atenuado');
-  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, geminioFilaBtn, snitchFilaBtn, lunaFilaBtn]) {
+  for (const btn of [sonorusBtn, secretBtn, revelioBtn, noxBtn, tempusBtn, patronusBtn, leviosaBtn, linguaBtn, dracarysBtn, australisBtn, orchideousBtn, merodeadorBtn, vueloBtn2, wingardiumFilaBtn, expelFilaBtn, prioriFilaBtn, reparoFilaBtn, pruebasFilaBtn, oesedFilaBtn, geminioFilaBtn, snitchFilaBtn, lunaFilaBtn, cumpleFilaBtn]) {
     btn.hidden = true;
     btn.disabled = false;
     btn.classList.remove('in', 'out', 'usado');
@@ -10328,16 +10343,16 @@ const lunaEl = document.getElementById('luna');
 const lunaVideo = document.getElementById('luna-video');
 let lunaMusicaSonaba = false;
 
-function mostrarLuna() {
-  const L = CONFIG.luna;
+function mostrarLuna(clave = 'luna') {
+  const L = CONFIG[clave];
   if (!L || !L.activo || !lunaEl) return;
   document.getElementById('luna-titulo').textContent = L.titulo || '';
   document.getElementById('luna-sub').textContent = L.sub || '';
   document.getElementById('luna-cerrar').textContent = L.cerrar || '✕';
   lunaMusicaSonaba = !!(music.el && !music.el.paused);
   if (lunaMusicaSonaba) { music.userPaused = true; music.el.pause(); }
-  if (L.poster) lunaVideo.poster = L.poster;
-  if (!lunaVideo.getAttribute('src')) lunaVideo.src = L.video;
+  lunaVideo.poster = L.poster || '';
+  if (lunaVideo.getAttribute('src') !== L.video) lunaVideo.src = L.video;
   lunaEl.hidden = false;
   lunaEl.classList.remove('hide');
   try { lunaVideo.currentTime = 0; } catch (e) {}
