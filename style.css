@@ -3430,3 +3430,67 @@ a.carta-op { display: inline-flex; align-items: center; justify-content: center;
 }
 #luna-video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 #luna-cerrar { min-height: 46px; padding: 8px 26px; font-size: 20px; flex-shrink: 0; }
+
+/* ---------------------------------------------------------------------
+   Flores: dos ramos tras la carta
+   --------------------------------------------------------------------- */
+#flores {
+  position: fixed; inset: 0; z-index: 41;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; overflow: hidden;
+  padding: calc(16px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgba(255, 150, 190, 0.28), transparent 65%),
+    radial-gradient(70% 50% at 50% 100%, rgba(255, 200, 120, 0.18), transparent 70%),
+    linear-gradient(180deg, #1a1430 0%, #120d22 60%, #0a0814 100%);
+  transition: opacity 0.9s ease;
+  animation: meses-in 1s ease both;
+}
+#flores[hidden] { display: none; }
+#flores.hide { opacity: 0; pointer-events: none; }
+#flores > :not(#flores-petalos) { position: relative; z-index: 1; }
+#flores-petalos { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.petalo {
+  position: absolute; top: -30px;
+  text-shadow: 0 0 8px rgba(255, 170, 200, 0.6);
+  animation-name: petalo-cae; animation-timing-function: linear; animation-iteration-count: infinite;
+}
+@keyframes petalo-cae {
+  from { transform: translate(0, -5vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  to { transform: translate(var(--deriva), 108vh) rotate(var(--gira)); opacity: 0.9; }
+}
+#flores-titulo {
+  margin: 0; text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600;
+  font-size: clamp(30px, 8vw, 46px); color: #ffd6e4;
+  text-shadow: 0 0 20px rgba(255, 140, 180, 0.55);
+  animation: flores-sube 1s ease 0.2s both;
+}
+#flores-sub {
+  margin: 0 0 6px; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; color: #f3e6d6; opacity: 0.85;
+  animation: flores-sube 1s ease 0.5s both;
+}
+@keyframes flores-sube { from { opacity: 0; transform: translateY(14px); } }
+#flores-ramos {
+  position: relative; flex: 1 1 auto; min-height: 0; width: min(100%, 560px);
+  display: flex; justify-content: center; align-items: center;
+}
+.flor-carta {
+  margin: 0; position: absolute;
+  height: min(62vh, 640px); aspect-ratio: 0.58;
+  padding: 10px 10px 34px; background: #fff8f2; border-radius: 6px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.55), 0 0 30px rgba(255, 170, 200, 0.18);
+}
+.flor-carta img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+.flor-carta.f1 { transform: translate(-56%, 0) rotate(-5deg); animation: flor-llega-1 1.2s cubic-bezier(.2,.8,.3,1.1) 0.5s both; }
+.flor-carta.f2 { transform: translate(56%, 3%) rotate(4deg); animation: flor-llega-2 1.2s cubic-bezier(.2,.8,.3,1.1) 1.6s both; }
+@keyframes flor-llega-1 { from { opacity: 0; transform: translate(-80%, 40%) rotate(-25deg) scale(0.7); } }
+@keyframes flor-llega-2 { from { opacity: 0; transform: translate(80%, 40%) rotate(25deg) scale(0.7); } }
+@media (max-width: 700px) {
+  .flor-carta { height: min(42vh, 440px); padding-bottom: 24px; }
+  .flor-carta.f1 { transform: translate(-20%, -27%) rotate(-6deg); }
+  .flor-carta.f2 { transform: translate(20%, 27%) rotate(5deg); }
+}
+#flores-btn { opacity: 0; pointer-events: none; transition: opacity 0.8s ease; flex-shrink: 0; margin-top: 6px; }
+#flores-btn.listo { opacity: 1; pointer-events: auto; }

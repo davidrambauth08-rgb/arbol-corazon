@@ -39,6 +39,16 @@ const CONFIG = {
     opciones: ["Opción 8", "Opción 16"]
   },
 
+  /* Después de la carta: dos ramos de flores y luego el vídeo de cumpleaños. activo: false lo quita. */
+  flores: {
+    activo: true,
+    fotos: ["assets/flores-1.jpg", "assets/flores-2.jpg"],
+    titulo: "Unas flores para ti",
+    sub: "porque hoy es tu día",
+    boton: "Abrir mi regalo ✺",
+    video: "cumple"            // clave de CONFIG con el vídeo que se abre después ("" = ninguno)
+  },
+
   /* ✺ Felix Natalis: el vídeo de cumpleaños (solo ella, con mensajes y música libre) */
   cumple: {
     activo: true,
@@ -10343,9 +10353,11 @@ const lunaEl = document.getElementById('luna');
 const lunaVideo = document.getElementById('luna-video');
 let lunaMusicaSonaba = false;
 
-function mostrarLuna(clave = 'luna') {
+let lunaAlCerrar = null;
+function mostrarLuna(clave = 'luna', alCerrar = null) {
   const L = CONFIG[clave];
-  if (!L || !L.activo || !lunaEl) return;
+  if (!L || !L.activo || !lunaEl) { if (alCerrar) alCerrar(); return; }
+  lunaAlCerrar = alCerrar;
   document.getElementById('luna-titulo').textContent = L.titulo || '';
   document.getElementById('luna-sub').textContent = L.sub || '';
   document.getElementById('luna-cerrar').textContent = L.cerrar || '✕';
@@ -10366,8 +10378,53 @@ function cerrarLuna() {
   setTimeout(() => { lunaEl.hidden = true; }, 600);
   if (lunaMusicaSonaba && music.el) toggleMusic();
   lunaMusicaSonaba = false;
+  const f = lunaAlCerrar; lunaAlCerrar = null;
+  if (f) f();
 }
 if (lunaEl) document.getElementById('luna-cerrar').addEventListener('click', cerrarLuna);
+
+
+/* ---------------------------------------------------------------------
+   Flores: después de la carta, dos ramos que llegan con pétalos cayendo;
+   el botón abre el vídeo de cumpleaños y, al cerrarlo, sigue la página
+   --------------------------------------------------------------------- */
+function conFlores(seguir) {
+  const F = CONFIG.flores;
+  const caja = document.getElementById('flores');
+  if (!F || !F.activo || !caja) return seguir();
+  document.getElementById('flores-titulo').textContent = F.titulo || '';
+  document.getElementById('flores-sub').textContent = F.sub || '';
+  const ramos = document.getElementById('flores-ramos');
+  ramos.replaceChildren(...(F.fotos || []).map((src, i) => {
+    const fig = el('figure', 'flor-carta f' + (i + 1));
+    const img = el('img'); img.src = src; img.alt = ''; img.decoding = 'async';
+    fig.appendChild(img); return fig;
+  }));
+  const petalos = document.getElementById('flores-petalos');
+  if (!petalos.childElementCount && !REDUCED) {
+    const cosas = ['❀', '✿', '❁', '♥', '✦'];
+    for (let i = 0; i < (innerWidth < 600 ? 26 : 40); i++) {
+      const p = el('span', 'petalo', cosas[i % cosas.length]);
+      p.style.cssText = `left:${Math.random() * 100}%;font-size:${12 + Math.random() * 16}px;` +
+        `animation-duration:${7 + Math.random() * 8}s;animation-delay:-${Math.random() * 14}s;` +
+        `--deriva:${(Math.random() * 120 - 60).toFixed(0)}px;--gira:${(Math.random() * 400 - 200).toFixed(0)}deg;` +
+        `color:${['#ffb3c8', '#ff8fb1', '#fff1f5', '#ffd27a', '#e9b8ff'][i % 5]}`;
+      petalos.appendChild(p);
+    }
+  }
+  const btn = document.getElementById('flores-btn');
+  btn.textContent = F.boton || 'Seguir';
+  btn.classList.remove('listo');
+  caja.hidden = false;
+  caja.classList.remove('hide');
+  setTimeout(() => btn.classList.add('listo'), REDUCED ? 100 : 3200);
+  btn.onclick = () => {
+    btn.onclick = null;
+    caja.classList.add('hide');
+    setTimeout(() => { caja.hidden = true; }, 900);
+    if (F.video) mostrarLuna(F.video, seguir); else seguir();
+  };
+}
 
 /* ---------------------------------------------------------------------
    Carta-invitación: la lechuza trae el sobre, ella rompe el sello y acepta
@@ -11240,7 +11297,7 @@ function init() {
   else if (GATE.activo && GATE.pasos && GATE.pasos.length) {
     introEl.hidden = true;
     magicEl.hidden = true;
-    conMesesaurio(() => conCarta(buildGate));
+    conMesesaurio(() => conCarta(() => conFlores(buildGate)));
   } else if (MAGIC.enabled || (CONFIG.reparo && CONFIG.reparo.entrada) ||
              (CONFIG.priori && CONFIG.priori.entrada) ||
              (CONFIG.expelliarmus && CONFIG.expelliarmus.entrada) ||
@@ -11248,7 +11305,7 @@ function init() {
              (CONFIG.vuelo && CONFIG.vuelo.entrada) ||
              (CONFIG.merodeador && CONFIG.merodeador.entrada)) {
     introEl.hidden = true;
-    conMesesaurio(() => conCarta(entrada));
+    conMesesaurio(() => conCarta(() => conFlores(entrada)));
   }
 
   lastNow = performance.now();
